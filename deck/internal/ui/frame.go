@@ -27,11 +27,26 @@ type frame struct {
 }
 
 const (
-	margin = 24 // tall: the space between the content and the edges of the screen
-	headH  = 66 // tall: the top of the content of a page, under the title and Back
-	lcdTop = 20 // tall: the top of the display
-	keyH   = 46 // the height of the head of a page: the height of Back
+	margin    = 24 // tall: the space between the content and the edges of the screen
+	baseHeadH = 66 // tall: the top of the content of a page, under the title and Back
+	baseTop   = 20 // tall: the top of the display
+	keyH      = 46 // the height of the head of a page: the height of Back
 )
+
+// The top of the frames. A deck with many printers has the status bar at the top of each screen
+// (drawFleetStatus): each frame then starts under it. Draw sets them for each frame
+// (setTopInset), under drawMu.
+var (
+	topInset int         // the height of the status bar, or 0
+	headH    = baseHeadH // tall: the top of the content of a page, under the title and Back
+	lcdTop   = baseTop   // tall: the top of the display
+)
+
+// setTopInset moves the frames down by n, for the status bar of a deck with many printers.
+func setTopInset(n int) {
+	topInset, headH, lcdTop = n, baseHeadH+n, baseTop+n
+	printLCD = image.Rect(16, 16+n, W-16, 108+n)
+}
 
 // The grid of a wide screen: a margin of gridM at the edges, and gridM between the zones. The left
 // column is as wide as the display with its bezel (at wideScale), so the keys under the display
@@ -52,8 +67,8 @@ func wideZones(scale int) (left, right image.Rectangle) {
 	if contentY1 < H {
 		bottom = contentY1 - 8 // the key of the print bar is 8 pixels under contentY1
 	}
-	left = image.Rect(gridM, gridM, gridM+bezelW(scale), bottom)
-	right = image.Rect(left.Max.X+gridM, gridM, W-gridM, bottom)
+	left = image.Rect(gridM, gridM+topInset, gridM+bezelW(scale), bottom)
+	right = image.Rect(left.Max.X+gridM, gridM+topInset, W-gridM, bottom)
 	return left, right
 }
 
@@ -212,8 +227,34 @@ func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
 	setHeading(title)
 	x, y := head.Min.X, head.Min.Y
 	c.Fill(image.Rect(x, y+13, x+10, y+33), accentMark())
-	// A long title gets a smaller font, down to 18 pixels, and then loses its end.
-	title, w := strings.ToUpper(fleetTitle(title)), head.Max.X-118-(x+20)
+	// The title waits for the end of the page: a key of the head that the page draws after it
+	// (headKeyRect) takes room from it.
+	pendingHead = headDraw{ok: true, c: c, head: head, title: title, right: head.Max.X - 118}
+}
+
+// headDraw is a title of a page that waits for the keys of its head (flushHeading).
+type headDraw struct {
+	ok    bool
+	c     *gfx.Canvas
+	head  image.Rectangle
+	title string
+	right int // the left edge of the leftmost key of the head
+}
+
+// pendingHead is the title of the page of this frame, under drawMu.
+var pendingHead headDraw
+
+// flushHeading draws the title of the page in the room that the keys of its head leave. A long
+// title gets a smaller font, down to 18 pixels, and then loses its end. Draw calls it after the
+// page.
+func flushHeading() {
+	h := pendingHead
+	pendingHead = headDraw{}
+	if !h.ok {
+		return
+	}
+	x, y := h.head.Min.X, h.head.Min.Y
+	title, w := strings.ToUpper(fleetTitle(h.title)), h.right-(x+20)
 	size, least := 24, 18
 	if gfx.FinePrint() {
 		least = 12 // Face makes it larger
@@ -221,7 +262,7 @@ func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
 	for size > least && gfx.Width(gfx.Face(true, size), title) > w {
 		size--
 	}
-	c.Text(image.Rect(x+20, y, head.Max.X-118, y+keyH), title, gfx.Face(true, size), text, gfx.Left)
+	h.c.Text(image.Rect(x+20, y, h.right, y+keyH), title, gfx.Face(true, size), text, gfx.Left)
 }
 
 // helpKey draws a Help key in the head of a page, at the left of Back. It opens Wi-Fi and help,
@@ -252,7 +293,11 @@ func (a *App) headKeyOn(c *gfx.Canvas, head image.Rectangle, label string, on bo
 func headKeyRect(head image.Rectangle, label string) image.Rectangle {
 	b := backRect(head)
 	w := max(b.Dx(), gfx.Width(gfx.Face(true, 22), strings.ToUpper(label))+2*(keyLabelPad+12))
-	return image.Rect(b.Min.X-12-w, b.Min.Y, b.Min.X-12, b.Max.Y)
+	r := image.Rect(b.Min.X-12-w, b.Min.Y, b.Min.X-12, b.Max.Y)
+	if pendingHead.ok && pendingHead.head.Min.Y == head.Min.Y {
+		pendingHead.right = min(pendingHead.right, r.Min.X-12)
+	}
+	return r
 }
 
 // systemKeys draws Wi-Fi and help, and Software update, side by side in r. They are the way out of

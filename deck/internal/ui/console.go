@@ -30,7 +30,7 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 		r := kit.Rows(f.body(), 12, kit.Fr(1), kit.Px(56), kit.Px(actH))
 		win, quick, typeKey = r[0], r[1], r[2]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, menuTop-headH, 0, 0), 6, kit.Fr(1), kit.Px(66), kit.Px(70))
+		r := kit.Rows(kit.Inset(f.body(), 0, menuTop-baseHeadH, 0, 0), 6, kit.Fr(1), kit.Px(66), kit.Px(70))
 		win, typeKey, quick = kit.Inset(r[0], 0, 0, 0, 6), r[1], r[2]
 	}
 	window(c, win)

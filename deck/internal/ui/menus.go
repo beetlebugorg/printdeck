@@ -749,7 +749,7 @@ func (a *App) listArea(f frame) image.Rectangle {
 	if f.wide {
 		return f.body()
 	}
-	return kit.Inset(f.body(), 0, menuTop-headH, 0, 0)
+	return kit.Inset(f.body(), 0, menuTop-baseHeadH, 0, 0)
 }
 
 // drawHistory lists the finished prints, newest first. A tap opens the page of the print.

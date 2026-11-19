@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/png"
 	"os"
@@ -294,5 +295,36 @@ func TestFleetQuestions(t *testing.T) {
 	s.Ask("Allow zslice to use this Printdeck and its printers?", "Allow", "Deny", func(bool) {})
 	if q := mini.hub.question(); q == nil || !strings.HasPrefix(q.question, "Allow zslice") || taz.hub.question() != nil {
 		t.Fatal("the deck question is not on the screen")
+	}
+}
+
+// TestFleetPagesShots writes each page of a deck with many printers, tall and wide, to
+// FLEET_SHOTS: each page starts under the status bar.
+func TestFleetPagesShots(t *testing.T) {
+	if os.Getenv("FLEET_SHOTS") == "" {
+		t.Skip("FLEET_SHOTS is not set")
+	}
+	s, _ := fleetDeck(t)
+	for _, wide := range []bool{false, true} {
+		for _, a := range s.Apps()[:2] {
+			a.Wide = wide
+			for _, p := range []page{0, pageFiles, pageMove, pageFilament, pageMachine, pageSettings, pageCamera,
+				pageHistory, pageStats, pageConsole, pageMacros, pageMaintenance, pageSpools, pageQueue, pageProjects,
+				pageMonitor, pagePrinters} {
+				a.pages = nil
+				if p != 0 {
+					a.pages = []page{p}
+				}
+				name := fmt.Sprintf("%s-%d-wide%v", a.Fleet.Self().ID, p, wide)
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							t.Logf("%s: the demo printer has no data for the page: %v", name, r)
+						}
+					}()
+					shot(t, a, name)
+				}()
+			}
+		}
 	}
 }

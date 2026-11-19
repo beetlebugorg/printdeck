@@ -617,6 +617,11 @@ func (a *App) Draw(c *gfx.Canvas) {
 	// menu of the display.
 	a.showShared()
 	a.setFleetSelf()
+	if a.Fleet != nil {
+		setTopInset(fleetStatusH)
+	} else {
+		setTopInset(0)
+	}
 	a.pinchArea = image.Rectangle{} // a 3D view of this frame sets it
 	drawing, a.focus, a.lcdTitle, a.lcdNotes = a, a.focus[:0], "", a.lcdNotes[:0]
 	a.names, a.bar = a.names[:0], false
@@ -634,8 +639,10 @@ func (a *App) Draw(c *gfx.Canvas) {
 	}
 	a.in.Reset()
 	c.Fill(c.Bounds(), bg)
+	pendingHead = headDraw{} // a title of another frame never goes on this one
 	if a.setup != nil {
 		a.drawSetup(c)
+		flushHeading()
 		return
 	}
 	a.collect = !a.Record
@@ -644,6 +651,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 		a.askTrays()
 	}
 	a.drawPrint(c)
+	flushHeading()
 	if a.Printer != nil {
 		a.drawSimBand(c, a.Printer.State())
 	}
