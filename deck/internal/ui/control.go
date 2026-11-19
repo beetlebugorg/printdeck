@@ -208,10 +208,12 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		content, acts := f.split()
 		r := kit.Rows(content, 10, kit.Px(44), kit.Fr(1), kit.Px(20))
 		pos, parks, hint = r[0], acts, r[2]
-		side := min(r[1].Dy(), r[1].Dx()/2)
-		cols := kit.Cols(r[1], 16, kit.Px(side), kit.Fr(1))
+		// Each key is at least 56 by 56. The cross has three keys of 56 in a row. The keys at its
+		// right get the rest: "Home all" and three keys of 56 in the top row.
+		right := max(r[1].Dx()-16-(3*keyMin+2*8), 3*keyMin+3*8+88)
+		cols := kit.Cols(r[1], 16, kit.Fr(1), kit.Px(right))
 		cross = cols[0]
-		k := kit.Rows(cols[1], 10, kit.Px(52), kit.Px(52), kit.Px(52))
+		k := kit.Rows(cols[1], 10, kit.Fr(1), kit.Px(keyMin), kit.Px(keyMin))
 		home, steps = k[0], k[1]
 		z := kit.Cols(k[2], 8, kit.Fr(1), kit.Fr(1))
 		zDown, zUp = z[0], z[1]
@@ -257,12 +259,13 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		}})
 	}
 
+	px := 0 // the label size of the keys of a row, 0 for each its own size
 	btn := func(r image.Rectangle, label string, fill, fg color.RGBA, f func() error) {
 		if !moving {
-			key(c, r, label, surface, dim, false)
+			keyAt(c, r, label, surface, dim, false, 0, px)
 			return
 		}
-		a.button(c, r, label, fill, fg, func() { a.do(f) })
+		a.buttonAt(c, r, label, fill, fg, px, func() { a.do(f) })
 	}
 	// During a pause, Home, Center, Motors off and a typed position are off: homing Z, Center
 	// and a typed position can move the nozzle into the part, and Motors off loses the position
@@ -272,18 +275,25 @@ func (a *App) drawMove(c *gfx.Canvas) {
 			btn(r, label, fill, fg, f)
 			return
 		}
-		key(c, r, label, surface, dim, false)
+		keyAt(c, r, label, surface, dim, false, 0, px)
 		a.region(label, r)
 		a.addHit(kit.Hit{R: r, Tap: func() { a.Toast("Not during a pause") }})
 	}
 
 	// Home
-	h := kit.Cols(home, 8, kit.Fr(2.2), kit.Fr(1), kit.Fr(1), kit.Fr(1)) // "Home all" needs the room; X, Y and Z are equal
-	notPaused(h[0], "Home all", orange, onAcc, func() error { return pr.Home() })
-	for i, ax := range []string{"X", "Y", "Z"} {
+	// "Home all" needs the room; X, Y and Z are equal. The four labels have one size.
+	h := kit.Cols(home, 8, kit.Fr(1), kit.Px(keyMin), kit.Px(keyMin), kit.Px(keyMin))
+	if !f.wide {
+		h = kit.Cols(home, 8, kit.Fr(2.2), kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	}
+	labels := []string{"Home all", "X", "Y", "Z"}
+	px = rowLabelPx(h, labels)
+	notPaused(h[0], labels[0], orange, onAcc, func() error { return pr.Home() })
+	for i, ax := range labels[1:] {
 		axis := strings.ToLower(ax)
 		notPaused(h[i+1], ax, raised, text, func() error { return pr.Home(axis) })
 	}
+	px = 0
 
 	// The arrow keys: X and Y in a cross, Z in a column, all with the step of the step row.
 	a.drawArrows(c, cross, zUp, zDown, moving)

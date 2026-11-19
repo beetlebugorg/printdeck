@@ -830,8 +830,13 @@ func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
 
 // button draws a key and registers it. fill is the colour of the cap.
 func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg color.RGBA, tap func()) {
+	a.buttonAt(c, r, label, fill, fg, 0, tap)
+}
+
+// buttonAt is button with a label of at most px pixels (0 for no limit), as keyAt.
+func (a *App) buttonAt(c *gfx.Canvas, r image.Rectangle, label string, fill, fg color.RGBA, px int, tap func()) {
 	a.drawAck(c, r)
-	key(c, r, label, fill, fg, a.isPressed(r))
+	keyAt(c, r, label, fill, fg, a.isPressed(r), 0, px)
 	// The key that the finger tapped flashes, so a key that acts and stays in view shows that it
 	// took the tap.
 	acked := func() {
