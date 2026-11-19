@@ -163,3 +163,59 @@ func TestBambuCountUse(t *testing.T) {
 		t.Errorf("left after a stop %v", sp.Left())
 	}
 }
+
+// waitFor waits for cond, at most 2 seconds.
+func waitFor(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	for end := time.Now().Add(2 * time.Second); !cond(); {
+		if time.Now().After(end) {
+			t.Fatalf("no %s", what)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestBambuSpoolChanges(t *testing.T) {
+	dir := t.TempDir()
+	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
+	b.Spools = &Spools{Path: filepath.Join(dir, "spools.json")}
+	b.TrayPath = filepath.Join(dir, "ams-trays.json")
+	// The first report of a new deck: the trays with a spool and no tag ask, the tagged tray gets
+	// a roll from its tag.
+	r := amsReport("IDLE", "255")
+	r.AMS.Units[0].Trays[3].Weight = 1000
+	b.update(r, time.Now())
+	waitFor(t, "roll of the RFID spool", func() bool { return b.AMS().Trays[3].Roll != "" })
+	sp, _ := b.Spools.Get(b.AMS().Trays[3].Roll)
+	if sp.Tag != "12AB000000000000" || sp.Left() != 800 || sp.Color != "#f72323" {
+		t.Errorf("rfid roll %+v", sp)
+	}
+	waitFor(t, "question", func() bool { _, ok := b.TrayQuestion(); return ok })
+	if q, _ := b.TrayQuestion(); q.Slot != 0 {
+		t.Errorf("first question %+v", q)
+	}
+	// The user answers tray 1 with a new roll, and declines trays 2 and 3.
+	b.AddTrayRoll(0, 1000, "")
+	b.AnswerTray(0)
+	b.AnswerTray(1)
+	b.AnswerTray(2)
+	if _, ok := b.TrayQuestion(); ok {
+		t.Error("a question after the answers")
+	}
+	// The next start of the deck asks nothing: the deck has its tray file.
+	b2 := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
+	b2.Spools, b2.TrayPath = b.Spools, b.TrayPath
+	b2.update(r, time.Now())
+	time.Sleep(50 * time.Millisecond)
+	if q, ok := b2.TrayQuestion(); ok {
+		t.Errorf("a question after a restart %+v", q)
+	}
+	// The spool of tray 1 goes out: its roll goes out of the tray.
+	out := amsReport("IDLE", "255")
+	out.AMS.Exist = "e"
+	b.update(out, time.Now())
+	waitFor(t, "roll out", func() bool { return b.AMS().Trays[0].Roll == "" })
+	// A new spool goes in: the screens ask.
+	b.update(r, time.Now())
+	waitFor(t, "question of the new spool", func() bool { q, ok := b.TrayQuestion(); return ok && q.Slot == 0 })
+}
