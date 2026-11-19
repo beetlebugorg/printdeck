@@ -303,37 +303,24 @@ func (c *Cam) SetCalibration(cal *Calibration) {
 }
 
 // wideLocked returns the calibration cal of a frame at a PTZ position in the coordinates of the
-// wide frame, when the camera has a valid PTZ map. Else it returns cal.
+// wide frame.
 func (c *Cam) wideLocked(cal *Calibration) *Calibration {
 	cs := c.h.settings.Camera(c.id)
 	if cal.PTZ == nil {
 		return cal
 	}
-	if p, ok := c.h.ptzs[c.id]; ok && p.IsWide(cal.PTZ) {
+	if DeckPTZ().IsWide(cal.PTZ) {
 		out := *cal
 		out.PTZ = nil
 		return &out
 	}
-	if m := cs.PTZMap; m.ValidAt(cs.Rotate) {
-		return cal.ToWide(m)
-	}
-	return cal
-}
-
-// ptzNowLocked returns the PTZ control of the camera with the position of its frames now, and
-// false for a camera with no zoom control. The position is the position that the capture
-// reports, or with no capture the position of the settings.
-func (c *Cam) ptzNowLocked() (PTZ, bool) {
-	if c.status.PTZ != nil {
-		return *c.status.PTZ, true
-	}
-	return c.h.ptzLocked(c.id)
+	return cal.ToWide(cs.Map())
 }
 
 // Calibration returns the calibration of the camera for its frames now, or nil, and reports that
 // it is valid: the same device, the same size of the pictures of the camera, and the same PTZ
-// position. A camera with a valid PTZ map has a valid calibration at each PTZ position: the
-// projection of the calibration of the wide frame to the crop of the position now.
+// position. At each other PTZ position, the calibration is the projection of the calibration of
+// the wide frame to the crop of the position now.
 func (c *Cam) Calibration() (*Calibration, bool) {
 	h := c.h
 	h.mu.Lock()
@@ -346,18 +333,13 @@ func (c *Cam) Calibration() (*Calibration, bool) {
 	if !ok || !cal.ValidFor(d, h.formats[d.ID]) {
 		return cal, false
 	}
-	ctl, ok := c.ptzNowLocked()
-	if !ok {
-		// No zoom control: the position of the settings has no effect.
-		return cal, cal.PTZ == nil
-	}
-	if ctl.Target(cal.PTZ) == ctl.Pos {
+	ctl := DeckPTZ()
+	pos := ctl.Target(h.camSettingsLocked(c.id).PTZ)
+	if ctl.Target(cal.PTZ) == pos {
 		return cal, true
 	}
-	if m := cs.PTZMap; m.ValidAt(cs.Rotate) {
-		return cal.ToWide(m).AtPTZ(m, ctl.Pos), true
-	}
-	return cal, false
+	m := cs.Map()
+	return cal.ToWide(m).AtPTZ(m, pos), true
 }
 
 // sceneAndCalibration returns the places of the printer, the calibration, and the turn of the

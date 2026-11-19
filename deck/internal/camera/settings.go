@@ -27,13 +27,10 @@ type CamSettings struct {
 	// focus control ignores both.
 	FixedFocus bool `json:"fixedFocus,omitempty"`
 	Focus      int  `json:"focus,omitempty"`
-	// PTZ is the position of the digital pan, tilt and zoom, or nil for the wide frame. PTZMap is
-	// the measured crop of the camera (MeasurePTZ), or nil. A camera with no zoom control ignores
-	// both.
-	PTZ    *PTZPos `json:"ptz,omitempty"`
-	PTZMap *PTZMap `json:"ptzMap,omitempty"`
-	// FollowPart zooms the camera to the part during a print (Hub.FollowPart). It needs PTZMap and
-	// a calibration.
+	// PTZ is the position of the digital pan, tilt and zoom (DeckPTZ), or nil for the wide frame.
+	PTZ *PTZPos `json:"ptz,omitempty"`
+	// FollowPart zooms the camera to the part during a print (Hub.FollowPart). It needs a
+	// calibration.
 	FollowPart bool `json:"followPart,omitempty"`
 	// NoFocusPart turns off the focus searches on the part during a print (Hub.FocusPrint). A
 	// camera with no focus control ignores it.
@@ -187,7 +184,13 @@ func ParseSettings(b []byte) Settings {
 		var s Settings
 		if err := json.Unmarshal(b, &s); err == nil {
 			for i := range s.Cameras {
-				s.Cameras[i].Rotate = ValidTurn(s.Cameras[i].Rotate)
+				cs := &s.Cameras[i]
+				cs.Rotate = ValidTurn(cs.Rotate)
+				// A position in the units of the camera, from an older deck, is not a position
+				// of the deck PTZ.
+				if cs.PTZ != nil && !DeckPTZ().Has(*cs.PTZ) {
+					cs.PTZ = nil
+				}
 			}
 			return s
 		}

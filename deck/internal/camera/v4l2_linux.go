@@ -261,8 +261,8 @@ func (fd fdCtrl) set(id uint32, v int) error {
 	return ioctl(int(fd), vidiocSCtrl, unsafe.Pointer(&c))
 }
 
-// focusEvery is the time between two checks of the focus and the PTZ position in the capture:
-// the settings, and with autofocus the lens position.
+// focusEvery is the time between two checks of the focus in the capture: the settings, and with
+// autofocus the lens position.
 const focusEvery = 250 * time.Millisecond
 
 // errBandwidth is the error of a camera that gets too little USB bandwidth: the cameras on one USB
@@ -519,11 +519,7 @@ func capture(ctx context.Context, d Device, l link) error {
 		z.apply(s)
 		l.focus(z.f)
 	}
-	pz := newPTZCtl(fdCtrl(fd))
-	if pz != nil {
-		pz.apply(s)
-		l.reportPTZ(pz.p)
-	}
+	resetPTZ(fdCtrl(fd))
 	lastFocus := time.Now()
 
 	start := time.Now()
@@ -540,14 +536,10 @@ func capture(ctx context.Context, d Device, l link) error {
 			due = true
 		default:
 		}
-		if (z != nil || pz != nil) && due {
+		if z != nil && due {
 			lastFocus = time.Now()
-			cs := l.settings()
-			if z != nil && (z.apply(cs) || (z.f.Auto && z.read())) {
+			if z.apply(l.settings()) || (z.f.Auto && z.read()) {
 				l.focus(z.f)
-			}
-			if pz != nil && pz.apply(cs) {
-				l.reportPTZ(pz.p)
 			}
 		}
 		n, err := unix.Poll(fds, 250)

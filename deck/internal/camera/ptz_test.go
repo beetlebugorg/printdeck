@@ -3,156 +3,62 @@ package camera
 import (
 	"encoding/json"
 	"errors"
+	"image"
 	"math"
 	"sync"
 	"testing"
 	"time"
 )
 
-// fakeCtrls is a device with controls for the tests of ptzCtl. With noPanAtMin, it refuses a pan
-// or a tilt away from 0 at the smallest zoom, as some cameras do.
+// fakeCtrls is a device with PTZ controls for the test of resetPTZ.
 type fakeCtrls struct {
-	ranges     map[uint32]PTZRange
-	v          map[uint32]int
-	noPanAtMin bool
-	drop       int      // the count of the next sets that the camera ignores
-	sets       []uint32 // the controls of each set, in order
-}
-
-func newFakeCtrls(ids ...uint32) *fakeCtrls {
-	d := &fakeCtrls{ranges: map[uint32]PTZRange{}, v: map[uint32]int{}}
-	for _, id := range ids {
-		r := map[uint32]PTZRange{cidZoomAbsolute: {Min: 100, Max: 500, Step: 1, Default: 100},
-			cidPanAbsolute: {Min: -648000, Max: 648000, Step: 3600}, cidTiltAbsolute: {Min: -648000, Max: 648000, Step: 3600}}[id]
-		d.ranges[id], d.v[id] = r, r.Default
-	}
-	return d
+	ranges map[uint32]PTZRange
+	v      map[uint32]int
 }
 
 func (d *fakeCtrls) query(id uint32) (PTZRange, bool) { r, ok := d.ranges[id]; return r, ok }
-func (d *fakeCtrls) get(id uint32) (int, error) {
-	v, ok := d.v[id]
-	if !ok {
-		return 0, errors.New("no control")
-	}
-	return v, nil
-}
 func (d *fakeCtrls) set(id uint32, v int) error {
-	d.sets = append(d.sets, id)
 	if _, ok := d.ranges[id]; !ok {
 		return errors.New("no control")
-	}
-	if d.drop > 0 {
-		d.drop--
-		return nil
-	}
-	if d.noPanAtMin && id != cidZoomAbsolute && v != 0 && d.v[cidZoomAbsolute] == d.ranges[cidZoomAbsolute].Min {
-		return errors.New("EINVAL")
 	}
 	d.v[id] = v
 	return nil
 }
 
-// A camera with no zoom control has no PTZ control. Pan and tilt are optional.
-func TestPTZCtlDetect(t *testing.T) {
-	if newPTZCtl(newFakeCtrls(cidPanAbsolute, cidTiltAbsolute)) != nil {
-		t.Error("PTZ control with no zoom")
+// resetPTZ sets a zoomed camera to its whole picture.
+func TestResetPTZ(t *testing.T) {
+	d := &fakeCtrls{ranges: map[uint32]PTZRange{cidZoomAbsolute: {Min: 16, Max: 116, Step: 1, Default: 16},
+		cidPanAbsolute: {Min: -36000, Max: 36000, Step: 3600}, cidTiltAbsolute: {Min: -36000, Max: 36000, Step: 3600}},
+		v: map[uint32]int{cidZoomAbsolute: 116, cidPanAbsolute: 18000, cidTiltAbsolute: 21600}}
+	resetPTZ(d)
+	if d.v[cidZoomAbsolute] != 16 || d.v[cidPanAbsolute] != 0 || d.v[cidTiltAbsolute] != 0 {
+		t.Errorf("after the reset: %v", d.v)
 	}
-	c := newPTZCtl(newFakeCtrls(cidZoomAbsolute))
-	if c == nil || c.p.Pan.Valid() || c.p.Tilt.Valid() || c.p.Zoom.Max != 500 {
-		t.Fatalf("zoom only: %+v", c)
-	}
-	c = newPTZCtl(newFakeCtrls(cidZoomAbsolute, cidPanAbsolute, cidTiltAbsolute))
-	if c == nil || !c.p.Pan.Valid() || !c.p.Tilt.Valid() || c.p.Pos != (PTZPos{Zoom: 100}) {
-		t.Fatalf("PTZ: %+v", c)
-	}
+	// A camera with no PTZ controls.
+	resetPTZ(&fakeCtrls{})
 }
 
-// apply sets the position of the settings on the steps of the ranges, applies a change once, and
-// goes back to the wide position for no position.
-func TestPTZCtlApply(t *testing.T) {
-	d := newFakeCtrls(cidZoomAbsolute, cidPanAbsolute, cidTiltAbsolute)
-	c := newPTZCtl(d)
-	if !c.apply(CamSettings{PTZ: &PTZPos{Zoom: 250, Pan: 10000, Tilt: -9000}}) {
-		t.Fatal("no change")
-	}
-	if want := (PTZPos{Zoom: 250, Pan: 10800, Tilt: -7200}); c.p.Pos != want || d.v[cidPanAbsolute] != 10800 {
-		t.Fatalf("position %+v, want %+v", c.p.Pos, want)
-	}
-	// The zoom in comes before the pan.
-	if d.sets[0] != cidZoomAbsolute {
-		t.Errorf("sets %x", d.sets)
-	}
-	n := len(d.sets)
-	if c.apply(CamSettings{PTZ: &PTZPos{Zoom: 250, Pan: 10000, Tilt: -9000}}) || len(d.sets) != n {
-		t.Error("the same position again set the controls")
-	}
-	// Back to wide: the pan and the tilt first, then the zoom out.
-	d.sets = nil
-	if !c.apply(CamSettings{}) || c.p.Pos != (PTZPos{Zoom: 100}) {
-		t.Fatalf("wide: %+v", c.p.Pos)
-	}
-	if d.sets[len(d.sets)-1] != cidZoomAbsolute {
-		t.Errorf("sets %x", d.sets)
-	}
+// testMap is the map of the deck PTZ at the turn 0.
+func testMap() *PTZMap { return DeckMap(0) }
+
+var testCtl = DeckPTZ()
+
+// deckWindow is the crop of the deck PTZ at the position p: its center (cu, cv) and its zoom
+// factor k, in normalized coordinates of the wide frame.
+func deckWindow(p PTZPos) (cu, cv, k float64) {
+	k = float64(p.Zoom) / 100
+	half := 0.5 / k
+	cu = max(half, min(1-half, 0.5+float64(p.Pan)/1000))
+	cv = max(half, min(1-half, 0.5-float64(p.Tilt)/1000))
+	return cu, cv, k
 }
 
-// A camera that refuses a pan at the smallest zoom reports the position that it has, and the next
-// zoom sets the pan.
-func TestPTZCtlRefusedPan(t *testing.T) {
-	d := newFakeCtrls(cidZoomAbsolute, cidPanAbsolute)
-	d.noPanAtMin = true
-	c := newPTZCtl(d)
-	c.apply(CamSettings{PTZ: &PTZPos{Zoom: 100, Pan: 36000}})
-	if c.p.Pos != (PTZPos{Zoom: 100}) {
-		t.Fatalf("refused pan: %+v", c.p.Pos)
-	}
-	if !c.apply(CamSettings{PTZ: &PTZPos{Zoom: 200, Pan: 36000}}) || c.p.Pos != (PTZPos{Zoom: 200, Pan: 36000}) {
-		t.Fatalf("pan after the zoom: %+v", c.p.Pos)
-	}
-}
-
-// A camera that ignores the position at the start of its stream gets it again a moment later.
-func TestPTZCtlIgnoredPosition(t *testing.T) {
-	d := newFakeCtrls(cidZoomAbsolute, cidPanAbsolute)
-	c := newPTZCtl(d)
-	d.drop = 2
-	s := CamSettings{PTZ: &PTZPos{Zoom: 200, Pan: 36000}}
-	c.apply(s)
-	if c.p.Pos != (PTZPos{Zoom: 100}) {
-		t.Fatalf("the ignored position: %+v", c.p.Pos)
-	}
-	for range ptzTryEvery {
-		c.apply(s)
-	}
-	if c.p.Pos != (PTZPos{Zoom: 200, Pan: 36000}) {
-		t.Fatalf("the position after a try: %+v", c.p.Pos)
-	}
-	// A camera that never takes the position gets ptzTries tries.
-	d = newFakeCtrls(cidZoomAbsolute, cidPanAbsolute)
-	d.noPanAtMin = true
-	c = newPTZCtl(d)
-	for range ptzTryEvery * (ptzTries + 3) {
-		c.apply(CamSettings{PTZ: &PTZPos{Zoom: 100, Pan: 36000}})
-	}
-	if n := len(d.sets); n != 2*ptzTries {
-		t.Fatalf("%d sets, want %d", n, 2*ptzTries)
-	}
-}
-
-// testMap is the map of the test camera at the turn 0.
-func testMap() *PTZMap {
-	return &PTZMap{Zoom: [][2]float64{{100, 1}, {400, 4}}, Pan: [2]float64{testPanShift, 0}, Tilt: [2]float64{0, testTiltShift}}
-}
-
-var testCtl = PTZ{Zoom: testZoom, Pan: testPan, Tilt: testTilt}
-
-// The map agrees with the crop of the test camera, and ToFrame and ToWide are inverse.
+// The map agrees with the units of the deck PTZ, and ToFrame and ToWide are inverse.
 func TestPTZMapRoundTrip(t *testing.T) {
 	m := testMap()
-	for _, p := range []PTZPos{{Zoom: 100}, {Zoom: 200, Pan: 12000, Tilt: -6000}, {Zoom: 400, Pan: 36000, Tilt: 36000}, {Zoom: 150, Pan: -36000}} {
+	for _, p := range []PTZPos{{Zoom: 100}, {Zoom: 200, Pan: 120, Tilt: -60}, {Zoom: 400, Pan: 500, Tilt: 500}, {Zoom: 150, Pan: -500}, {Zoom: 800, Pan: 30}} {
 		cu, cv, k := m.Window(p)
-		tu, tv, tk := testWindow(p)
+		tu, tv, tk := deckWindow(p)
 		if math.Abs(cu-tu) > 1e-9 || math.Abs(cv-tv) > 1e-9 || math.Abs(k-tk) > 1e-9 {
 			t.Errorf("%+v: window %.4f %.4f %.3f, want %.4f %.4f %.3f", p, cu, cv, k, tu, tv, tk)
 		}
@@ -184,7 +90,7 @@ func TestCalibrationAtPTZ(t *testing.T) {
 	for _, mrot := range []int{0, 180, 90} {
 		m := testMap()
 		m.Rotate = mrot
-		for _, p := range []PTZPos{{Zoom: 100}, {Zoom: 230, Pan: 9000, Tilt: -4000}, {Zoom: 400, Pan: -36000, Tilt: 36000}} {
+		for _, p := range []PTZPos{{Zoom: 100}, {Zoom: 230, Pan: 90, Tilt: -40}, {Zoom: 400, Pan: -500, Tilt: 500}} {
 			at := wide.ToWide(m).AtPTZ(m, p)
 			if at.PTZ == nil || *at.PTZ != p {
 				t.Fatalf("position %+v", at.PTZ)
@@ -221,14 +127,14 @@ func TestPTZPosFor(t *testing.T) {
 		r    [4]float64
 		want func(p PTZPos) bool
 	}{
-		// A box in the middle, a quarter of the width: the zoom is near 4.
-		{[4]float64{0.375, 0.4, 0.625, 0.6}, func(p PTZPos) bool { return p.Zoom == 400 && iabs(p.Pan) <= 100 && iabs(p.Tilt) <= 100 }},
-		// A box at the right: the crop stops at the side.
-		{[4]float64{0.8, 0.4, 0.99, 0.6}, func(p PTZPos) bool { return p.Zoom == 400 && p.Pan == 36000 }},
-		// A wide box: no zoom.
-		{[4]float64{0.05, 0.1, 0.95, 0.9}, func(p PTZPos) bool { return p.Zoom == 111 }},
+		// A box in the middle, a quarter of the width: the zoom is 4.
+		{[4]float64{0.375, 0.4, 0.625, 0.6}, func(p PTZPos) bool { return p.Zoom == 400 && iabs(p.Pan) <= 1 && iabs(p.Tilt) <= 1 }},
+		// A box at the right: the crop has the box at its center.
+		{[4]float64{0.8, 0.4, 0.99, 0.6}, func(p PTZPos) bool { return p.Zoom == 500 && p.Pan == 395 }},
+		// A wide box: almost no zoom.
+		{[4]float64{0.05, 0.1, 0.95, 0.9}, func(p PTZPos) bool { return p.Zoom == 110 }},
 		// A tiny box: the largest zoom.
-		{[4]float64{0.5, 0.5, 0.51, 0.51}, func(p PTZPos) bool { return p.Zoom == 400 }},
+		{[4]float64{0.5, 0.5, 0.51, 0.51}, func(p PTZPos) bool { return p.Zoom == 800 }},
 	} {
 		p := m.PosFor(c.r, testCtl)
 		if !c.want(p) {
@@ -238,16 +144,16 @@ func TestPTZPosFor(t *testing.T) {
 		// allows.
 		cu, cv, k := m.Window(p)
 		half := 0.5 / k
-		if p.Zoom < 400 && (c.r[0] < cu-half-1e-3 || c.r[2] > cu+half+1e-3 || c.r[1] < cv-half-1e-3 || c.r[3] > cv+half+1e-3) {
+		if p.Zoom < 800 && (c.r[0] < cu-half-1e-3 || c.r[2] > cu+half+1e-3 || c.r[1] < cv-half-1e-3 || c.r[3] > cv+half+1e-3) {
 			t.Errorf("%v: the crop %.3f %.3f %.3f misses the box", c.r, cu, cv, k)
 		}
 	}
 	// A camera with zoom only: pan and tilt stay 0.
-	if p := m.PosFor([4]float64{0.8, 0.4, 0.99, 0.6}, PTZ{Zoom: testZoom}); p.Pan != 0 || p.Tilt != 0 {
+	if p := m.PosFor([4]float64{0.8, 0.4, 0.99, 0.6}, PTZ{Zoom: testCtl.Zoom}); p.Pan != 0 || p.Tilt != 0 {
 		t.Errorf("zoom only: %+v", p)
 	}
 	// Limit stops a pan where the crop meets the side.
-	if p := m.Limit(PTZPos{Zoom: 200, Pan: 36000}, testCtl); p.Pan != 24000 {
+	if p := m.Limit(PTZPos{Zoom: 200, Pan: 500}, testCtl); p.Pan != 250 {
 		t.Errorf("limit: %+v", p)
 	}
 }
@@ -268,26 +174,18 @@ func ptzHub(t *testing.T) *Hub {
 	return h
 }
 
-// A calibration is valid at its PTZ position. At another position it needs the map, and with the
-// map it projects to the crop of the position now.
+// A calibration is valid at each PTZ position: it projects to the crop of the position now.
 func TestCalibrationAcrossPTZ(t *testing.T) {
 	h := ptzHub(t)
 	cam := h.Cam("test")
 	if _, ok := cam.Calibration(); !ok {
 		t.Fatal("the wide calibration is not valid at the wide position")
 	}
-	pos := PTZPos{Zoom: 200, Pan: 6000}
+	pos := PTZPos{Zoom: 200, Pan: 60}
 	h.SetPTZ("test", &pos)
-	if _, ok := cam.Calibration(); ok {
-		t.Error("valid at another position with no map")
-	}
-	if v := cam.Views(); len(v) != 1 {
-		t.Errorf("views with no map: %v", v)
-	}
-	h.SetPTZMap("test", testMap())
 	cal, ok := cam.Calibration()
 	if !ok || cal.PTZ == nil || *cal.PTZ != pos {
-		t.Fatalf("with the map: %v %+v", ok, cal)
+		t.Fatalf("at a zoom: %v %+v", ok, cal)
 	}
 	wide := synthCalibration(t, newSynthCamera())
 	x := [3]float64{150, 120, 10}
@@ -296,40 +194,14 @@ func TestCalibrationAcrossPTZ(t *testing.T) {
 	if gu, gv, _ := cal.Project(x, 960, 540, 0); math.Abs(gu-wu*960) > 1e-6 || math.Abs(gv-wv*540) > 1e-6 {
 		t.Errorf("projection %.2f %.2f, want %.2f %.2f", gu, gv, wu*960, wv*540)
 	}
-	// A turn of the camera after the measurement: the map is not valid.
-	s := h.Settings()
-	cs := s.Camera("test")
-	cs.Rotate = 90
-	s.SetCamera(cs)
-	h.SetSettings(s)
-	if _, ok := cam.Calibration(); ok {
-		t.Error("valid with a map of another turn")
-	}
 }
 
-// A calibration made at a zoomed position is kept in the coordinates of the wide frame when the
-// map exists, and with no map it keeps its position.
+// A calibration made at a zoomed position is kept in the coordinates of the wide frame.
 func TestSaveZoomedCalibration(t *testing.T) {
 	h := ptzHub(t)
 	cam := h.Cam("test")
-	pos := PTZPos{Zoom: 300, Pan: -9000, Tilt: 3000}
+	pos := PTZPos{Zoom: 300, Pan: -90, Tilt: 30}
 	wide := synthCalibration(t, newSynthCamera())
-	zoomed := wide.AtPTZ(testMap(), pos)
-
-	h.SetPTZ("test", &pos)
-	cam.SetCalibration(zoomed)
-	if c := h.cals["test"]; c.PTZ == nil || *c.PTZ != pos {
-		t.Fatalf("no map: saved %+v", c.PTZ)
-	}
-	if _, ok := cam.Calibration(); !ok {
-		t.Error("a zoomed calibration is not valid at its position")
-	}
-	h.SetPTZ("test", nil)
-	if _, ok := cam.Calibration(); ok {
-		t.Error("a zoomed calibration with no map is valid at the wide position")
-	}
-
-	h.SetPTZMap("test", testMap())
 	h.SetPTZ("test", &pos)
 	cam.SetCalibration(wide.AtPTZ(testMap(), pos))
 	c := h.cals["test"]
@@ -369,7 +241,7 @@ func TestSetPTZSavesOnce(t *testing.T) {
 // The settings of an older deck have no PTZ fields, and a camera with no PTZ writes none.
 func TestPTZSettingsJSON(t *testing.T) {
 	s := ParseSettings([]byte(`{"cameras":[{"id":"a","focus":300,"fixedFocus":true}]}`))
-	if cs := s.Camera("a"); cs.PTZ != nil || cs.PTZMap != nil || cs.FollowPart || cs.Focus != 300 {
+	if cs := s.Camera("a"); cs.PTZ != nil || cs.FollowPart || cs.Focus != 300 {
 		t.Errorf("old file: %+v", cs)
 	}
 	b := Settings{Cameras: []CamSettings{{ID: "a"}}}.Bytes()
@@ -378,9 +250,82 @@ func TestPTZSettingsJSON(t *testing.T) {
 	if len(raw["cameras"][0]) != 1 {
 		t.Errorf("fields with no PTZ: %s", b)
 	}
-	s.SetCamera(CamSettings{ID: "a", PTZ: &PTZPos{Zoom: 200, Pan: 3600}, PTZMap: testMap(), FollowPart: true})
+	s.SetCamera(CamSettings{ID: "a", PTZ: &PTZPos{Zoom: 200, Pan: 36}, FollowPart: true})
 	back := ParseSettings(s.Bytes()).Camera("a")
-	if back.PTZ == nil || *back.PTZ != (PTZPos{Zoom: 200, Pan: 3600}) || !back.PTZMap.ValidAt(0) || !back.FollowPart {
+	if back.PTZ == nil || *back.PTZ != (PTZPos{Zoom: 200, Pan: 36}) || !back.FollowPart {
 		t.Errorf("round trip: %+v", back)
 	}
+	// A position in the units of a camera, from an older deck, is the wide position.
+	old := ParseSettings([]byte(`{"cameras":[{"id":"a","ptz":{"zoom":116,"pan":18000,"tilt":21600},"ptzMap":{"rotate":0}}]}`))
+	if cs := old.Camera("a"); cs.PTZ != nil {
+		t.Errorf("old position: %+v", cs.PTZ)
+	}
+}
+
+// The hub crops each frame of a camera at a PTZ position: a crop frame of the size of the pixels
+// of the crop, at least ptzMinW wide, with the picture of the crop. A frame at the wide position
+// is the frame of the camera.
+func TestPTZCropFrame(t *testing.T) {
+	h := viewHub(nil, nil)
+	c := h.Cam("test")
+	pic := texturePicture(1920, 1080)
+	b, err := encodeJPEG(pic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	latest := func() *Frame {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		return c.latest
+	}
+	src, err := FrameOf(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.publish(src)
+	if latest() != src {
+		t.Fatal("a frame at the wide position is not the frame of the camera")
+	}
+	for _, tc := range []struct {
+		pos  PTZPos
+		w, h int
+	}{
+		{PTZPos{Zoom: 125, Pan: 50}, 1536, 864},
+		{PTZPos{Zoom: 300, Pan: -100, Tilt: 100}, 1280, 720},
+	} {
+		h.SetPTZ("test", &tc.pos)
+		src, _ := FrameOf(b)
+		c.publish(src)
+		f := latest()
+		if f == src || f.Size() != image.Pt(tc.w, tc.h) {
+			t.Fatalf("%+v: frame %v, want %dx%d", tc.pos, f.Size(), tc.w, tc.h)
+		}
+		cs := h.Settings().Camera("test")
+		cr, _, _ := ptzRect(src.Size(), cs)
+		want := cropScale(pic, cr, tc.w, tc.h)
+		got, err := FrameOf(f.JPEG())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if d := meanDiff(got.picture(), want); d > 4 {
+			t.Errorf("%+v: the crop differs by %.1f", tc.pos, d)
+		}
+		// A small frame of the crop comes from the frame of the camera.
+		if s := f.Small(320); s.Size().X != 320 || meanDiff(s.picture(), scaleYCbCr(want, 320, s.Size().Y, 0)) > 6 {
+			t.Errorf("%+v: the small frame %v", tc.pos, s.Size())
+		}
+	}
+}
+
+// meanDiff is the mean difference of the luma of two pictures of one size.
+func meanDiff(a, b *image.YCbCr) float64 {
+	sum := 0
+	w, h := a.Rect.Dx(), a.Rect.Dy()
+	for y := range h {
+		for x := range w {
+			d := int(a.Y[a.YOffset(a.Rect.Min.X+x, a.Rect.Min.Y+y)]) - int(b.Y[b.YOffset(b.Rect.Min.X+x, b.Rect.Min.Y+y)])
+			sum += max(d, -d)
+		}
+	}
+	return float64(sum) / float64(w*h)
 }

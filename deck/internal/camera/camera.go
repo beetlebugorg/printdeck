@@ -11,9 +11,8 @@
 //	views.go      the views that follow the printer: the toolhead, the first layer, the part
 //	render.go     the crops of the views, and the dark blur around a part
 //	jpeg.go       the Huffman tables that some MJPEG cameras leave out of their frames
-//	ptz.go        the digital pan, tilt and zoom, and the map of the crop of the camera
-//	ptzctl.go     the PTZ controls of a camera
-//	measure.go    the measurement of the map of the crop, by image matching
+//	ptz.go        the digital pan, tilt and zoom: the crop of the frames, and its map
+//	ptzctl.go     the PTZ controls of a camera, which the deck sets to the whole picture
 //	follow.go     the zoom to the part during a print
 //	focus.go      the focus search on the part
 //	v4l2_linux.go the devices and the capture with the V4L2 ioctls
@@ -27,6 +26,7 @@ package camera
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -135,6 +135,11 @@ type Frame struct {
 	turboMu    sync.Mutex
 	turbo      [4]*image.YCbCr // the picture of libjpeg-turbo at 1/2^shift of the size, or nil
 
+	// src is the frame of the camera of a PTZ crop (cropFrame), or nil, and srcCrop the crop:
+	// x0, y0, x1, y1 in the pixels of src. A crop frame makes its picture when a viewer asks.
+	src     *Frame
+	srcCrop [4]float64
+
 	plans     map[string]*viewPlan // the plan of each view, or nil for no plan (views.go)
 	views     map[string]*Frame    // the pictures of the views by view and width
 	viewOrder []string             // the keys of views, the oldest first
@@ -154,8 +159,37 @@ func picFrame(pic *image.YCbCr) *Frame {
 	return &Frame{w: pic.Rect.Dx(), h: pic.Rect.Dy(), pic: pic, Time: time.Now()}
 }
 
+// cropFrame makes the frame of the crop c (x0, y0, x1, y1 in the pixels of src) of the frame src,
+// w x h pixels. It costs nothing until a viewer asks for its JPEG or its picture: it then decodes
+// only what the crop needs.
+func cropFrame(src *Frame, c [4]float64, w, h int) *Frame {
+	return &Frame{w: w, h: h, src: src, srcCrop: c, Time: src.Time, blank: src.blank}
+}
+
+// srcRect returns the rectangle c of the frame (x0, y0, x1, y1 in its pixels) in the pixels of
+// the frame of its crop (src).
+func (f *Frame) srcRect(c [4]float64) [4]float64 {
+	s := f.srcCrop
+	kx, ky := (s[2]-s[0])/float64(f.w), (s[3]-s[1])/float64(f.h)
+	return [4]float64{s[0] + c[0]*kx, s[1] + c[1]*ky, s[0] + c[2]*kx, s[1] + c[3]*ky}
+}
+
+// srcPicture returns the picture of the rectangle c of a crop frame (x0, y0, x1, y1 in its
+// pixels) at ow x oh.
+func (f *Frame) srcPicture(c [4]float64, ow, oh int) *image.YCbCr {
+	sc := f.srcRect(c)
+	pic, pc := f.src.cropPicture(sc, ow)
+	if pic == nil {
+		return nil
+	}
+	return cropScale(pic, pc, ow, oh)
+}
+
 // JPEG returns the JPEG of the frame. It encodes the picture the first time.
 func (f *Frame) JPEG() []byte {
+	if f.src != nil {
+		f.picture()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.jpeg == nil && f.pic != nil {
@@ -186,6 +220,12 @@ func (f *Frame) picture() *image.YCbCr {
 	if f.pic != nil || f.err != nil {
 		return f.pic
 	}
+	if f.src != nil {
+		if f.pic = f.srcPicture([4]float64{0, 0, float64(f.w), float64(f.h)}, f.w, f.h); f.pic == nil {
+			f.err = errors.New("camera: no picture of the crop")
+		}
+		return f.pic
+	}
 	img, err := f.decode(0, image.Rectangle{})
 	if err != nil {
 		f.err = err
@@ -204,6 +244,19 @@ func (f *Frame) picture() *image.YCbCr {
 // less than the decode of the whole picture, and leaves less to scale. The frame keeps each
 // picture.
 func (f *Frame) pictureFor(w int) *image.YCbCr {
+	if f.src != nil {
+		// A crop frame: the picture at w, from the frame of the camera.
+		f.mu.Lock()
+		pic := f.pic
+		f.mu.Unlock()
+		if pic == nil && w < f.w {
+			h := max(2, (f.h*w/f.w+1)/2*2)
+			if p := f.srcPicture([4]float64{0, 0, float64(f.w), float64(f.h)}, w, h); p != nil {
+				return p
+			}
+		}
+		return f.picture()
+	}
 	shift := 0
 	for s := 3; s >= 1; s-- {
 		if (f.w+1<<s-1)>>s >= w {
@@ -244,6 +297,15 @@ func (f *Frame) pictureFor(w int) *image.YCbCr {
 // across the crop (decode): with libjpeg-turbo the whole picture at that scale, which the frame
 // keeps for its next users; with jpegdec only the blocks of the crop.
 func (f *Frame) cropPicture(c [4]float64, ow int) (*image.YCbCr, [4]float64) {
+	if f.src != nil {
+		// A crop frame: the crop of the frame of the camera.
+		f.mu.Lock()
+		pic := f.pic
+		f.mu.Unlock()
+		if pic == nil {
+			return f.src.cropPicture(f.srcRect(c), ow)
+		}
+	}
 	f.mu.Lock()
 	pic, b := f.pic, f.jpeg
 	f.mu.Unlock()

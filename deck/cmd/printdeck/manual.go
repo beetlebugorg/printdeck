@@ -695,7 +695,7 @@ func manualParts() []section {
 						{"Picture", "Use it to aim the camera at the bed."},
 						{"Turn", "Opens the turn of the picture: upright, 90° right, 180° or 90° left. Use it for a camera on its side or upside down."},
 						{"Focus", "Shows the focus keys. Only a camera with a focus control has this key."},
-						{"PTZ", "Shows the zoom keys. Only a camera with a zoom control has this key."},
+						{"PTZ", "Shows the zoom keys. The deck crops the picture of the camera."},
 						{"Camera settings", "The name, on or off, and the uses of this camera."},
 					},
 					Notes: []string{"A camera runs only while somebody looks at it. With no camera, the apps show the deck screen.",
@@ -719,9 +719,9 @@ func manualParts() []section {
 						s.p.State_ = stIdle
 						c := manualCameras()
 						front := c.Cams[0]
-						m := ui.DemoPTZMap
 						cs := c.Set.Camera(front.Dev.ID)
-						cs.PTZ, cs.PTZMap = &camera.PTZPos{Zoom: 200, Pan: 2400, Tilt: -1800}, &m
+						cs.PTZ = &camera.PTZPos{Zoom: 200, Pan: 100, Tilt: -100}
+						m := cs.Map()
 						c.Set.SetCamera(cs)
 						// The picture of the crop at that position.
 						sz := front.Frame.Size()
@@ -737,12 +737,10 @@ func manualParts() []section {
 						{"Reset", "Back to the whole picture."},
 						{"Done", "Shows the other camera keys again."},
 					},
-					Wide: []callout{{"Measure", "Measures the zoom of the camera, once. The camera zooms and moves for a few seconds."}},
-					Tall: []callout{{"Measure the zoom", "Measures the zoom of the camera, once. The camera zooms and moves for a few seconds."}},
-					Notes: []string{"A camera with a digital zoom crops its picture itself. The deck gets the picture with no extra work.",
-						"The camera sends one picture, so each viewer sees the zoom: the apps, the time lapse and the phone pictures.",
-						"Measure the zoom with the camera aimed at the bed and the printer still. The views and Zoom to the part then follow the zoom. Measure again after you move or turn the camera.",
-						"The deck keeps the zoom of each camera, and sets it each time the camera starts."}},
+					Notes: []string{"The deck crops the picture of the camera. A 4K camera keeps its full detail up to a zoom of 2.",
+						"Each viewer sees the zoom: the apps, the time lapse and the phone pictures.",
+						"The views and Zoom to the part follow the zoom. A calibration stays valid at each zoom.",
+						"The deck keeps the zoom of each camera."}},
 				{Name: "cameras", Caption: "The Cameras page",
 					Setup: func(s *manualState) {
 						s.p.State_ = stIdle
@@ -992,10 +990,6 @@ func manualCameras() *ui.DemoCamera {
 	front, top := c.Cams[0].Dev.ID, c.Cams[1].Dev.ID
 	c.SetSettings(camera.Settings{Cameras: []camera.CamSettings{{ID: front, Name: "Front"}, {ID: top, Name: "Top"}},
 		Main: front, Lapse: top, Picture: top})
-	// The Top camera also has a zoom control, for the row Zoom to the part on its page.
-	p := ui.DemoPTZ
-	p.Pos = p.Wide()
-	c.Cams[1].State.PTZ = &p
 	return c
 }
 

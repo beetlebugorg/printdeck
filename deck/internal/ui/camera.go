@@ -320,7 +320,7 @@ func (a *App) focusOnPart(id string) {
 	if !ok || a.focusRun != nil {
 		return
 	}
-	run := &ptzRun{id: id}
+	run := &focusRun{id: id}
 	a.focusRun = run
 	a.Redraw()
 	go func() {
@@ -620,9 +620,6 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 	id := in.ID
 	cal, calibrated := cam.Calibration()
 	calText := calibLine(cal, calibrated)
-	if l := calibPTZLine(cal, calibrated, st); l != "" {
-		calText = l
-	}
 	openPTZ := func() { a.camPTZ, a.camFocus = true, false }
 	openFocus := func() { a.camFocus, a.camPTZ = true, false }
 	fr := a.camFrame(cam, st, cameraEvery)
@@ -677,7 +674,7 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			}
 		case a.camPTZ:
 			a.drawPTZKeys(c, keys, id, ptz)
-			first, second = title+" · "+a.ptzLine(id, ptz), a.ptzState(id, false)
+			first, second = title+" · "+a.ptzLine(ptz), "Each viewer of the camera sees the zoom"
 		default:
 			// The keys in the order of labels, each row with its label size.
 			var k []image.Rectangle
@@ -734,7 +731,7 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			items = append(items, menuItem{"Focus", focusLine(focus), dim, openFocus})
 		}
 		if hasPTZ {
-			items = append(items, menuItem{"PTZ", a.ptzLine(id, ptz), dim, openPTZ})
+			items = append(items, menuItem{"PTZ", a.ptzLine(ptz), dim, openPTZ})
 		}
 		switch {
 		case in.ID == "":
@@ -750,7 +747,7 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			}
 			items = append(items, menuItem{"Done", "Back to the camera rows", dim, func() { a.camFocus = false }})
 		case a.camPTZ:
-			items = a.ptzItems(id, ptz)
+			items = a.ptzItems(id)
 		default:
 			items = append(items, menuItem{"Camera settings", camSettingsLine(in, len(list)), dim, edit})
 		}
@@ -787,7 +784,7 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 		in2 := kit.Inset(info, 14, 0, 14, 0)
 		infoText := title + " · " + line
 		if a.camPTZ {
-			infoText = a.ptzLine(id, ptz)
+			infoText = a.ptzLine(ptz)
 		}
 		c.Text(in2, strings.ToUpper(gfx.Fit(gfx.Face(true, 14), infoText, in2.Dx())), gfx.Face(true, 14), lcdInk, gfx.Left)
 	}
@@ -1073,14 +1070,14 @@ func (a *App) drawCameraEdit(c *gfx.Canvas) {
 		self := a.Fleet.Self()
 		groups = append(groups, menuGroup{items: []menuItem{{"Printer", self.Label + " · " + self.Name, dim, func() { a.askCameraPrinter(id) }}}})
 	}
-	// A camera with a zoom control has the zoom to the part: in the right column of a wide page
-	// with the uses.
+	// A camera that runs has the zoom to the part: in the right column of a wide page with the
+	// uses.
 	var follow []menuGroup
 	if cam, ok := a.Camera.Source(id); ok && in.Usable() {
 		if st := cam.Status(); st.PTZ != nil {
 			_, calibrated := cam.Calibration()
 			on := a.Camera.Settings().Camera(id).FollowPart
-			follow = []menuGroup{{items: []menuItem{{"Zoom to the part", followLine(st, calibrated), dim,
+			follow = []menuGroup{{items: []menuItem{{"Zoom to the part", followLine(calibrated), dim,
 				func() { a.toggleFollowPart(id) }}}, checks: []bool{on}}}
 		}
 	}

@@ -16,10 +16,6 @@ func TestFollowPart(t *testing.T) {
 	s := h.Settings()
 	s.SetCamera(CamSettings{ID: "test", FollowPart: true})
 	h.SetSettings(s)
-	if ids := h.FollowPart(box, 0); len(ids) != 0 {
-		t.Fatalf("follow with no map: %v", ids)
-	}
-	h.SetPTZMap("test", testMap())
 	if ids := h.FollowPart(box, 0); len(ids) != 1 {
 		t.Fatalf("no follow: %v", ids)
 	}

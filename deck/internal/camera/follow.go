@@ -6,8 +6,8 @@ package camera
 // The stream of the camera is one stream, so each viewer sees the zoom.
 
 // FollowPart sets the PTZ position of each camera with FollowPart on to show the box b of the
-// part (the toolhead coordinates), with the bed at the toolhead Y bedY. A camera needs a zoom
-// control, a valid PTZ map and a valid calibration. A camera with a PTZ change of the user during
+// part (the toolhead coordinates), with the bed at the toolhead Y bedY. A camera needs a capture
+// and a valid calibration. A camera with a PTZ change of the user during
 // the print (SetPTZ) stays at that position. The deck calls it again while the print runs: a
 // position that does not change has no effect. It returns the IDs of the cameras that follow.
 func (h *Hub) FollowPart(b Box, bedY float64) []string {
@@ -56,10 +56,10 @@ func (h *Hub) EndFollow() {
 // partPosLocked returns the PTZ position of the camera cs that shows the box b, with the bed at
 // bedY.
 func (h *Hub) partPosLocked(cs CamSettings, b Box, bedY float64) (PTZPos, bool) {
-	ctl, ok := h.ptzs[cs.ID]
+	_, ok := h.ptzs[cs.ID]
 	cal := h.cals[cs.ID]
-	m := cs.PTZMap
-	if !cs.FollowPart || cs.Off || !ok || cal == nil || !m.ValidAt(cs.Rotate) {
+	m := cs.Map()
+	if !cs.FollowPart || cs.Off || !ok || cal == nil {
 		return PTZPos{}, false
 	}
 	var d Device
@@ -75,7 +75,7 @@ func (h *Hub) partPosLocked(cs CamSettings, b Box, bedY float64) (PTZPos, bool) 
 	if !ok {
 		return PTZPos{}, false
 	}
-	return m.PosFor(r, ctl), true
+	return m.PosFor(r, DeckPTZ()), true
 }
 
 // PartWindow returns the rectangle of the wide frame that shows the box b with the bed at bedY,

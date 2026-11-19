@@ -161,17 +161,8 @@ type link struct {
 	// focusNow gets a value when the capture must set the focus of the settings before its next
 	// frame. It can be nil.
 	focusNow <-chan struct{}
-	// ptz gets the PTZ control after each change, for a camera with a zoom control. It can be nil.
-	ptz func(PTZ)
 	// emit gets each frame.
 	emit func(*Frame)
-}
-
-// reportPTZ gives the PTZ control to l.ptz when it is set.
-func (l link) reportPTZ(p PTZ) {
-	if l.ptz != nil {
-		l.ptz(p)
-	}
 }
 
 // linger is how long a camera runs after its last viewer.
@@ -240,8 +231,8 @@ func (h *Hub) saveSoonLocked() {
 	}
 }
 
-// SetPTZ sets the PTZ position of the camera id, or the wide position with nil. The capture
-// applies it in a fraction of a second, and the save of the settings comes as for SetFocus. It
+// SetPTZ sets the PTZ position of the camera id, or the wide position with nil. The next frame
+// has the crop of the position, and the save of the settings comes as for SetFocus. It
 // ends a Follow of the camera.
 func (h *Hub) SetPTZ(id string, pos *PTZPos) {
 	h.mu.Lock()
@@ -265,20 +256,6 @@ func (h *Hub) SetPTZ(id string, pos *PTZPos) {
 	delete(h.follow, id)
 	h.calGen++
 	h.saveSoonLocked()
-}
-
-// SetPTZMap sets the PTZ map of the camera id, or removes it with nil, and saves the settings.
-func (h *Hub) SetPTZMap(id string, m *PTZMap) {
-	h.mu.Lock()
-	s := h.settings.clone()
-	cs := s.Camera(id)
-	cs.PTZMap = m
-	s.SetCamera(cs)
-	h.mu.Unlock()
-	h.SetSettings(s)
-	h.mu.Lock()
-	h.calGen++
-	h.mu.Unlock()
 }
 
 // Follow sets a PTZ position of the camera id that replaces the position of its settings until
@@ -315,9 +292,8 @@ func (h *Hub) camSettingsLocked(id string) CamSettings {
 	return cs
 }
 
-// PTZ returns the PTZ control of the camera id: the last that its capture reported, with the
-// position of the settings (or of Follow) in its ranges. It is false for a camera with no zoom
-// control, and before the first capture of the camera.
+// PTZ returns the PTZ control of the camera id (DeckPTZ), with the position of the settings (or of
+// Follow). It is false before the first capture of the camera.
 func (h *Hub) PTZ(id string) (PTZ, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -329,9 +305,7 @@ func (h *Hub) ptzLocked(id string) (PTZ, bool) {
 	if !ok {
 		return PTZ{}, false
 	}
-	cs := h.camSettingsLocked(id)
-	p.Pos = p.Target(cs.PTZ)
-	p.Mapped = cs.PTZMap.ValidAt(cs.Rotate)
+	p.Pos = p.Target(h.camSettingsLocked(id).PTZ)
 	return p, true
 }
 
@@ -705,9 +679,7 @@ func (c *Cam) Status() Status {
 	s := c.status
 	s.Name = in.Name
 	s.Searching = h.runs[c.id] != nil && h.runs[c.id].cancel != nil
-	if s.PTZ != nil {
-		p := *s.PTZ
-		p.Mapped = cs.PTZMap.ValidAt(cs.Rotate)
+	if p, ok := h.ptzLocked(c.id); ok {
 		s.PTZ = &p
 	}
 	return s
@@ -803,6 +775,9 @@ func (c *Cam) Next(ctx context.Context, after uint64) (*Frame, error) {
 // publish makes f the newest frame.
 func (c *Cam) publish(f *Frame) {
 	c.h.mu.Lock()
+	if cs := c.h.camSettingsLocked(c.id); cs.PTZ != nil && !DeckPTZ().IsWide(cs.PTZ) {
+		f = ptzCrop(f, cs)
+	}
 	c.h.seq++
 	f.Seq = c.h.seq
 	f.cam = c.id
@@ -865,6 +840,10 @@ func (c *Cam) run(ctx context.Context) {
 					h.formats = map[string]Format{}
 				}
 				h.formats[d.ID] = f
+				if h.ptzs == nil {
+					h.ptzs = map[string]PTZ{}
+				}
+				h.ptzs[d.ID] = DeckPTZ()
 				h.mu.Unlock()
 				c.logOnce(d.Name + " (" + d.Path + "): " + f.String())
 			},
@@ -879,20 +858,7 @@ func (c *Cam) run(ctx context.Context) {
 				h.mu.Unlock()
 			},
 			focusNow: c.focusNow,
-			ptz: func(p PTZ) {
-				h.mu.Lock()
-				c.status.PTZ = &p
-				if h.ptzs == nil {
-					h.ptzs = map[string]PTZ{}
-				}
-				old, had := h.ptzs[d.ID]
-				h.ptzs[d.ID] = p
-				if !had || old.Pos != p.Pos {
-					h.calGen++
-				}
-				h.mu.Unlock()
-			},
-			emit: c.publish,
+			emit:     c.publish,
 		})
 		stopped := cctx.Err() != nil
 		cancel()

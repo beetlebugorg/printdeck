@@ -9,7 +9,7 @@ import (
 // does, and encodes its JPEG when encode is true.
 func benchView(b *testing.B, view string, encode bool) { benchViewAt(b, view, encode, nil) }
 
-// benchViewAt is benchView with the camera at the PTZ position pos of the map of the test camera,
+// benchViewAt is benchView with the camera at the PTZ position pos of the deck PTZ,
 // or with no PTZ control for nil: the calibration of each frame is the projection to the crop.
 func benchViewAt(b *testing.B, view string, encode bool, pos *PTZPos) {
 	scene := &fakeScene{nozzle: [3]float64{140, 140, 20},
@@ -26,7 +26,6 @@ func benchViewAt(b *testing.B, view string, encode bool, pos *PTZPos) {
 	h.LoadCalibration(&Calibration{Device: "test", InW: 960, InH: 540, Width: 960, Height: 540, P: m})
 	if pos != nil {
 		h.ptzs = map[string]PTZ{"test": testCtl}
-		h.SetPTZMap("test", testMap())
 		h.SetPTZ("test", pos)
 	}
 	pic := texturePicture(960, 540)
@@ -52,7 +51,7 @@ func BenchmarkViewToolheadNoJPEG(b *testing.B) { benchView(b, ViewToolhead, fals
 func BenchmarkViewFirstNoJPEG(b *testing.B)    { benchView(b, ViewFirstLayer, false) }
 func BenchmarkViewPartNoJPEG(b *testing.B)     { benchView(b, ViewPart, false) }
 func BenchmarkViewPartPTZNoJPEG(b *testing.B) {
-	benchViewAt(b, ViewPart, false, &PTZPos{Zoom: 150, Pan: 3000})
+	benchViewAt(b, ViewPart, false, &PTZPos{Zoom: 150, Pan: 30})
 }
 
 // BenchmarkCalibrationPTZ is the calibration of a frame at a zoomed position: the projection of
@@ -61,8 +60,7 @@ func BenchmarkCalibrationPTZ(b *testing.B) {
 	h := viewHub(nil, nil)
 	h.LoadCalibration(&Calibration{Device: "test", InW: 960, InH: 540, Width: 960, Height: 540, P: [12]float64{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1}})
 	h.ptzs = map[string]PTZ{"test": testCtl}
-	h.SetPTZMap("test", testMap())
-	h.SetPTZ("test", &PTZPos{Zoom: 150, Pan: 3000})
+	h.SetPTZ("test", &PTZPos{Zoom: 150, Pan: 30})
 	cam := h.Cam("test")
 	b.ResetTimer()
 	for range b.N {
