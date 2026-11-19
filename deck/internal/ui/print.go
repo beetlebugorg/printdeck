@@ -263,8 +263,13 @@ func (a *App) stateAreas() (f frame, keys, view image.Rectangle) {
 	if f.wide {
 		return f, f.side, f.main
 	}
-	// Under the display, in line with its bezel.
-	body := image.Rect(f.lcd.Min.X-8, f.main.Min.Y, f.lcd.Max.X+8, f.main.Max.Y-8)
+	// Under the display, in line with its bezel. 16 pixels above the bottom edge of the screen; 8
+	// above the print bar.
+	bottom := 16
+	if contentY1 < H {
+		bottom = 8
+	}
+	body := image.Rect(f.lcd.Min.X-8, f.main.Min.Y, f.lcd.Max.X+8, f.main.Max.Y-bottom)
 	return f, body, body
 }
 
