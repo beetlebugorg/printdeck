@@ -205,6 +205,8 @@ type App struct {
 	// Printers adds, changes and removes the printers of the deck (Settings, Printers), or is
 	// nil.
 	Printers PrinterAdmin
+	// Keys lists and removes the app keys of the deck (Settings, App keys), or is nil.
+	Keys KeyAdmin
 	// Viewer draws the last print of the home screen as a 3D view that the finger turns, or is
 	// nil: the home screen then shows the picture of the print.
 	Viewer    ModelViewer
@@ -253,6 +255,7 @@ type App struct {
 	project        string           // the project of the page of one project
 	projectsScroll int              // the scroll position of the list of the projects
 	queueScroll    int              // the scroll position of the queue
+	keysScroll     int              // the scroll position of the app keys
 	projectScroll  int              // the scroll position of the prints of one project
 	doneSeen       string           // the done screen of this print was closed (its history key)
 	away           bool             // Menu on the screen of the print awayFile showed the other screens (away.go)

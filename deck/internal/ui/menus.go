@@ -861,6 +861,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if a.Printers != nil {
 		items = append(items, menuItem{"Printers", printersLine(a.Printers.List()), dim, func() { a.open(pagePrinters) }})
 	}
+	if a.Keys != nil {
+		items = append(items, menuItem{"App keys", appKeysLine(a.Keys.Keys()), dim, func() { a.open(pageAppKeys) }})
+	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
 }
 
