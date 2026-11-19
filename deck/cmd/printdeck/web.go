@@ -58,6 +58,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 	deckKeys := octoapi.NewDeckKeys(filepath.Join(deckDir(cfg), "deck-apikeys.json"))
 	if api != nil {
 		api.DeckKeys, api.DeckWide = deckKeys, true
+		api.PrinterCheck = printerCheck("")
 	}
 	// The API of each other printer: under /printers/<id>/, with its own API keys and the deck
 	// keys. A request at /api with a key of another printer goes to that printer (keyRouter), so
@@ -69,6 +70,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		pm := http.NewServeMux()
 		if oa := newAPI(o.cfg, o.pr, o.app, pm); oa != nil {
 			oa.DeckKeys = deckKeys
+			oa.PrinterCheck = printerCheck(o.id)
 			mux.Handle("/printers/"+o.id+"/", http.StripPrefix("/printers/"+o.id, pm))
 			routes = append(routes, keyRoute{valid: oa.OwnKey, h: pm})
 			otherAPIs = append(otherAPIs, oa)
