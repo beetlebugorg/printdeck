@@ -144,11 +144,11 @@ func targetText(t float64) string {
 func readout(c *gfx.Canvas, r image.Rectangle, name, value, target string, power float64, heater bool) {
 	c.RoundRect(r, 6, lcdCell)
 	in := kit.Inset(r, 8, 4, 8, 6)
-	nameH := 15
+	nameH := 17
 	if gfx.FinePrint() {
 		nameH = 24
 	}
-	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+nameH), name, gfx.Face(true, 13), lcdDim, gfx.Left)
+	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+nameH), name, gfx.Face(true, 15), lcdDim, gfx.Left)
 	vr := image.Rect(in.Min.X, in.Min.Y+nameH, in.Max.X, in.Max.Y)
 	tf := gfx.Face(true, 15)
 	tw := 0

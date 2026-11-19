@@ -204,10 +204,10 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		}
 		if sw.forFile != "" {
 			// The file that the roll is for, over the step.
-			label(c, txt.Next(22), "For "+fitText(sw.forFile, f.body().Dx()-40), gfx.Left)
+			hintText(c, txt.Next(22), "For "+fitText(sw.forFile, f.body().Dx()-40), gfx.Left)
 		}
 		r := txt.Next(22)
-		label(c, r, fmt.Sprintf("Step %d of %d", n, total), gfx.Left)
+		hintText(c, r, fmt.Sprintf("Step %d of %d", n, total), gfx.Left)
 		t := txt.Next(38)
 		c.Text(t, title, gfx.Face(true, 24), accentText, gfx.Left)
 		a.textRegion("Step", image.Rect(r.Min.X, r.Min.Y, r.Max.X, t.Max.Y), gfx.Face(true, 24), title)
