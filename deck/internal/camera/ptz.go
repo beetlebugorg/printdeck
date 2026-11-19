@@ -1,21 +1,21 @@
 package camera
 
 import (
+	"image"
 	"math"
-	"sort"
 )
 
-// The digital pan, tilt and zoom (PTZ) of a camera. A UVC camera with digital PTZ crops its
-// sensor before the compression: the zoom keeps the detail of the sensor, and the deck gets the
-// frames with no change. The controls are the V4L2 controls zoom, pan and tilt (absolute). The
-// range and the units of each are of the camera.
+// The digital pan, tilt and zoom (PTZ) of a camera. The deck crops the frames of the camera: a
+// frame at a PTZ position shows a rectangle of the whole frame (the wide frame) with the shape of
+// the frame. Its size is the size of the wide frame divided by the zoom factor, and pan and tilt
+// move its center. The center stays where the rectangle is inside the wide frame. The camera
+// itself stays at its wide position: a UVC camera with digital PTZ also only crops its sensor, and
+// the B0561 does it only at 1080p and less, not at 4K. A crop of the 4K frame keeps more detail
+// up to a zoom of 2.
 //
-// The wide frame is the frame at the smallest zoom, with pan and tilt at their defaults. A frame at
-// another position shows a rectangle of the wide frame with the shape of the frame: its size is
-// the size of the wide frame divided by the zoom factor, and pan and tilt move its center. The
-// center stays where the rectangle is inside the wide frame. PTZMap is this model for one camera,
-// with the values that MeasurePTZ measures. The calibration is kept in the coordinates of the wide
-// frame, and the map gives the projection at each position (Calibration.AtPTZ).
+// The position is in the units of DeckPTZ, and DeckMap is the exact crop of each position. The
+// calibration is kept in the coordinates of the wide frame, and the map gives the projection at
+// each position (Calibration.AtPTZ).
 
 // PTZRange is the range of one control: from Min to Max in steps of Step. Default is the value of
 // the camera at its start.
@@ -50,8 +50,65 @@ type PTZPos struct {
 type PTZ struct {
 	Zoom, Pan, Tilt PTZRange
 	Pos             PTZPos
-	// Mapped reports that the settings of the camera have a valid PTZMap. Cam.Status sets it.
-	Mapped bool
+}
+
+// The units of the deck PTZ: the zoom factor is the zoom value / 100, from 1 to 8, and one unit
+// of pan or tilt moves the center of the crop by a thousandth of the width or the height of the
+// wide frame. A positive pan moves the crop to the right, and a positive tilt up, as V4L2
+// defines them.
+const (
+	deckZoomMax  = 800
+	deckPanRange = 500
+)
+
+// DeckPTZ returns the PTZ control of each camera, at the wide position.
+func DeckPTZ() PTZ {
+	p := PTZ{
+		Zoom: PTZRange{Min: 100, Max: deckZoomMax, Step: 5, Default: 100},
+		Pan:  PTZRange{Min: -deckPanRange, Max: deckPanRange, Step: 1},
+		Tilt: PTZRange{Min: -deckPanRange, Max: deckPanRange, Step: 1},
+	}
+	p.Pos = p.Wide()
+	return p
+}
+
+// DeckMap returns the map of the crop of the deck PTZ for a camera with the turn rotate.
+func DeckMap(rotate int) *PTZMap {
+	return &PTZMap{Rotate: ValidTurn(rotate), Zoom: [][2]float64{{100, 1}, {deckZoomMax, deckZoomMax / 100}},
+		Pan: [2]float64{1.0 / 1000, 0}, Tilt: [2]float64{0, -1.0 / 1000}}
+}
+
+// Has reports that the position pos is in the ranges of p.
+func (p PTZ) Has(pos PTZPos) bool {
+	in := func(r PTZRange, v int) bool { return v >= r.Min && v <= r.Max }
+	return in(p.Zoom, pos.Zoom) && in(p.Pan, pos.Pan) && in(p.Tilt, pos.Tilt)
+}
+
+// Map returns the map of the PTZ crop of the camera.
+func (cs CamSettings) Map() *PTZMap { return DeckMap(cs.Rotate) }
+
+// ptzMinW is the smallest width of a PTZ crop frame. A crop of fewer pixels of the camera is
+// scaled up to this width, so a viewer gets a picture of a usable size.
+const ptzMinW = 1280
+
+// ptzCrop returns the frame of the PTZ position of the settings cs from the frame f of the camera:
+// the crop at the size of its pixels in f, at least ptzMinW wide (or the width of f).
+func ptzCrop(f *Frame, cs CamSettings) *Frame {
+	c, ow, oh := ptzRect(f.Size(), cs)
+	return cropFrame(f, c, ow, oh)
+}
+
+// ptzRect returns the crop of the PTZ position of the settings cs in a frame of size sz (x0, y0,
+// x1, y1 in pixels), and the size of the crop frame.
+func ptzRect(sz image.Point, cs CamSettings) (c [4]float64, ow, oh int) {
+	cu, cv, k := cs.Map().Window(DeckPTZ().Target(cs.PTZ))
+	w, h := float64(sz.X), float64(sz.Y)
+	cw, ch := w/k, h/k
+	c = [4]float64{cu*w - cw/2, cv*h - ch/2, cu*w + cw/2, cv*h + ch/2}
+	ow = min(sz.X, max(ptzMinW, int(math.Round(cw))))
+	ow = max(2, ow&^1)
+	oh = max(2, (sz.Y*ow/sz.X+1)/2*2)
+	return c, ow, oh
 }
 
 // Wide returns the position of the wide frame: the smallest zoom, and pan and tilt at their
@@ -90,8 +147,9 @@ func (p PTZ) IsWide(pos *PTZPos) bool { return pos == nil || *pos == p.Wide() }
 // PTZMap is the model of the crop of a camera: the zoom factor of each zoom value, and the move
 // of the center of the crop for each unit of pan and tilt. The places are in normalized
 // coordinates of the wide frame (0 to 1 across the width and the height) after the turn Rotate.
+// DeckMap gives the map of each camera.
 type PTZMap struct {
-	// Rotate is the turn of the camera at the measurement. The map is valid only at this turn.
+	// Rotate is the turn of the camera. The map is valid only at this turn.
 	Rotate int `json:"rotate"`
 	// Zoom are the measured points (zoom value, factor), in the order of the values. The first is
 	// the smallest zoom, with the factor 1. The factor between two points is on the line between
@@ -267,20 +325,6 @@ func (m *PTZMap) Limit(p PTZPos, c PTZ) PTZPos {
 		p.Tilt = c.Tilt.Clamp(m.TiltZero + int(math.Round(st)))
 	}
 	return p
-}
-
-// sortZoom puts the points of the zoom in the order of their values, and keeps one point for each
-// value.
-func (m *PTZMap) sortZoom() {
-	sort.Slice(m.Zoom, func(i, j int) bool { return m.Zoom[i][0] < m.Zoom[j][0] })
-	out := m.Zoom[:0]
-	for _, p := range m.Zoom {
-		if len(out) > 0 && out[len(out)-1][0] == p[0] {
-			continue
-		}
-		out = append(out, p)
-	}
-	m.Zoom = out
 }
 
 // turnRows changes the rows of the matrix P from the normalized coordinates of a frame to the

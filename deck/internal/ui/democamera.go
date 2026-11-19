@@ -43,36 +43,12 @@ func NewDemoCamera() *DemoCamera {
 		c.Cams = append(c.Cams, &DemoSource{Dev: dev, Frame: demoPicture(i == 1), set: c,
 			State: camera.Status{State: "on", Device: dev, Format: format, Focus: &camera.Focus{Max: 1023, Step: 1, Auto: true, Pos: 410}}})
 	}
-	// The first camera has a digital PTZ, with the ranges of the test camera of the hub.
-	ptz := DemoPTZ
-	ptz.Pos = ptz.Wide()
-	c.Cams[0].State.PTZ = &ptz
-	return c
-}
-
-// DemoPTZ is the PTZ control of the first demo camera, and DemoPTZMap its measured map: a zoom
-// factor of the zoom value / 100.
-var (
-	DemoPTZ = camera.PTZ{Zoom: camera.PTZRange{Min: 100, Max: 400, Step: 1, Default: 100},
-		Pan:  camera.PTZRange{Min: -36000, Max: 36000, Step: 100},
-		Tilt: camera.PTZRange{Min: -36000, Max: 36000, Step: 100}}
-	DemoPTZMap = camera.PTZMap{Zoom: [][2]float64{{100, 1}, {400, 4}}, Pan: [2]float64{1.0 / 96000, 0},
-		Tilt: [2]float64{0, -1.0 / 72000}}
-)
-
-// MeasurePTZ sets DemoPTZMap as the map of the camera id, as camera.Hub.MeasurePTZ does after
-// a measurement.
-func (c *DemoCamera) MeasurePTZ(ctx context.Context, id string, progress func(done, all int)) (*camera.PTZMap, error) {
-	m := DemoPTZMap
-	m.Zoom = append([][2]float64(nil), m.Zoom...)
-	cs := c.Set.Camera(id)
-	m.Rotate = cs.Rotate
-	cs.PTZMap = &m
-	c.Set.SetCamera(cs)
-	if progress != nil {
-		progress(1, 1)
+	// Each camera has the PTZ of the deck.
+	for _, cam := range c.Cams {
+		ptz := camera.DeckPTZ()
+		cam.State.PTZ = &ptz
 	}
-	return &m, nil
+	return c
 }
 
 // DemoFocus is the lens position that FocusOnPart of a DemoCamera finds.
@@ -195,7 +171,7 @@ func (s *DemoSource) On() bool {
 }
 
 // Status returns the state of the camera. The PTZ position is the position of the settings, as
-// the capture of camera.Hub applies it.
+// camera.Hub crops the frames to it.
 func (s *DemoSource) Status() camera.Status {
 	st := s.State
 	for _, in := range s.set.Cameras() {
@@ -209,7 +185,7 @@ func (s *DemoSource) Status() camera.Status {
 	if st.PTZ != nil {
 		p := *st.PTZ
 		cs := s.set.Set.Camera(s.Dev.ID)
-		p.Pos, p.Mapped = p.Target(cs.PTZ), cs.PTZMap.ValidAt(cs.Rotate)
+		p.Pos = p.Target(cs.PTZ)
 		st.PTZ = &p
 	}
 	return st

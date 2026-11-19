@@ -76,8 +76,8 @@ func startTimelapse(ctx context.Context, stateDir, configPath string, app *ui.Ap
 		}
 		cs := hub.Settings().Camera(lapse.ID())
 		zoom := 1.0
-		if cal.PTZ != nil && cs.PTZMap != nil {
-			_, _, zoom = cs.PTZMap.Window(*cal.PTZ)
+		if cal.PTZ != nil {
+			_, _, zoom = cs.Map().Window(*cal.PTZ)
 		}
 		return cal.PartCropAt(box, bedY, sz, cs.Rotate, zoom)
 	}

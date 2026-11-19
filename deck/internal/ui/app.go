@@ -359,13 +359,12 @@ type App struct {
 	monitorRange int // the time of the graphs of the System monitor page: an index of monitorRanges
 	// Camera is the cameras of the deck, or nil (Settings > Camera and Settings > Cameras).
 	Camera   Camera
-	camView  string  // the view of the picture of the Camera page ("" is full)
-	option   *option // the setting of the option page
-	camID    string  // the tab of the Camera page: an ID, "" for the main camera, or camAll
-	camFocus bool    // the Camera page shows the focus keys
-	camPTZ   bool    // the Camera page shows the PTZ keys
-	ptzRun   *ptzRun // the measurement of a PTZ map that runs, or nil
-	focusRun *ptzRun // the search of the Focus on the part key that runs, or nil
+	camView  string    // the view of the picture of the Camera page ("" is full)
+	option   *option   // the setting of the option page
+	camID    string    // the tab of the Camera page: an ID, "" for the main camera, or camAll
+	camFocus bool      // the Camera page shows the focus keys
+	camPTZ   bool      // the Camera page shows the PTZ keys
+	focusRun *focusRun // the search of the Focus on the part key that runs, or nil
 	// The PTZ position of the last step, its camera, and its time.
 	ptzLast        camera.PTZPos
 	ptzLastID      string

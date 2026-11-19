@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"context"
 	"fmt"
 	"image"
 	"image/color"
@@ -13,11 +12,11 @@ import (
 	"printdeck/kit"
 )
 
-// The digital pan, tilt and zoom (PTZ) of a camera (Camera page > PTZ). The key shows only for a
-// camera with a zoom control. The PTZ keys zoom in and out, move the crop left, right, up and
-// down, go back to the whole picture (Reset), and measure the crop of the camera (Measure). The
-// camera crops its sensor, so a zoom keeps the detail and costs the deck no CPU. The stream of a
-// camera is one stream: each viewer sees the zoom.
+// The digital pan, tilt and zoom (PTZ) of a camera (Camera page > PTZ). Each camera that runs has
+// the key. The PTZ keys zoom in and out, move the crop left, right, up and down, and go back to the
+// whole picture (Reset). The deck crops the frames of the camera (camera.DeckPTZ): a 4K camera
+// keeps its detail up to a zoom of 2. The stream of a camera is one stream: each viewer sees the
+// zoom.
 
 // ptzSetter is a Camera that sets a PTZ position with no save of the settings for each step
 // (camera.Hub).
@@ -25,19 +24,14 @@ type ptzSetter interface {
 	SetPTZ(id string, pos *camera.PTZPos)
 }
 
-// ptzMeasurer is a Camera that measures the PTZ map of a camera (camera.Hub).
-type ptzMeasurer interface {
-	MeasurePTZ(ctx context.Context, id string, progress func(done, all int)) (*camera.PTZMap, error)
-}
-
-// ptzRun is a measurement of the PTZ map that runs.
-type ptzRun struct {
+// focusRun is a focus search on the part that runs.
+type focusRun struct {
 	id        string
 	done, all int
 }
 
 // ptzRecent is how long the position of the last PTZ step is the position of the next step: the
-// capture reports a step a moment later, so quick steps add up.
+// state of the camera reports a step a moment later, so quick steps add up.
 const ptzRecent = 2 * time.Second
 
 // setPTZ sets the PTZ position of the camera id, or the wide position with nil.
@@ -56,7 +50,7 @@ func (a *App) setPTZ(id string, pos *camera.PTZPos) {
 	a.Redraw()
 }
 
-// ptzNow is the PTZ control of the camera id: the state of the capture p, with the position of the
+// ptzNow is the PTZ control of the camera id: the state of the camera p, with the position of the
 // last step when it is recent.
 func (a *App) ptzNow(id string, p camera.PTZ) camera.PTZ {
 	if a.ptzLastID == id && !a.ptzLastAt.IsZero() && a.Now().Sub(a.ptzLastAt) < ptzRecent {
@@ -65,58 +59,42 @@ func (a *App) ptzNow(id string, p camera.PTZ) camera.PTZ {
 	return p
 }
 
-// ptzMap returns the PTZ map of the camera id when it is valid.
+// ptzMap returns the PTZ map of the camera id.
 func (a *App) ptzMap(id string) *camera.PTZMap {
-	cs := a.Camera.Settings().Camera(id)
-	if cs.PTZMap.ValidAt(cs.Rotate) {
-		return cs.PTZMap
-	}
-	return nil
+	return a.Camera.Settings().Camera(id).Map()
 }
 
-// zoomStep zooms the camera id in (n = 1) or out (n = -1): by a factor of 1.25 with a PTZ map, and
-// else by a twelfth of the range.
+// zoomStep zooms the camera id in (n = 1) or out (n = -1) by a factor of 1.25.
 func (a *App) zoomStep(id string, p camera.PTZ, n int) {
 	pos := p.Pos
-	if m := a.ptzMap(id); m != nil {
-		k := m.Factor(pos.Zoom) * math.Pow(1.25, float64(n))
-		z := int(math.Round(m.ZoomFor(k)))
-		if z == pos.Zoom {
-			z += n * p.Zoom.Step
-		}
-		pos.Zoom = p.Zoom.Clamp(z)
-		pos = m.Limit(pos, p)
-	} else {
-		pos.Zoom = p.Zoom.Clamp(pos.Zoom + n*max(p.Zoom.Step, (p.Zoom.Max-p.Zoom.Min)/12))
+	m := a.ptzMap(id)
+	k := m.Factor(pos.Zoom) * math.Pow(1.25, float64(n))
+	z := int(math.Round(m.ZoomFor(k)))
+	if z == pos.Zoom {
+		z += n * p.Zoom.Step
 	}
+	pos.Zoom = p.Zoom.Clamp(z)
+	pos = m.Limit(pos, p)
 	a.setPTZ(id, &pos)
 }
 
 // moveStep moves the crop of the camera id by (dx, dy) steps: right and down for positive values.
-// A step is an eighth of the crop with a PTZ map. With no map, a step is a fortieth of the range,
-// with a positive pan to the right and a positive tilt up, as V4L2 defines them.
+// A step is an eighth of the crop.
 func (a *App) moveStep(id string, p camera.PTZ, dx, dy int) {
 	pos := p.Pos
-	if m := a.ptzMap(id); m != nil {
-		cu, cv, k := m.Window(pos)
-		d := 0.125 / k
-		next := m.Center(pos, cu+float64(dx)*d, cv+float64(dy)*d, p)
-		if next == pos {
-			// A step of less than one unit: one unit of each control that moves.
-			next.Pan = p.Pan.Clamp(pos.Pan + dx*p.Pan.Step*sign(m.Pan[0]))
-			next.Tilt = p.Tilt.Clamp(pos.Tilt + dy*p.Tilt.Step*sign(m.Tilt[1]))
-		}
-		pos = m.Limit(next, p)
-	} else {
-		if p.Pan.Valid() {
-			pos.Pan = p.Pan.Clamp(pos.Pan + dx*max(p.Pan.Step, (p.Pan.Max-p.Pan.Min)/40))
-		}
-		if p.Tilt.Valid() {
-			pos.Tilt = p.Tilt.Clamp(pos.Tilt - dy*max(p.Tilt.Step, (p.Tilt.Max-p.Tilt.Min)/40))
-		}
+	m := a.ptzMap(id)
+	cu, cv, k := m.Window(pos)
+	d := 0.125 / k
+	next := m.Center(pos, cu+float64(dx)*d, cv+float64(dy)*d, p)
+	if next == pos {
+		// A step of less than one unit: one unit of each control that moves.
+		next.Pan = p.Pan.Clamp(pos.Pan + dx*p.Pan.Step*sign(m.Pan[0]))
+		next.Tilt = p.Tilt.Clamp(pos.Tilt + dy*p.Tilt.Step*sign(m.Tilt[1]))
 	}
-	a.setPTZ(id, &pos)
+	a.setPTZ(id, ptr(m.Limit(next, p)))
 }
+
+func ptr(p camera.PTZPos) *camera.PTZPos { return &p }
 
 func sign(v float64) int {
 	if v < 0 {
@@ -125,66 +103,9 @@ func sign(v float64) int {
 	return 1
 }
 
-// ptzLine is the PTZ position of a camera in words, for example "Zoom 2.0×, pan 3600, tilt 0".
-func (a *App) ptzLine(id string, p camera.PTZ) string {
-	z := fmt.Sprintf("Zoom %d of %d to %d", p.Pos.Zoom, p.Zoom.Min, p.Zoom.Max)
-	if m := a.ptzMap(id); m != nil {
-		z = fmt.Sprintf("Zoom %.1f×", m.Factor(p.Pos.Zoom))
-	}
-	if p.Pan.Valid() {
-		z += fmt.Sprintf(", pan %d", p.Pos.Pan)
-	}
-	if p.Tilt.Valid() {
-		z += fmt.Sprintf(", tilt %d", p.Pos.Tilt)
-	}
-	return z
-}
-
-// ptzState is the state of the PTZ map of the camera id for the info line: the measurement that
-// runs, or the need of a measurement. long is the text of a row.
-func (a *App) ptzState(id string, long bool) string {
-	switch {
-	case a.ptzRun != nil && a.ptzRun.id == id:
-		return fmt.Sprintf("Measuring: picture %d of %d", a.ptzRun.done, max(a.ptzRun.all, 1))
-	case a.ptzMap(id) == nil && long:
-		return "Once, for the views and the zoom to the part. Aim the camera at the bed first."
-	case a.ptzMap(id) == nil:
-		return "Zoom not measured"
-	case long:
-		return "Measured. Measure again after a move of the camera."
-	}
-	return "Each viewer of the camera sees the zoom"
-}
-
-// measurePTZ measures the PTZ map of the camera id.
-func (a *App) measurePTZ(id string) {
-	pm, ok := a.Camera.(ptzMeasurer)
-	if !ok || a.ptzRun != nil {
-		return
-	}
-	if st := a.Printer.State(); st.Busy() {
-		a.Toast("Measure the zoom when the printer does not print")
-		return
-	}
-	run := &ptzRun{id: id}
-	a.ptzRun = run
-	a.Redraw()
-	go func() {
-		_, err := pm.MeasurePTZ(context.Background(), id, func(done, all int) {
-			a.post(func() { run.done, run.all = done, all; a.Redraw() })
-		})
-		a.post(func() {
-			if a.ptzRun == run {
-				a.ptzRun = nil
-			}
-			if err != nil {
-				a.Toast("Zoom not measured: " + err.Error())
-			} else {
-				a.Toast("Zoom measured. The views follow the zoom.")
-			}
-			a.Redraw()
-		})
-	}()
+// ptzLine is the PTZ position of a camera in words, for example "Zoom 2.0×".
+func (a *App) ptzLine(p camera.PTZ) string {
+	return fmt.Sprintf("Zoom %.1f×", float64(p.Pos.Zoom)/100)
 }
 
 // namedButton draws a key with the label on the screen and another name for the knob menu, the
@@ -230,8 +151,8 @@ func (a *App) ptzKeys(id string, p camera.PTZ) (zoom, move []ptzKey) {
 }
 
 // drawPTZKeys draws the PTZ keys of the camera id in r on a wide screen, in two rows of equal
-// keys, so that each key is large enough for a finger: the zoom and the moves, then Reset,
-// Measure and Done.
+// keys, so that each key is large enough for a finger: the zoom and the moves, then Reset and
+// Done.
 func (a *App) drawPTZKeys(c *gfx.Canvas, r image.Rectangle, id string, p camera.PTZ) {
 	zoom, move := a.ptzKeys(id, p)
 	keys := append(zoom, move...)
@@ -240,21 +161,9 @@ func (a *App) drawPTZKeys(c *gfx.Canvas, r image.Rectangle, id string, p camera.
 	for i, kk := range keys {
 		a.namedButton(c, top[i], kk.label, kk.name, raised, text, kk.tap)
 	}
-	_, measure := a.Camera.(ptzMeasurer)
-	n := 2
-	if measure {
-		n = 3
-	}
-	bottom := kit.Grid(rows[1], n, 1, 8)
+	bottom := kit.Grid(rows[1], 2, 1, 8)
 	a.button(c, bottom[0], "Reset", raised, text, func() { a.setPTZ(id, nil) })
-	if measure {
-		fill, ink := raised, text
-		if a.ptzRun != nil {
-			fill, ink = keyOn, keyOnInk
-		}
-		a.button(c, bottom[1], "Measure", fill, ink, func() { a.measurePTZ(id) })
-	}
-	a.button(c, bottom[n-1], "Done", raised, text, func() { a.camPTZ = false })
+	a.button(c, bottom[1], "Done", raised, text, func() { a.camPTZ = false })
 }
 
 // ptzRowH is the height of the rows of the PTZ keys on a tall screen: the zoom row and the row of
@@ -292,13 +201,10 @@ func (a *App) drawPTZRows(c *gfx.Canvas, r image.Rectangle, id string, p camera.
 	return rows[len(rows)-1]
 }
 
-// ptzItems are the rows of the PTZ mode on a tall screen: Reset, Measure the zoom and Done.
-func (a *App) ptzItems(id string, p camera.PTZ) []menuItem {
-	items := []menuItem{{"Reset", "Back to the whole picture", dim, func() { a.setPTZ(id, nil) }}}
-	if _, ok := a.Camera.(ptzMeasurer); ok {
-		items = append(items, menuItem{"Measure the zoom", a.ptzState(id, true), dim, func() { a.measurePTZ(id) }})
-	}
-	return append(items, menuItem{"Done", "Back to the camera rows. Each viewer sees the zoom.", dim, func() { a.camPTZ = false }})
+// ptzItems are the rows of the PTZ mode on a tall screen: Reset and Done.
+func (a *App) ptzItems(id string) []menuItem {
+	return []menuItem{{"Reset", "Back to the whole picture", dim, func() { a.setPTZ(id, nil) }},
+		{"Done", "Back to the camera rows", dim, func() { a.camPTZ = false }}}
 }
 
 // ptzRowsHeight is the height of the PTZ keys on a tall screen, with the gap under them.
@@ -309,23 +215,9 @@ func ptzRowsHeight(p camera.PTZ, gap int) int {
 	return ptzRowH + gap
 }
 
-// calibPTZLine is the line of the calibration of a camera with PTZ, when the calibration is not
-// valid at the PTZ position now and the camera has no PTZ map, or "".
-func calibPTZLine(cal *camera.Calibration, valid bool, st camera.Status) string {
-	if cal == nil || valid || st.PTZ == nil || st.PTZ.Mapped || st.PTZ.Target(cal.PTZ) == st.PTZ.Pos {
-		return ""
-	}
-	return "Zoom changed: measure the zoom, or calibrate again"
-}
-
 // followLine is the line of the "Zoom to the part" row of the page of a camera.
-func followLine(st camera.Status, calibrated bool) string {
-	switch {
-	case st.PTZ == nil:
-		return "Turn the camera on to see if it zooms"
-	case !st.PTZ.Mapped:
-		return "Measure the zoom on the Camera page first"
-	case !calibrated:
+func followLine(calibrated bool) string {
+	if !calibrated {
 		return "Calibrate the camera first"
 	}
 	return "During a print. Each viewer sees the zoom."
