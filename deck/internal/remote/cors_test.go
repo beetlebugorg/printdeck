@@ -99,3 +99,30 @@ func TestCORSPrinterPaths(t *testing.T) {
 		}
 	}
 }
+
+// The zslice web app reads the list of the printers and the cameras of each printer: they have
+// the CORS headers, and a camera picture may load in the cross-origin isolated page.
+func TestCORSPrinterListAndWebcam(t *testing.T) {
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("{}")) })
+	h := CORS(ok, "https://zslice.beetlebug.org")
+	for _, p := range []string{"/slicer/printer.json", "/webcam/snapshot", "/printers/x2d/webcam/stream", "/printers/x2d/api/files/local"} {
+		r := httptest.NewRequest("GET", p, nil)
+		r.Header.Set("Origin", "https://zslice.beetlebug.org")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Header().Get("Access-Control-Allow-Origin") != "https://zslice.beetlebug.org" ||
+			w.Header().Get("Cross-Origin-Resource-Policy") != "cross-origin" {
+			t.Errorf("%s: %v", p, w.Header())
+		}
+	}
+	// The remote screen and the system pages stay closed to the page.
+	for _, p := range []string{"/", "/system", "/slicer/index.html"} {
+		r := httptest.NewRequest("GET", p, nil)
+		r.Header.Set("Origin", "https://zslice.beetlebug.org")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Header().Get("Access-Control-Allow-Origin") != "" {
+			t.Errorf("%s has CORS", p)
+		}
+	}
+}

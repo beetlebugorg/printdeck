@@ -32,8 +32,9 @@ func (s *Server) serveSettings(w http.ResponseWriter, r *http.Request) {
 	webcam := map[string]any{"webcamEnabled": false, "streamUrl": "", "snapshotUrl": "", "webcams": []any{}}
 	if s.webcamOn() {
 		key := "apikey=" + url.QueryEscape(requestKey(r))
-		webcam = map[string]any{"webcamEnabled": true, "streamUrl": "/webcam/stream?" + key,
-			"snapshotUrl": "/webcam/snapshot?" + key, "flipH": false, "flipV": false, "rotate90": false}
+		cam := basePath(r) + "/webcam" // the camera of the printer of the request
+		webcam = map[string]any{"webcamEnabled": true, "streamUrl": cam + "/stream?" + key,
+			"snapshotUrl": cam + "/snapshot?" + key, "flipH": false, "flipV": false, "rotate90": false}
 		var list []any
 		for _, c := range s.camerasInfo() {
 			if c.State == "off" || c.State == "none" {
@@ -48,10 +49,10 @@ func (s *Server) serveSettings(w http.ResponseWriter, r *http.Request) {
 			list = append(list, map[string]any{
 				"name": name, "displayName": c.Name, "canSnapshot": true, "snapshotDisplay": "",
 				"flipH": false, "flipV": false, "rotate90": false,
-				"compat": map[string]any{"stream": "/webcam/stream" + q, "snapshot": "/webcam/snapshot" + q,
+				"compat": map[string]any{"stream": cam + "/stream" + q, "snapshot": cam + "/snapshot" + q,
 					"streamRatio": ratio, "streamTimeout": 5, "snapshotTimeout": 5, "snapshotSslValidation": true,
 					"cacheBuster": false, "streamWebrtcIceServers": []string{}},
-				"extras": map[string]any{"streamUrl": "/webcam/stream" + q, "snapshotUrl": "/webcam/snapshot" + q},
+				"extras": map[string]any{"streamUrl": cam + "/stream" + q, "snapshotUrl": cam + "/snapshot" + q},
 			})
 			for _, role := range c.Roles {
 				switch role {
