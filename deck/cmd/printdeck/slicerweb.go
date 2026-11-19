@@ -32,7 +32,9 @@ func registerSlicer(mux *http.ServeMux, rs *remote.Server, dir string, deckKey f
 	// file needs the login, or a deck key (an App Keys key of the whole deck): a slicer app reads
 	// it after the Allow on the deck.
 	printerFile := func(w http.ResponseWriter, r *http.Request) {
-		slicerHeaders(w)
+		// A JSON file for the apps: the zslice web app reads it from its own origin (remote.CORS),
+		// so it gets no headers of the page of the app (slicerHeaders).
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		json.NewEncoder(w).Encode(slicerPrinterFile())

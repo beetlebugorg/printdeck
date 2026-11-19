@@ -88,7 +88,7 @@ func (s *Server) serveTimelapse(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			continue
 		}
-		u := "/downloads/timelapse/" + url.PathEscape(v.Name)
+		u := basePath(r) + "/downloads/timelapse/" + url.PathEscape(v.Name)
 		j := videoJSON{Name: v.Name, Size: humanSize(v.Size), Bytes: v.Size, Date: v.Time.Format("2006-01-02 15:04"), URL: u,
 			Printdeck: videoExtraJSON{Time: v.Time.UTC().Truncate(time.Second), Still: u + "/still"}}
 		if m, err := timelapse.OpenMovie(path); err == nil {

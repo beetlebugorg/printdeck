@@ -9,7 +9,8 @@ import (
 // https://zslice.beetlebug.org) call the OctoPrint-compatible API of the deck from the browser.
 //
 // The browser sends the Origin header of the page. For an origin in the list and a path of the API
-// (/api/, /plugin/, /downloads/), the answer tells the browser that the page can read it, and a
+// (/api/, /plugin/, /downloads/, /webcam/ and /slicer/printer.json, also under /printers/<id>/),
+// the answer tells the browser that the page can read it, and a
 // preflight (OPTIONS) answers with the methods and headers of the API. Chrome asks a public page for
 // a private address first (Private Network Access): the answer allows it for the listed origins.
 //
@@ -56,6 +57,9 @@ func CORS(h http.Handler, origins string) http.Handler {
 		hd := w.Header()
 		hd.Set("Access-Control-Allow-Origin", origin)
 		hd.Add("Vary", "Origin")
+		// The page of the app is cross-origin isolated (COEP): it loads a camera picture of the
+		// deck only with this header.
+		hd.Set("Cross-Origin-Resource-Policy", "cross-origin")
 		if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 			hd.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			hd.Set("Access-Control-Allow-Headers", "X-Api-Key, Authorization, Content-Type")
@@ -78,5 +82,6 @@ func apiPath(p string) bool {
 			p = "/" + sub
 		}
 	}
-	return strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/plugin/") || strings.HasPrefix(p, "/downloads/")
+	return strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/plugin/") || strings.HasPrefix(p, "/downloads/") ||
+		strings.HasPrefix(p, "/webcam/") || p == "/slicer/printer.json"
 }

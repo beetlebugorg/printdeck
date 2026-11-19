@@ -38,7 +38,18 @@ func baseURL(r *http.Request) string {
 	if r.TLS != nil {
 		scheme = "https"
 	}
-	return scheme + "://" + r.Host
+	return scheme + "://" + r.Host + basePath(r)
+}
+
+// basePath is the part of the path in front of the API: "/printers/<id>" for another printer of a
+// deck with many printers (http.StripPrefix took it from r.URL.Path), or "". The links of the API
+// keep it, so a client that follows a link stays with the printer of the request.
+func basePath(r *http.Request) string {
+	u, err := url.ParseRequestURI(r.RequestURI)
+	if err != nil || r.URL.Path == "" || !strings.HasSuffix(u.Path, r.URL.Path) {
+		return ""
+	}
+	return strings.TrimSuffix(u.Path, r.URL.Path)
 }
 
 func escapePath(p string) string {
