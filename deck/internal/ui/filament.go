@@ -172,7 +172,7 @@ func (a *App) drawFilamentPrinting(c *gfx.Canvas, st printer.State) {
 			c.Text(image.Rect(in.Min.X, in.Min.Y+44, in.Max.X, in.Min.Y+70), "The rest of the print uses "+printer.Weight(rest)+".", gfx.Face(false, 17), dim, gfx.Left)
 		}
 		if hint := "Add the roll in Rolls to follow its filament"; gfx.FinePrint() {
-			textLines(c, image.Rect(in.Min.X, in.Max.Y-52, in.Max.X, in.Max.Y), strings.ToUpper(hint), gfx.Face(true, 14), dim, 26)
+			textLines(c, image.Rect(in.Min.X, in.Max.Y-52, in.Max.X, in.Max.Y), hint, gfx.Face(false, 16), dim, 26)
 		} else {
 			hintText(c, image.Rect(in.Min.X, in.Max.Y-24, in.Max.X, in.Max.Y), hint, gfx.Left)
 		}
