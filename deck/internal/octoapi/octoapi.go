@@ -66,6 +66,10 @@ type Server struct {
 	// The time lapse videos (timelapse.go).
 	timelapseFields
 
+	// PrinterCheck checks an upload before it goes in the store: it returns the reason to refuse
+	// a file that is sliced for another printer, or "". It can be nil.
+	PrinterCheck func(tmpPath string) string
+
 	keys *keyStore
 	// DeckKeys are the keys of each printer of the deck, or nil. DeckWide makes the App Keys
 	// request of this server give a deck key: the server at the root of the deck.

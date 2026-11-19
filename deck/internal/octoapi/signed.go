@@ -25,12 +25,24 @@ func (r rejection) Error() string { return string(r) }
 // uploadCheck returns the check of an upload of the file name for Store.SaveChecked, or nil when
 // "Signed prints only" is off or the file is an STL model.
 func (s *Server) uploadCheck(name string) func(string) error {
-	if !s.signedOnly() || strings.EqualFold(path.Ext(name), ".stl") {
+	if strings.EqualFold(path.Ext(name), ".stl") {
+		return nil
+	}
+	signed := s.signedOnly()
+	if !signed && s.PrinterCheck == nil {
 		return nil
 	}
 	return func(tmp string) error {
-		if reason := s.Signing.Allowed(tmp); reason != "" {
-			return rejection(reason)
+		if signed {
+			if reason := s.Signing.Allowed(tmp); reason != "" {
+				return rejection(reason)
+			}
+		}
+		// A file that is sliced for another printer never goes in the store of this printer.
+		if s.PrinterCheck != nil {
+			if reason := s.PrinterCheck(tmp); reason != "" {
+				return rejection(reason)
+			}
 		}
 		return nil
 	}

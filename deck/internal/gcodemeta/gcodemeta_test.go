@@ -19,7 +19,7 @@ func TestCura(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Meta{Slicer: "Cura 5.13.0", PrintTime: 2041 * time.Second, FilamentMM: 723.506, LayerHeight: 0.25,
-		NozzleTemp: 230, BedTemp: 60}
+		NozzleTemp: 230, BedTemp: 60, Printer: "LulzBot TAZ Workhorse | SE | 0.5 mm"}
 	if m != want {
 		t.Errorf("got  %+v\nwant %+v", m, want)
 	}

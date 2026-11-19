@@ -49,3 +49,29 @@ func TestPrinterPrefixLinks(t *testing.T) {
 		}
 	}
 }
+
+// A file that PrinterCheck refuses does not go in the store, and the answer gives the reason.
+func TestPrinterCheckRefuses(t *testing.T) {
+	s, ts, _ := newTest(t)
+	s.PrinterCheck = func(string) string { return "Sliced for Bambu Lab X2D; this printer is TAZ Workhorse" }
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("file", "x2d.gcode")
+	fw.Write([]byte("G28\n"))
+	mw.WriteField("print", "true")
+	mw.Close()
+	req, _ := http.NewRequest("POST", ts.URL+"/api/files/local", &body)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("X-Api-Key", mainKey)
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Body.Close()
+	if r.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("status %d", r.StatusCode)
+	}
+	if _, err := s.Store.Stat("x2d.gcode"); err == nil {
+		t.Error("the refused file is in the store")
+	}
+}
