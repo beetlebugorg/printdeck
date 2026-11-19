@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 
 	"printdeck/internal/jpegdec"
+	"printdeck/internal/turbojpeg"
 )
 
 // The conversion of the pictures: a picture of the camera (YUYV, NV12, YU12, or a decoded JPEG)
@@ -240,6 +241,13 @@ func scaleYCbCr(p *image.YCbCr, w, h, rotate int) *image.YCbCr {
 func encodeJPEG(p *image.YCbCr) ([]byte, error) {
 	switch p.SubsampleRatio {
 	case image.YCbCrSubsampleRatio420, image.YCbCrSubsampleRatio422, image.YCbCrSubsampleRatio444:
+		// libjpeg-turbo encodes about 3 times faster on one core (/system/jpeg). A deck with no
+		// libjpeg-turbo uses jpegdec, on all cores.
+		if turbojpeg.Available {
+			if b, err := turbojpeg.Encode(p, quality); err == nil {
+				return b, nil
+			}
+		}
 		return jpegdec.Encode(p, quality)
 	}
 	var b bytes.Buffer
