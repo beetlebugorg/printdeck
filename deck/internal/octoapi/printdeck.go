@@ -2,6 +2,7 @@ package octoapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/png"
 	"net/http"
@@ -108,6 +109,83 @@ type printdeckJSON struct {
 	// SignedOnly is true when the deck accepts only G-code files with a good signature of a trusted
 	// slicer.
 	SignedOnly bool `json:"signed_only"`
+	// Filaments are the spools that the printer has loaded (filamentsOf), or null when the printer
+	// does not tell them.
+	Filaments []filamentJSON `json:"filaments,omitempty"`
+}
+
+// filamentJSON is a spool that the printer has loaded. Slot is its name on the printer: "A1" for
+// tray 1 of the first AMS, "Ext" for the external spool, "" for the roll of a printer with no
+// AMS. Index is its place in the list, in the order of the trays. Tray is the number of the tray
+// in the reports of a Bambu Lab printer (Unit*4+Index, 254 or 255 for an external spool), or -1.
+// Nozzle is "main" or "aux" on a printer with two nozzles, else "". Remain is the part of a full
+// spool that is left, 0 to 1, or null when it is not known.
+type filamentJSON struct {
+	Slot     string   `json:"slot"`
+	Index    int      `json:"index"`
+	Tray     int      `json:"tray"`
+	Nozzle   string   `json:"nozzle,omitempty"`
+	Material string   `json:"material"`
+	Color    string   `json:"color,omitempty"`
+	Name     string   `json:"name,omitempty"`
+	Remain   *float64 `json:"remain"`
+}
+
+// filamentsOf returns the loaded spools of the printer p: each tray of an AMS with a spool and
+// the external spools last (a Bambu Lab printer), or the roll of a printer that tells it (a
+// Klipper printer). Empty trays are out of the list.
+func filamentsOf(p any) []filamentJSON {
+	remain := func(f float64) *float64 {
+		if f < 0 {
+			return nil
+		}
+		return &f
+	}
+	if a, ok := p.(interface {
+		AMS() printer.AMS
+		Loaded() []printer.Loaded
+	}); ok {
+		ams := a.AMS()
+		loaded := a.Loaded() // the same trays in the same order, with the part left of the rolls
+		out := []filamentJSON{}
+		for i, t := range ams.Trays {
+			if !t.Loaded {
+				continue
+			}
+			f := filamentJSON{Slot: fmt.Sprintf("%c%d", 'A'+t.Unit, t.Index+1), Tray: t.Slot, Material: t.Material,
+				Color: t.Color, Name: t.Brand, Remain: remain(-1)}
+			if t.External {
+				f.Slot = "Ext"
+			}
+			switch t.Feeds {
+			case 0:
+				f.Nozzle = "main"
+			case 1:
+				f.Nozzle = "aux"
+			}
+			if i < len(loaded) {
+				f.Remain = remain(loaded[i].Fraction)
+				if loaded[i].Color != "" {
+					f.Color = loaded[i].Color
+				}
+			}
+			f.Index = len(out)
+			out = append(out, f)
+		}
+		return out
+	}
+	if l, ok := p.(interface{ Loaded() []printer.Loaded }); ok {
+		var out []filamentJSON
+		for _, it := range l.Loaded() {
+			if it.Empty || it.Material == "" && it.Color == "" {
+				continue
+			}
+			out = append(out, filamentJSON{Index: len(out), Tray: -1, Material: it.Material, Color: it.Color,
+				Remain: remain(it.Fraction)})
+		}
+		return out
+	}
+	return nil
 }
 
 // limitsJSON is the [printer] section of printer.cfg: velocities in mm/s, accelerations in
@@ -177,6 +255,7 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	out.Filaments = filamentsOf(s.Printer)
 	if st := s.Printer.State(); st.Busy() {
 		j := &jobJSON{File: st.FilePath, Title: st.Name(), State: "printing", Layer: st.Layer, Layers: st.Layers,
 			Progress: st.Completion / 100, Left: -1, Release: -1, Pos: st.FilePos}

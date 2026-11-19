@@ -68,7 +68,12 @@ type State struct {
 	HasLive                bool
 
 	Tool, ToolTarget float64
-	Bed, BedTarget   float64
+	// The second nozzle of a printer with two (the aux nozzle of a Bambu Lab X2D), with HasTool2.
+	// ToolNow is the nozzle in use: 0 for Tool, 1 for Tool2.
+	Tool2, Tool2Target float64
+	HasTool2           bool
+	ToolNow            int
+	Bed, BedTarget     float64
 	// The chamber of a printer with a chamber sensor or heater, in °C. HasChamber is false for a
 	// printer with no chamber; ChamberTarget is 0 with no chamber heat.
 	Chamber, ChamberTarget float64
@@ -190,6 +195,8 @@ type Loaded struct {
 	Fraction float64
 	Active   bool // the spool feeds the nozzle now
 	Empty    bool // the place has no spool (an empty tray)
+	// External is true for a spool out of the AMS (the external spool of a Bambu Lab printer).
+	External bool
 }
 
 // Busy reports that a job is running or paused.
