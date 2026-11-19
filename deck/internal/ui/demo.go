@@ -18,6 +18,7 @@ import (
 // Demo sources give the UI fixed data, to look at it without a printer.
 
 type DemoPrinter struct {
+	Stops     int               // the count of EmergencyStop calls
 	HeatMaps_ []printer.BedMesh // the maps of HeatMaps
 	State_    printer.State
 	Img       image.Image
@@ -88,7 +89,7 @@ func (d *DemoPrinter) SpeedFactor(int) error            { return nil }
 func (d *DemoPrinter) FlowFactor(int) error             { return nil }
 func (d *DemoPrinter) BabyStep(float64) error           { return nil }
 func (d *DemoPrinter) SaveZOffset() (bool, error)       { return d.State().Busy(), nil }
-func (d *DemoPrinter) EmergencyStop() error             { return nil }
+func (d *DemoPrinter) EmergencyStop() error             { d.Stops++; return nil }
 func (d *DemoPrinter) FirmwareRestart() error           { return nil }
 func (d *DemoPrinter) Boards() ([]board.Info, bool)     { return d.Boards_, false }
 func (d *DemoPrinter) Machine() printer.Machine         { return d.Machine_ }

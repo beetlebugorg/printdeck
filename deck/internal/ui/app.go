@@ -424,6 +424,9 @@ type confirmBox struct {
 	// and runs the tap of the row.
 	choices []menuItem
 	title   string // the title of the box; "" is "CONFIRM"
+	// allPrinters is a question for each printer of the deck: the key does not name the printer
+	// of the screen.
+	allPrinters bool
 }
 
 // infoBox is a box with a text and one Close key, for example the results of a test.
@@ -742,7 +745,7 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 		return
 	}
 	yesLabel := cf.yes
-	if fleetSelf != nil && fleetSelf.Label != "" {
+	if fleetSelf != nil && fleetSelf.Label != "" && !cf.allPrinters {
 		yesLabel += " on " + fleetSelf.Label // the key names the printer that it acts on
 	}
 	a.button(c, yesR, yesLabel, yes, ink, func() { a.confirm = nil; cf.onYes(); a.Redraw() })

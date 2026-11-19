@@ -67,6 +67,14 @@ type Fleet interface {
 	Notes() []FleetNote // of the printers that are not on this screen
 	Dismiss(key string)
 	Switch(id string) // shows the printer id on this screen
+	// StopAll stops each printer that prints, is paused or heats, with an emergency stop.
+	StopAll() error
+}
+
+// stoppable reports that Stop all stops a printer in the state st: it prints, is paused, or
+// heats. A stop of an idle printer only makes it need a firmware restart.
+func stoppable(st printer.State) bool {
+	return st.Busy() || st.ToolTarget > 0 || st.BedTarget > 0
 }
 
 // fleetSelf is the printer of the App that draws now, for the page titles and the dialogs, or
@@ -181,8 +189,29 @@ func (a *App) drawFleetList(c *gfx.Canvas) {
 	a.button(c, backRect(head), "Close", raised, text, func() { a.fleetList = false; a.Redraw() })
 	cards := a.Fleet.Cards()
 	y := head.Max.Y + 20
+	bottom := contentY1 - 24
+	// Stop all, under the cards, while a printer prints or heats.
+	n := 0
+	for _, card := range cards {
+		if stoppable(card.State) {
+			n++
+		}
+	}
+	if n > 0 {
+		stop := image.Rect(margin, bottom-keyH, W-margin, bottom)
+		bottom = stop.Min.Y - 14
+		a.button(c, stop, "Stop all", redCap, onRed, func() {
+			a.confirm = &confirmBox{title: "STOP ALL",
+				question: fmt.Sprintf("Stop %d printers that print or heat, now? Each one needs a firmware restart after it.", n),
+				yes:      "Stop all", danger: true, allPrinters: true,
+				onYes: func() { a.fleetList = false; a.do(a.Fleet.StopAll) }}
+			if n == 1 {
+				a.confirm.question = "Stop the printer that prints or heats, now? It needs a firmware restart after it."
+			}
+		})
+	}
 	cardH := 124
-	if avail := contentY1 - 24 - y; len(cards) > 0 && cardH*len(cards)+14*(len(cards)-1) > avail {
+	if avail := bottom - y; len(cards) > 0 && cardH*len(cards)+14*(len(cards)-1) > avail {
 		cardH = max(96, (avail-14*(len(cards)-1))/len(cards))
 	}
 	for _, card := range cards {
