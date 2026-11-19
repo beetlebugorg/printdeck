@@ -617,6 +617,13 @@ func (a *App) Draw(c *gfx.Canvas) {
 	// menu of the display.
 	a.showShared()
 	a.setFleetSelf()
+	readoutMode = readoutsOneRow
+	if a.Printer != nil && a.Printer.State().HasTool2 && !a.resin() {
+		readoutMode = readoutsTall
+		if W > H {
+			readoutMode = readoutsTwoRows
+		}
+	}
 	if a.Fleet != nil {
 		setTopInset(fleetStatusH)
 	} else {

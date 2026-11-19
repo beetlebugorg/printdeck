@@ -19,9 +19,48 @@ import (
 // higher.
 func panelH() int {
 	if gfx.FinePrint() {
-		return 160
+		return 160 + readoutExtra()
 	}
-	return 132
+	return 132 + readoutExtra()
+}
+
+// The readouts of a printer with two nozzles: five readouts are narrow. On a tall screen
+// (readoutsTall) each target goes on a line of its own, under the value. On a wide screen
+// (readoutsTwoRows) the panel is narrower: the readouts go in two rows, NOZZLE, AUX and BED, then
+// CHAMBER and FAN. Draw sets readoutMode for each frame, under drawMu.
+const (
+	readoutsOneRow = iota
+	readoutsTall
+	readoutsTwoRows
+)
+
+var readoutMode = readoutsOneRow
+
+// readoutRowH is the height of one row of readouts.
+func readoutRowH() int {
+	if gfx.FinePrint() {
+		return 60
+	}
+	return 46
+}
+
+// tallExtra is the height of the line of the target under the value of a readout.
+func tallExtra() int {
+	if gfx.FinePrint() {
+		return 24
+	}
+	return 18
+}
+
+// readoutExtra is the height that readoutMode adds to the row of the readouts.
+func readoutExtra() int {
+	switch readoutMode {
+	case readoutsTall:
+		return tallExtra()
+	case readoutsTwoRows:
+		return readoutRowH() + 6 + 2*tallExtra()
+	}
+	return 0
 }
 
 // drawStatusBox draws the status panel in r. A tap on the nozzle or the bed sets its
@@ -29,9 +68,9 @@ func panelH() int {
 func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) {
 	c.RoundRect(r.Inset(-8), 8, edge)
 	c.RoundRect(r.Inset(-6), 6, lcd)
-	rows := kit.Rows(r, 0, kit.Px(46), kit.Px(8), kit.Px(24), kit.Px(20), kit.Px(20), kit.Px(6), kit.Fr(1))
+	rows := kit.Rows(r, 0, kit.Px(46+readoutExtra()), kit.Px(8), kit.Px(24), kit.Px(20), kit.Px(20), kit.Px(6), kit.Fr(1))
 	if gfx.FinePrint() {
-		rows = kit.Rows(r, 0, kit.Px(60), kit.Px(6), kit.Px(28), kit.Px(26), kit.Px(26), kit.Px(6), kit.Fr(1))
+		rows = kit.Rows(r, 0, kit.Px(60+readoutExtra()), kit.Px(6), kit.Px(28), kit.Px(26), kit.Px(26), kit.Px(6), kit.Fr(1))
 	}
 	// A printer with a chamber has a readout between the bed and the fan. A printer with two
 	// nozzles has the aux nozzle after the nozzle: the bed and the others move to the right.
@@ -46,11 +85,24 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		cols = append(cols, kit.Fr(1))
 		gap = 6
 	}
-	cells := kit.Cols(rows[0], gap, cols...)
+	var cells []image.Rectangle
 	var aux image.Rectangle
-	if two {
+	switch {
+	case two && readoutMode == readoutsTwoRows:
+		rr := kit.Rows(rows[0], 6, kit.Fr(1), kit.Fr(1))
+		three := []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1)}
+		top, bot := kit.Cols(rr[0], 8, three...), kit.Cols(rr[1], 8, three...)
+		aux = top[1]
+		cells = []image.Rectangle{top[0], top[2], bot[0]}
+		if chamber {
+			cells = append(cells, bot[1])
+		}
+	case two:
+		cells = kit.Cols(rows[0], gap, cols...)
 		aux = cells[1]
 		cells = append(cells[:1:1], cells[2:]...)
+	default:
+		cells = kit.Cols(rows[0], gap, cols...)
 	}
 	fanCell := cells[len(cells)-1]
 	fan := "off"
@@ -336,14 +388,27 @@ func readout(c *gfx.Canvas, r image.Rectangle, name, value, target string, power
 	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+nameH), name, gfx.Face(true, 15), lcdDim, gfx.Left)
 	vr := image.Rect(in.Min.X, in.Min.Y+nameH, in.Max.X, in.Max.Y)
 	tf := gfx.Face(true, 15)
+	if extra := tallExtra(); readoutMode != readoutsOneRow {
+		// A tall readout: the target on a line of its own, under the value.
+		tr := image.Rect(vr.Min.X, vr.Max.Y-extra, vr.Max.X, vr.Max.Y)
+		vr.Max.Y = tr.Min.Y
+		if target != "" {
+			c.Text(tr, gfx.Fit(tf, target, tr.Dx()), tf, lcdDim, gfx.Left)
+		}
+		target = ""
+	}
 	tw := 0
 	if target != "" {
 		tw = gfx.Width(tf, target) + 4
-		c.Text(vr, target, tf, lcdDim, gfx.Right)
 	}
 	size := 22
-	for size > 14 && gfx.Width(gfx.Face(true, size), value) > vr.Dx()-tw {
+	for size > 14 && gfx.Width(gfx.Face(true, size), value)+tw > vr.Dx() {
 		size--
+	}
+	if tw > 0 && gfx.Width(gfx.Face(true, size), value)+tw > vr.Dx() {
+		tw = 0 // no room for the target: the value only, so the two never overlap
+	} else if tw > 0 {
+		c.Text(vr, target, tf, lcdDim, gfx.Right)
 	}
 	c.Text(vr, value, gfx.Face(true, size), lcdInk, gfx.Left)
 	if heater && power > 0 {
