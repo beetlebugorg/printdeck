@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"strings"
 	"time"
 
@@ -19,9 +20,24 @@ import (
 // higher.
 func panelH() int {
 	if gfx.FinePrint() {
-		return 160 + readoutExtra()
+		return 160 + readoutExtra() + rollsH()
 	}
-	return 132 + readoutExtra()
+	return 132 + readoutExtra() + rollsH()
+}
+
+// rollsRow is true for a frame of a printer that tells what it has loaded (loader): the panel has
+// a row of little rolls, in the middle, over the progress bar. Draw sets it, under drawMu.
+var rollsRow bool
+
+// rollsH is the height of the row of the rolls, or 0.
+func rollsH() int {
+	switch {
+	case !rollsRow:
+		return 0
+	case gfx.FinePrint():
+		return 36
+	}
+	return 30
 }
 
 // The readouts of a printer with two nozzles: five readouts are narrow. On a tall screen
@@ -68,9 +84,9 @@ func readoutExtra() int {
 func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) {
 	c.RoundRect(r.Inset(-8), 8, edge)
 	c.RoundRect(r.Inset(-6), 6, lcd)
-	rows := kit.Rows(r, 0, kit.Px(46+readoutExtra()), kit.Px(8), kit.Px(24), kit.Px(20), kit.Px(20), kit.Px(6), kit.Fr(1))
+	rows := kit.Rows(r, 0, kit.Px(46+readoutExtra()), kit.Px(8), kit.Px(24), kit.Px(20), kit.Px(20), kit.Px(rollsH()), kit.Px(6), kit.Fr(1))
 	if gfx.FinePrint() {
-		rows = kit.Rows(r, 0, kit.Px(60+readoutExtra()), kit.Px(6), kit.Px(28), kit.Px(26), kit.Px(26), kit.Px(6), kit.Fr(1))
+		rows = kit.Rows(r, 0, kit.Px(60+readoutExtra()), kit.Px(6), kit.Px(28), kit.Px(26), kit.Px(26), kit.Px(rollsH()), kit.Px(6), kit.Fr(1))
 	}
 	// A printer with a chamber has a readout between the bed and the fan. A printer with two
 	// nozzles has the aux nozzle after the nozzle: the bed and the others move to the right.
@@ -188,13 +204,13 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		a.addFocus(label, hit, a.pickNextProject)
 	} else {
 		dr := line(rows[4])
-		if w := a.drawLoaded(c, dr, gfx.Width(small, p.detail)); w > 0 {
-			dr.Max.X -= w + 12
-		}
 		c.Text(dr, gfx.Fit(small, p.detail, dr.Dx()), small, lcdDim, gfx.Left)
 	}
+	if rollsRow {
+		a.drawLoaded(c, line(rows[5]))
+	}
 	if p.bar {
-		bar := line(rows[6])
+		bar := line(rows[7])
 		c.RoundRect(bar, 3, lcdCell)
 		if w := int(float64(bar.Dx()) * max(0, min(1, p.progress))); w > 0 {
 			c.RoundRect(image.Rect(bar.Min.X, bar.Min.Y, bar.Min.X+w, bar.Max.Y), 3, lcdInk)
@@ -269,23 +285,28 @@ var chamberPresets = []keypadPreset{{"Off", 0}, {"PETG", 35}, {"ABS", 50}, {"PC"
 // an AMS (printer.Klippy, printer.Bambu).
 type loader interface{ Loaded() []printer.Loaded }
 
-// drawLoaded draws what the printer has loaded at the right of r: a small square in the color of
-// each spool, and its material and the part left. A line under a square marks the spool that
-// feeds now. textW is the width of the text at the left of the line. It returns the width that
-// it used, or 0 when the printer gives no spools.
-func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle, textW int) int {
-	l, ok := a.Printer.(loader)
-	if !ok {
-		return 0
+// loadedItems returns what the printer of the app has loaded, or none.
+func (a *App) loadedItems() []printer.Loaded {
+	if l, ok := a.Printer.(loader); ok && !a.resin() {
+		return l.Loaded()
 	}
-	items := l.Loaded()
+	return nil
+}
+
+// drawLoaded draws what the printer has loaded in the middle of r: a little roll for each spool,
+// with its material and the part left. The filament on a roll is as thick as the part that is
+// left. A ring marks the roll that feeds now, and a line comes before the external spools. It
+// returns the width that it used, or 0 when the printer gives no spools.
+func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
+	items := a.loadedItems()
 	if len(items) == 0 {
 		return 0
 	}
 	face := gfx.Face(true, 13)
-	sq := min(14, r.Dy()-4)
-	// The squares take the space that the text of the line leaves, and at least 2/3 of the line.
-	avail := max(r.Dx()*2/3, r.Dx()-textW-12)
+	d := min(24, r.Dy()-4) // the diameter of a roll
+	if gfx.FinePrint() {
+		face = gfx.Face(true, 16)
+	}
 	// The texts: the material and the part left; the part left only; or no text, the first form
 	// that fits.
 	label := func(it printer.Loaded, form int) string {
@@ -312,60 +333,81 @@ func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle, textW int) int {
 		case i == 0:
 			return 0
 		case items[i].External && !items[i-1].External:
-			return 17
+			return 21
 		}
-		return 8
+		return 12
 	}
 	width := func(form int) int {
 		w := 0
 		for i, it := range items {
-			w += gap(i)
-			w += sq
+			w += gap(i) + d
 			if t := label(it, form); t != "" {
-				w += 3 + gfx.Width(face, t)
+				w += 4 + gfx.Width(face, t)
 			}
 		}
 		return w
 	}
 	form := 0
-	for form < 2 && width(form) > avail {
+	for form < 2 && width(form) > r.Dx() {
 		form++
 	}
 	w := min(width(form), r.Dx())
-	x := r.Max.X - w
-	y := r.Min.Y + (r.Dy()-sq)/2
+	x := r.Min.X + (r.Dx()-w)/2
+	y := r.Min.Y + (r.Dy()-d)/2
 	for i, it := range items {
-		if g := gap(i); g > 8 {
-			c.Fill(image.Rect(x+g/2-1, y-1, x+g/2, y+sq+1), lcdDim)
-			x += g
-		} else {
-			x += g
+		g := gap(i)
+		if g > 12 {
+			c.Fill(image.Rect(x+g/2-1, y+2, x+g/2, y+d-2), lcdDim)
 		}
-		if x+sq > r.Max.X {
+		x += g
+		if x+d > r.Max.X {
 			break
 		}
-		box := image.Rect(x, y, x+sq, y+sq)
-		col, known := printer.ParseHex(it.Color)
-		switch {
-		case it.Empty:
-			c.RoundRect(box, 2, lcdCell)
-		case known:
-			c.RoundRect(box.Inset(-1), 3, lcdDim)
-			c.RoundRect(box, 2, col)
-		default:
-			c.RoundRect(box, 2, lcdDim)
-		}
-		if it.Active {
-			c.Fill(image.Rect(box.Min.X, box.Max.Y+1, box.Max.X, box.Max.Y+3), orange)
-		}
-		x = box.Max.X
+		drawRoll(c, image.Rect(x, y, x+d, y+d), it)
+		x += d
 		if t := label(it, form); t != "" {
 			tw := gfx.Width(face, t)
-			c.Text(image.Rect(x+3, r.Min.Y, min(r.Max.X, x+3+tw), r.Max.Y), t, face, lcdDim, gfx.Left)
-			x += 3 + tw
+			c.Text(image.Rect(x+4, r.Min.Y, min(r.Max.X, x+4+tw), r.Max.Y), t, face, lcdDim, gfx.Left)
+			x += 4 + tw
 		}
 	}
 	return w
+}
+
+// drawRoll draws a roll of filament seen from the side, in the square box: the flange, the
+// filament in its color as thick as the part left, and the hub. A ring marks the roll that
+// feeds now.
+func drawRoll(c *gfx.Canvas, box image.Rectangle, it printer.Loaded) {
+	R := box.Dx() / 2
+	ctr := box.Min.Add(image.Pt(R, R))
+	disc := func(rad int, col color.RGBA) {
+		if rad > 0 {
+			c.RoundRect(image.Rect(ctr.X-rad, ctr.Y-rad, ctr.X+rad, ctr.Y+rad), rad, col)
+		}
+	}
+	if it.Active {
+		disc(R+3, orange)
+		disc(R+1, lcd)
+	}
+	hub := max(3, R*2/5)
+	disc(R, lcdDim)    // the flange
+	disc(R-1, lcdCell) // the space of the flange
+	if !it.Empty {
+		col, known := printer.ParseHex(it.Color)
+		if !known {
+			col = lcdDim
+		}
+		f := it.Fraction
+		if f < 0 {
+			f = 1 // not known: a full roll
+		}
+		if rad := hub + int(float64(R-1-hub)*min(1, f)+0.5); rad > hub {
+			disc(rad, lcdDim) // an edge, so a black roll shows on the dark panel
+			disc(rad-1, col)
+		}
+	}
+	disc(hub, lcdDim)
+	disc(hub-2, lcd) // the hole of the hub
 }
 
 // targetText is the target of a heater in a readout: "→210", or "off".

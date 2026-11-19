@@ -617,6 +617,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	// menu of the display.
 	a.showShared()
 	a.setFleetSelf()
+	rollsRow = len(a.loadedItems()) > 0
 	readoutMode = readoutsOneRow
 	if a.Printer != nil && a.Printer.State().HasTool2 && !a.resin() {
 		readoutMode = readoutsTall
