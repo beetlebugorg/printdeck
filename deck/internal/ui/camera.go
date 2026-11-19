@@ -22,10 +22,11 @@ import (
 //     camera opens its page.
 //
 // The page of one camera has its name, On, and with two cameras or more, the uses: Apps, Time
-// lapse and Pictures. A camera with a zoom control also has "Zoom to the part". Each use is on one camera. A check on one camera moves the use from the
-// other camera. A camera that goes off gives its uses to another camera that is on. The pictures
-// are for the remote viewers too (the webcam of the API). The Camera page shows a few frames a
-// second, and the small pictures one frame a second, only while the page is open. The
+// lapse and Pictures. A camera that runs also has "Zoom to the part". Each use is on one camera. A
+// check on one camera moves the use from the other camera. A camera that goes off gives its uses
+// to another camera that is on. The pictures are for the remote viewers too (the webcam of the
+// API). The Camera page shows a few frames a second, and the small pictures one frame a second,
+// only while the page is open. The
 // calibration (calibrate.go) lets the views of a camera follow the printer, and the View row
 // shows each view in the picture.
 

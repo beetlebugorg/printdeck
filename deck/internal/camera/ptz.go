@@ -45,8 +45,8 @@ type PTZPos struct {
 	Tilt int `json:"tilt,omitempty"`
 }
 
-// PTZ is the PTZ control of a camera: the ranges, and the position now. A camera with PTZ has a
-// zoom control. Pan and Tilt have no range (Valid is false) for a camera without them.
+// PTZ is the PTZ control of a camera: the ranges, and the position now. Pan and Tilt have no range
+// (Valid is false) for a control without them.
 type PTZ struct {
 	Zoom, Pan, Tilt PTZRange
 	Pos             PTZPos

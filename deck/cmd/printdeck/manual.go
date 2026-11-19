@@ -762,7 +762,7 @@ func manualParts() []section {
 						{"Apps", "Cura and the apps show this camera first."},
 						{"Time lapse", "The camera of the time lapse."},
 						{"Pictures", "The first layer picture, and the pictures on the phone."},
-						{"Zoom to the part", "During a print, the camera zooms to the plate, and at the end it goes back. It needs Measure the zoom and a calibration. Only a camera with a zoom control has this row."},
+						{"Zoom to the part", "During a print, the camera zooms to the plate, and at the end it goes back. It needs a calibration."},
 					},
 					Notes: []string{"Each use is on one camera. To move a use, check it on the other camera.",
 						"Zoom to the part zooms the picture of each viewer. The time lapse then uses most of the picture of the camera."}},
