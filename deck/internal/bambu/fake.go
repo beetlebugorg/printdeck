@@ -20,6 +20,7 @@ import (
 type Fake struct {
 	Serial, Code string
 	Cert         *x509.Certificate // the certificate of the broker
+	Roots        *x509.CertPool    // the CA of the certificate, for Client.Roots
 
 	ln       net.Listener
 	mu       sync.Mutex
@@ -28,15 +29,29 @@ type Fake struct {
 	conns    []*mqttConn
 }
 
-// NewFake starts a fake printer on a free port of 127.0.0.1.
+// NewFake starts a fake printer on a free port of 127.0.0.1, with a certificate for the serial
+// number from a CA of its own: a client of the test sets Roots to f.Roots.
 func NewFake(serial, code string) (*Fake, error) {
+	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	caTmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "Test BBL CA"},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
+		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign}
+	caDER, err := x509.CreateCertificate(rand.Reader, caTmpl, caTmpl, &caKey.PublicKey, caKey)
+	if err != nil {
+		return nil, err
+	}
+	ca, _ := x509.ParseCertificate(caDER)
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: serial},
-		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour)}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: serial},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
+		KeyUsage: x509.KeyUsageDigitalSignature}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, ca, &key.PublicKey, caKey)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +61,9 @@ func NewFake(serial, code string) (*Fake, error) {
 	if err != nil {
 		return nil, err
 	}
-	f := &Fake{Serial: serial, Code: code, Cert: cert, ln: ln, report: map[string]any{}}
+	roots := x509.NewCertPool()
+	roots.AddCert(ca)
+	f := &Fake{Serial: serial, Code: code, Cert: cert, Roots: roots, ln: ln, report: map[string]any{}}
 	go f.accept()
 	return f, nil
 }

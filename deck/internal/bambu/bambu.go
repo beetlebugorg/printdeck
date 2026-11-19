@@ -2,9 +2,9 @@
 // MQTT on port 8883, and the address of the camera (RTSPS on port 322).
 //
 // The login is the user "bblp" and the access code of the printer (its screen shows the code in
-// the network settings). The printer has a self-signed certificate. The client pins the SHA-256 of
-// that certificate: the first connection learns it (Client.Seen), and the next connections refuse
-// another certificate.
+// the network settings). The certificate of the printer comes from a device CA of Bambu Lab, and
+// names the serial number of the printer: the client checks both on each connection (Check), so
+// another device on the network cannot take the place of the printer.
 //
 // The printer sends a report on device/<serial>/report about once a second. An X1 or an X2D sends
 // the full state each time; a P1 or an A1 sends only the values that changed. The client merges
@@ -17,10 +17,12 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -40,17 +42,16 @@ const User = "bblp"
 // keepAlive is the MQTT keep alive. The client sends PINGREQ at half of it.
 const keepAlive = 30 * time.Second
 
-// ErrPin is a printer certificate that is not the pinned certificate.
-var ErrPin = errors.New("the certificate of the printer changed")
-
 // Client is the MQTT link to one printer.
 type Client struct {
 	Addr   string // "192.168.1.50" or "host:port"
 	Serial string // the serial number, for the topics
 	Code   string // the access code
-	// Pin is the SHA-256 of the certificate of the printer in hex, or "" to accept the first
-	// certificate (Seen gives it).
-	Pin string
+	// Pin is the SHA-256 of the last certificate of the printer in hex, or "". Check sets it.
+	// Roots are the root certificates for the check, or nil for the roots of Bambu Lab (a test
+	// sets its own).
+	Pin   string
+	Roots *x509.CertPool
 
 	mu     sync.Mutex
 	conn   *mqttConn
@@ -101,20 +102,6 @@ func (c *Client) addr() string {
 	return net.JoinHostPort(c.Addr, strconv.Itoa(MQTTPort))
 }
 
-// HasPin reports that Pin is set.
-func (c *Client) HasPin() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.Pin != ""
-}
-
-// SetPin sets Pin after the first connection.
-func (c *Client) SetPin(pin string) {
-	c.mu.Lock()
-	c.Pin = pin
-	c.mu.Unlock()
-}
-
 // Seen returns the SHA-256 of the certificate of the last connection in hex, or "".
 func (c *Client) Seen() string {
 	c.mu.Lock()
@@ -122,43 +109,78 @@ func (c *Client) Seen() string {
 	return c.seen
 }
 
-// tlsConfig checks the certificate of the printer against Pin. The certificate has no host name
-// that the deck can check, so the pin is the check.
+// tlsConfig checks the certificate of the printer (Check). Go cannot check it with its own check:
+// the certificate names the serial number in its CN, and has no host name.
 func (c *Client) tlsConfig() *tls.Config {
 	return &tls.Config{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: true, // Check in VerifyConnection checks the chain and the serial
 		MinVersion:         tls.VersionTLS12,
 		VerifyConnection: func(cs tls.ConnectionState) error {
-			if len(cs.PeerCertificates) == 0 {
-				return errors.New("the printer sent no certificate")
-			}
-			fp := Fingerprint(cs.PeerCertificates[0])
-			c.mu.Lock()
-			c.seen = fp
-			c.mu.Unlock()
-			c.mu.Lock()
-			pin := c.Pin
-			c.mu.Unlock()
-			if pin != "" && !strings.EqualFold(fp, pin) {
-				return ErrPin
-			}
-			return nil
+			return c.Check(&cs)
 		},
 	}
 }
 
-// Check checks the certificate of the camera against Pin: the printer has one certificate for
-// MQTT, the files and the camera. With no Pin it accepts the certificate.
-func (c *Client) Check(cs *tls.ConnectionState) error {
-	if len(cs.PeerCertificates) == 0 {
+// bblCA has the root certificates of Bambu Lab: BBL CA, and BBL CA2 RSA and BBL CA2 ECC under it.
+// They come from resources/cert/printer.cer of Bambu Studio and OrcaSlicer. Each printer has a
+// certificate of a BBL Device CA under them, with its serial number as its CN.
+//
+//go:embed bbl-ca.pem
+var bblCA []byte
+
+var bblRoots = func() *x509.CertPool {
+	p := x509.NewCertPool()
+	if !p.AppendCertsFromPEM(bblCA) {
+		panic("bambu: no certificates in bbl-ca.pem")
+	}
+	return p
+}()
+
+// ErrCert is a printer certificate that is not a certificate of Bambu Lab for the serial number.
+var ErrCert = errors.New("the certificate of the printer is not from Bambu Lab for this serial number")
+
+// verifyPrinter checks the certificates that the printer sent: a chain to the roots of Bambu Lab,
+// and the serial number as the CN of the certificate of the printer.
+func verifyPrinter(certs []*x509.Certificate, serial string, roots *x509.CertPool) error {
+	if len(certs) == 0 {
 		return errors.New("the printer sent no certificate")
 	}
-	c.mu.Lock()
-	pin := c.Pin
-	c.mu.Unlock()
-	if pin != "" && !strings.EqualFold(Fingerprint(cs.PeerCertificates[0]), pin) {
-		return ErrPin
+	leaf := certs[0]
+	inter := x509.NewCertPool()
+	for _, ic := range certs[1:] {
+		inter.AddCert(ic)
 	}
+	if _, err := leaf.Verify(x509.VerifyOptions{Roots: roots, Intermediates: inter,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}}); err != nil {
+		return fmt.Errorf("%w: %v", ErrCert, err)
+	}
+	if serial == "" || !strings.EqualFold(leaf.Subject.CommonName, serial) {
+		return fmt.Errorf("%w: it is for %q", ErrCert, leaf.Subject.CommonName)
+	}
+	return nil
+}
+
+// Check checks the certificates of a connection to the printer: MQTT, the files and the camera.
+// The chain goes to the roots of Bambu Lab, and the certificate names the serial number of the
+// printer (verifyPrinter). Seen then gives its SHA-256. A certificate other than Pin is a new
+// certificate of the same printer, for example after a firmware update: Check takes it as the
+// new Pin, and logs the change.
+func (c *Client) Check(cs *tls.ConnectionState) error {
+	roots := c.Roots
+	if roots == nil {
+		roots = bblRoots
+	}
+	if err := verifyPrinter(cs.PeerCertificates, c.Serial, roots); err != nil {
+		return err
+	}
+	fp := Fingerprint(cs.PeerCertificates[0])
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.seen = fp
+	if c.Pin != "" && !strings.EqualFold(fp, c.Pin) {
+		log.Printf("bambu: %s has a new certificate %s (it was %s)", c.Serial, fp, c.Pin)
+	}
+	c.Pin = fp
 	return nil
 }
 

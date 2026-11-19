@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -251,6 +252,9 @@ func (b *Bambu) track(r bambu.Report) {
 	p.percent = float64(r.Percent)
 }
 
+// max3MF is the largest 3MF that the deck reads from the card of the printer, in memory.
+const max3MF = 128 << 20
+
 // fetch3MF reads the 3MF of the print from the card of the printer. It tries the path of the
 // report, and its name at the top of the card and in /cache.
 var fetch3MF = func(c *bambu.Client, file string) ([]byte, error) {
@@ -259,7 +263,7 @@ var fetch3MF = func(c *bambu.Client, file string) ([]byte, error) {
 	var err error
 	for _, p := range []string{file, "/" + path.Base(file), "/cache/" + path.Base(file)} {
 		var buf bytes.Buffer
-		if err = c.Fetch(ctx, p, &buf, 512<<20); err == nil {
+		if err = c.Fetch(ctx, p, &buf, max3MF); err == nil {
 			return buf.Bytes(), nil
 		}
 	}
@@ -276,19 +280,23 @@ func (b *Bambu) countUse(p bambuPrint, complete bool) map[string]float64 {
 	b.mu.Lock()
 	sent := b.sent
 	b.mu.Unlock()
-	var data []byte
+	var fils []bambu.Filament
 	var err error
-	if sent.local != "" && path.Base(p.file) == sent.name {
-		data, err = os.ReadFile(sent.local) // the deck sent this file: its copy in the store
+	if sent.path != "" && b.Store != nil && path.Base(p.file) == sent.name {
+		// The deck sent this file: its copy in the store.
+		var ra io.ReaderAt
+		var size int64
+		var closeFile func()
+		if ra, size, closeFile, err = b.openFile(sent.path); err == nil {
+			fils, err = bambu.PlateFilaments(ra, size, p.plate)
+			closeFile()
+		}
+	} else {
+		var data []byte
+		if data, err = fetch3MF(b.Client, p.file); err == nil {
+			fils, err = bambu.PlateFilaments(bytes.NewReader(data), int64(len(data)), p.plate)
+		}
 	}
-	if data == nil {
-		data, err = fetch3MF(b.Client, p.file)
-	}
-	if err != nil {
-		log.Printf("bambu: no filament count: the 3MF %s: %v", p.file, err)
-		return nil
-	}
-	fils, err := bambu.PlateFilaments(bytes.NewReader(data), int64(len(data)), p.plate)
 	if err != nil {
 		log.Printf("bambu: no filament count: %s: %v", p.file, err)
 		return nil
