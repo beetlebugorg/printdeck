@@ -21,6 +21,9 @@ import (
 //	GET /system/printer.cfg?backup=1  the file before the last PUT
 //	PUT /system/printer.cfg           the new file, as the body
 //
+// On a deck with many printers, ?printer=<id> picks the printer.cfg of another Klipper printer
+// (specs/many-printers-on-one-deck.md); no parameter is the first printer.
+//
 // A PUT checks the new file, writes the old file to the backup (printer.cfg.bak in the state
 // folder of the deck: the deck cannot make files in the config folder of Klipper), writes the
 // new file, and restarts Klipper. It refuses a file with a parse error or with no [printer]
@@ -36,15 +39,33 @@ type cfgPrinter interface {
 	RestartKlipper() error
 }
 
-func registerPrinterCfg(mux *http.ServeMux, path, backup string, pr cfgPrinter, allow func(*http.Request) bool) {
+// cfgTarget is the printer.cfg of one Klipper printer: the file, its backup, and the printer.
+type cfgTarget struct {
+	path, backup string
+	pr           cfgPrinter
+}
+
+func registerPrinterCfg(mux *http.ServeMux, targets map[string]cfgTarget, allow func(*http.Request) bool) {
+	// target returns the printer.cfg of the parameter printer, or writes an error.
+	target := func(w http.ResponseWriter, r *http.Request) (cfgTarget, bool) {
+		t, ok := targets[r.URL.Query().Get("printer")]
+		if !ok {
+			http.Error(w, "No Klipper printer with this ID.", http.StatusNotFound)
+		}
+		return t, ok
+	}
 	mux.HandleFunc("GET /system/printer.cfg", func(w http.ResponseWriter, r *http.Request) {
 		if !allow(r) {
 			http.Error(w, "Log in, or send an API key in X-Api-Key.", http.StatusUnauthorized)
 			return
 		}
-		p := path
+		t, ok := target(w, r)
+		if !ok {
+			return
+		}
+		p := t.path
 		if r.URL.Query().Get("backup") == "1" {
-			p = backup
+			p = t.backup
 		}
 		b, err := os.ReadFile(p)
 		if err != nil {
@@ -60,6 +81,11 @@ func registerPrinterCfg(mux *http.ServeMux, path, backup string, pr cfgPrinter, 
 			http.Error(w, "Log in, or send an API key in X-Api-Key.", http.StatusUnauthorized)
 			return
 		}
+		t, ok := target(w, r)
+		if !ok {
+			return
+		}
+		path, backup, pr := t.path, t.backup, t.pr
 		b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxPrinterCfg))
 		if err != nil {
 			http.Error(w, "The file is too large.", http.StatusRequestEntityTooLarge)

@@ -100,7 +100,13 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 					return api.ValidKey(r) && (r.Method == http.MethodGet || app.Signing == nil || !app.Signing.SignedOnly())
 				}
 			}
-			registerPrinterCfg(mux, k.ConfigPath, filepath.Join(cfg.StateDir, "printer.cfg.bak"), k, allow)
+			targets := map[string]cfgTarget{"": {k.ConfigPath, filepath.Join(cfg.StateDir, "printer.cfg.bak"), k}}
+			for _, o := range others {
+				if ko, isK := o.pr.(*printer.Klippy); isK && ko.ConfigPath != "" {
+					targets[o.id] = cfgTarget{ko.ConfigPath, filepath.Join(o.cfg.StateDir, "printer.cfg.bak"), ko}
+				}
+			}
+			registerPrinterCfg(mux, targets, allow)
 		}
 	}
 	// The zslice web app can call the API from the browser (WEB_ORIGINS).
