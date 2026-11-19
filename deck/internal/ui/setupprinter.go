@@ -61,9 +61,11 @@ func (a *App) afterWifi() int {
 
 // drawSetupPrinter asks for the kind of the printer.
 func (a *App) drawSetupPrinter(c *gfx.Canvas, box image.Rectangle) {
+	// The content keeps 12 pixels inside the panel box. y0 is the top of the box, less 12.
+	x0, x1, y0 := box.Min.X+12, box.Max.X-12, box.Min.Y-12
 	s := a.setup
-	hintText(c, image.Rect(24, 74, W-24, 100), "Which printer does this deck drive?", gfx.Left)
-	rows := kit.Rows(image.Rect(24, 112, W-24, box.Max.Y-140), 16, kit.Fr(1), kit.Fr(1))
+	hintText(c, image.Rect(x0, y0+74, x1, y0+100), "Which printer does this deck drive?", gfx.Left)
+	rows := kit.Rows(image.Rect(x0, y0+112, x1, box.Max.Y-140), 16, kit.Fr(1), kit.Fr(1))
 	choice := func(r image.Rectangle, title, line, kind string) {
 		a.namedKey(c, r, title, func() {
 			s.printer.kind = kind
@@ -82,8 +84,8 @@ func (a *App) drawSetupPrinter(c *gfx.Canvas, box image.Rectangle) {
 	choice(rows[0], "Printer on USB", "A FDM printer with Klipper: its board on a USB port of the deck", printer.KindKlipper)
 	choice(rows[1], "Resin printer on the network", "A ChiTu board, for example a Peopoly Phenom", printer.KindChiTu)
 	y := box.Max.Y - 92
-	half := (W - 48 - 8) / 2
-	a.button(c, image.Rect(24, y, 24+half, y+68), "Back", raised, text, func() {
+	half := (x1 - x0 - 8) / 2
+	a.button(c, image.Rect(x0, y, x0+half, y+68), "Back", raised, text, func() {
 		if s.printerOnly {
 			a.setup = nil // opened from Settings
 			return
@@ -145,13 +147,15 @@ func (a *App) checkBoard(addr string) {
 
 // drawSetupFind lists the boards on the network.
 func (a *App) drawSetupFind(c *gfx.Canvas, box image.Rectangle) {
+	// The content keeps 12 pixels inside the panel box. y0 is the top of the box, less 12.
+	x0, x1, y0 := box.Min.X+12, box.Max.X-12, box.Min.Y-12
 	s := a.setup
 	head := "Pick the printer."
 	if s.printer.finding {
 		head = "Searching the network for resin printers…"
 	}
-	hintText(c, image.Rect(24, 74, W-24, 100), head, gfx.Left)
-	list := image.Rect(24, 112, W-24, box.Max.Y-140)
+	hintText(c, image.Rect(x0, y0+74, x1, y0+100), head, gfx.Left)
+	list := image.Rect(x0, y0+112, x1, box.Max.Y-140)
 	window(c, list)
 	a.region("Printers", list)
 	for i, b := range s.printer.boards {
@@ -175,10 +179,10 @@ func (a *App) drawSetupFind(c *gfx.Canvas, box image.Rectangle) {
 		}})
 	}
 	y := box.Max.Y - 92
-	bw := (W - 48 - 16) / 3
-	a.button(c, image.Rect(24, y, 24+bw, y+68), "Back", raised, text, func() { s.step, s.msg = setupPrinter, "" })
-	a.button(c, image.Rect(24+bw+8, y, 24+2*bw+8, y+68), "Search", raised, text, a.findBoards)
-	a.button(c, image.Rect(W-24-bw, y, W-24, y+68), "Address", raised, text, func() {
+	bw := (x1 - x0 - 16) / 3
+	a.button(c, image.Rect(x0, y, x0+bw, y+68), "Back", raised, text, func() { s.step, s.msg = setupPrinter, "" })
+	a.button(c, image.Rect(x0+bw+8, y, x0+2*bw+8, y+68), "Search", raised, text, a.findBoards)
+	a.button(c, image.Rect(x1-bw, y, x1, y+68), "Address", raised, text, func() {
 		s.kb = &keyboard{title: "Address of the printer", max: 64, ok: "Next", cancel: "Back",
 			value: s.printer.board.IP,
 			back:  func() { s.kb = nil },
@@ -193,16 +197,18 @@ func (a *App) drawSetupFind(c *gfx.Canvas, box image.Rectangle) {
 
 // drawSetupBoard shows the board that the user picked, and its name.
 func (a *App) drawSetupBoard(c *gfx.Canvas, box image.Rectangle) {
+	// The content keeps 12 pixels inside the panel box. y0 is the top of the box, less 12.
+	x0, x1, y0 := box.Min.X+12, box.Max.X-12, box.Min.Y-12
 	s := a.setup
 	p := &s.printer
-	hintText(c, image.Rect(24, 74, W-24, 100), "The printer answered.", gfx.Left)
+	hintText(c, image.Rect(x0, y0+74, x1, y0+100), "The printer answered.", gfx.Left)
 	state := "No print"
 	if p.status.Printing() {
 		state = fmt.Sprintf("Printing · %.0f%% of the file · Z %.2f mm", p.status.Progress()*100, p.status.Z)
 	}
 	lines := []string{"Board", strings.TrimSpace(p.board.Name + " " + p.board.Version), "Address", p.board.IP,
 		"MAC", p.board.MAC, "Now", state}
-	win := image.Rect(24, 112, W-24, 112+2*(2*30+10)+14)
+	win := image.Rect(x0, y0+112, x1, y0+112+2*(2*30+10)+14)
 	window(c, win)
 	cols := 1
 	if W > H {
@@ -217,7 +223,7 @@ func (a *App) drawSetupBoard(c *gfx.Canvas, box image.Rectangle) {
 		c.Text(r[1], gfx.Fit(gfx.Face(true, 20), lines[2*i+1], r[1].Dx()), gfx.Face(true, 20), lcdInk, gfx.Left)
 	}
 	// The name of the printer: a tap changes it.
-	nameRow := image.Rect(24, win.Max.Y+16, W-24, win.Max.Y+16+setupRowH)
+	nameRow := image.Rect(x0, win.Max.Y+16, x1, win.Max.Y+16+setupRowH)
 	a.namedKey(c, nameRow, "Name", func() {
 		s.kb = &keyboard{title: "Name of the printer", max: 40, ok: "Done", cancel: "Back", value: p.name,
 			back: func() { s.kb = nil },
@@ -233,9 +239,9 @@ func (a *App) drawSetupBoard(c *gfx.Canvas, box image.Rectangle) {
 	c.Text(in, p.name, gfx.Face(true, 22), text, gfx.Right)
 
 	y := box.Max.Y - 92
-	half := (W - 48 - 8) / 2
-	a.button(c, image.Rect(24, y, 24+half, y+68), "Back", raised, text, func() { s.step, s.msg = setupFind, "" })
-	a.button(c, image.Rect(W-24-half, y, W-24, y+68), "Use this printer", green, onAcc, func() { s.step = setupDone })
+	half := (x1 - x0 - 8) / 2
+	a.button(c, image.Rect(x0, y, x0+half, y+68), "Back", raised, text, func() { s.step, s.msg = setupFind, "" })
+	a.button(c, image.Rect(x1-half, y, x1, y+68), "Use this printer", green, onAcc, func() { s.step = setupDone })
 }
 
 // printerLine is the printer of the end of the setup, or "" when the setup has no printer step.

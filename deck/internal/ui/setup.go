@@ -186,7 +186,12 @@ func (a *App) drawSetup(c *gfx.Canvas) {
 		a.setupMessage(c, image.Rect(24, 222, W-24, 252))
 		return
 	}
-	box := image.Rect(12, 12, W-12, H-12)
+	// The panel keeps the outer margin of the pages: 24 on a tall screen, 16 on a wide one.
+	m := 24
+	if W > H {
+		m = 16
+	}
+	box := image.Rect(m, m, W-m, H-m)
 	title, name := setupTitle(s.step, a.afterWifi() == setupPrinter), "SETUP"
 	if s.help && s.step == setupDone {
 		title, name = "Help", "HELP"
@@ -199,7 +204,7 @@ func (a *App) drawSetup(c *gfx.Canvas) {
 	case setupWifi:
 		a.drawSetupWifi(c, box)
 	case setupJoin:
-		label(c, image.Rect(24, 300, W-24, 340), "Joining "+s.ssid+"…", gfx.Center)
+		label(c, image.Rect(box.Min.X+12, 312, box.Max.X-12, 352), "Joining "+s.ssid+"…", gfx.Center)
 	case setupDone:
 		a.drawSetupDone(c, box)
 	case setupPrinter:
@@ -209,7 +214,7 @@ func (a *App) drawSetup(c *gfx.Canvas) {
 	case setupBoard:
 		a.drawSetupBoard(c, box)
 	}
-	a.setupMessage(c, image.Rect(24, box.Max.Y-130, W-24, box.Max.Y-100))
+	a.setupMessage(c, image.Rect(box.Min.X+12, box.Max.Y-130, box.Max.X-12, box.Max.Y-100))
 }
 
 // setupTitle is the title of a step: three steps with the printer, two without.
@@ -249,15 +254,17 @@ func (a *App) setupMessage(c *gfx.Canvas, r image.Rectangle) {
 }
 
 func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
+	// The content keeps 12 pixels inside the panel box. y0 is the top of the box, less 12.
+	x0, x1, y0 := box.Min.X+12, box.Max.X-12, box.Min.Y-12
 	s := a.setup
 	head := "Pick the Wi-Fi network."
 	if s.status.Connected() {
 		head = "On " + s.status.SSID + " at " + s.status.IP + "."
 	}
-	hintText(c, image.Rect(24, 74, W-24, 100), gfx.Fit(gfx.Face(false, 16), head, W-48), gfx.Left)
+	hintText(c, image.Rect(x0, y0+74, x1, y0+100), gfx.Fit(gfx.Face(false, 16), head, x1-x0), gfx.Left)
 
 	// The list of networks. It scrolls when it is longer than the window.
-	list := image.Rect(24, 112, W-24, box.Max.Y-140)
+	list := image.Rect(x0, y0+112, x1, box.Max.Y-140)
 	window(c, list)
 	a.region("Networks", list)
 	maxScroll := max(0, len(s.nets)*setupRowH-list.Dy())
@@ -296,14 +303,14 @@ func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
 
 	// Scan, Hidden, and Next (or Skip when there is no Wi-Fi)
 	y := box.Max.Y - 92
-	bw := (W - 48 - 16) / 3
+	bw := (x1 - x0 - 16) / 3
 	if s.busy {
-		key(c, image.Rect(24, y, 24+bw, y+68), "Scan", surface, dim, false)
-		a.region("Scan", image.Rect(24, y, 24+bw, y+68))
+		key(c, image.Rect(x0, y, x0+bw, y+68), "Scan", surface, dim, false)
+		a.region("Scan", image.Rect(x0, y, x0+bw, y+68))
 	} else {
-		a.button(c, image.Rect(24, y, 24+bw, y+68), "Scan", raised, text, a.setupScan)
+		a.button(c, image.Rect(x0, y, x0+bw, y+68), "Scan", raised, text, a.setupScan)
 	}
-	a.button(c, image.Rect(24+bw+8, y, 24+2*bw+8, y+68), "Hidden", raised, text, func() {
+	a.button(c, image.Rect(x0+bw+8, y, x0+2*bw+8, y+68), "Hidden", raised, text, func() {
 		s.kb = &keyboard{title: "Name of the network", max: 32, ok: "Next", cancel: "Back",
 			back: func() { s.kb = nil },
 			done: func(ssid string) {
@@ -316,7 +323,7 @@ func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
 	if s.status.Connected() {
 		next = "Next"
 	}
-	a.button(c, image.Rect(W-24-bw, y, W-24, y+68), next, green, onAcc, func() { s.step = a.afterWifi() })
+	a.button(c, image.Rect(x1-bw, y, x1, y+68), next, green, onAcc, func() { s.step = a.afterWifi() })
 }
 
 // setupPassword asks for the password of a network. An empty password is for an open network.
@@ -335,6 +342,8 @@ func (a *App) setupPassword(ssid string) {
 }
 
 func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
+	// The content keeps 12 pixels inside the panel box. y0 is the top of the box, less 12.
+	x0, x1, y0 := box.Min.X+12, box.Max.X-12, box.Min.Y-12
 	s := a.setup
 	var lines []string // a label, then its value
 	if s.status.Connected() {
@@ -366,7 +375,7 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 	}
 	n := len(lines) / 2
 	rows := (n + cols - 1) / cols
-	win := image.Rect(24, 80, W-24, 80+rows*(2*rowH+10)+14)
+	win := image.Rect(x0, y0+80, x1, y0+80+rows*(2*rowH+10)+14)
 	window(c, win)
 	for i, cell := range kit.Grid(kit.Inset(win, 16, 12, 16, 12), cols, rows, 10)[:n] {
 		r := kit.Rows(cell, 0, kit.Px(rowH), kit.Px(rowH))
@@ -382,13 +391,13 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 		}
 	}
 	y := box.Max.Y - 92
-	half := (W - 48 - 8) / 2
+	half := (x1 - x0 - 8) / 2
 	if s.help {
-		a.button(c, image.Rect(24, y, 24+half, y+68), "Wi-Fi", raised, text, func() { s.step = setupWifi; a.setupScan() })
-		a.button(c, image.Rect(W-24-half, y, W-24, y+68), "Close", green, onAcc, func() { a.setup = nil })
+		a.button(c, image.Rect(x0, y, x0+half, y+68), "Wi-Fi", raised, text, func() { s.step = setupWifi; a.setupScan() })
+		a.button(c, image.Rect(x1-half, y, x1, y+68), "Close", green, onAcc, func() { a.setup = nil })
 		return
 	}
-	a.button(c, image.Rect(24, y, 24+half, y+68), "Back", raised, text, func() {
+	a.button(c, image.Rect(x0, y, x0+half, y+68), "Back", raised, text, func() {
 		if a.afterWifi() == setupPrinter {
 			s.step, s.msg = setupPrinter, ""
 			return
@@ -396,7 +405,7 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 		s.step = setupWifi
 		a.setupScan()
 	})
-	a.button(c, image.Rect(W-24-half, y, W-24, y+68), "Finish", green, onAcc, func() {
+	a.button(c, image.Rect(x1-half, y, x1, y+68), "Finish", green, onAcc, func() {
 		if err := a.savePrinter(); err != nil {
 			s.msg = "The printer was not saved: " + err.Error()
 			return
