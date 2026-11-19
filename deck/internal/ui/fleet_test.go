@@ -74,7 +74,8 @@ func tap(a *App, r image.Rectangle) {
 	a.handle(touch.Event{Kind: touch.Up, X: x, Y: y})
 }
 
-// Each page of a deck with many printers names its printer, and the chip opens the list. A
+// Each page of a deck with many printers names its printer, and its tab in the status bar opens
+// the list. A
 // printer that ended a print shows a banner on the other printers, and Show switches.
 func TestFleetScreens(t *testing.T) {
 	s, prs := fleetDeck(t)
@@ -85,16 +86,16 @@ func TestFleetScreens(t *testing.T) {
 	}
 	f := frameText(taz)
 	if !strings.Contains(f, "TAZ") {
-		t.Fatal("the main page has no printer chip")
+		t.Fatal("the main page does not name the printer")
 	}
 	shot(t, taz, "main")
-	chip, ok := taz.KeyRect("Printer")
+	tab, ok := taz.KeyRect("Printers")
 	if !ok {
-		t.Fatal("no printer chip")
+		t.Fatal("no tab of the printer in the status bar")
 	}
-	tap(taz, chip)
+	tap(taz, tab)
 	if !taz.fleetList {
-		t.Fatal("the chip opened no list")
+		t.Fatal("the tab of the printer opened no list")
 	}
 	f = frameText(taz)
 	for _, want := range []string{"PRINTERS", "TAZ Workhorse", "Mini 2", "Phenom", "ON SCREEN", "RESIN", "Printing · 43 %"} {
@@ -204,21 +205,39 @@ func TestStopAll(t *testing.T) {
 	}
 }
 
-// The status bar at the top of each page shows each printer and its state, and a tap on it opens
-// the list of the printers from any page.
+// The status bar at the top of each page has a tab for each printer, with its state. A tap on
+// another tab shows that printer, and a tap on the tab of this screen opens the list.
 func TestFleetStatusBar(t *testing.T) {
 	s, _ := fleetDeck(t)
 	a := s.Active()
 	a.pages = []page{pageMachine}
 	f := frameText(a)
-	for _, want := range []string{"TAZ 43%", "MINI Ready", "PHEN Done"} {
+	for _, want := range []string{`"TAZ"`, "43% · 1:12", `"MINI"`, `"Ready"`, `"PHEN"`, `"Done"`} {
 		if !strings.Contains(f, want) {
-			t.Errorf("the status bar has no %q", want)
+			t.Errorf("the status bar has no %s", want)
 		}
 	}
-	tap(a, image.Rect(0, 0, a.Screen().W, fleetStatusH))
+	shot(t, a, "statusbar")
+	if a.fleetList || s.Active() != a {
+		t.Fatal("bad start")
+	}
+	tab, ok := a.KeyRect("Printers")
+	if !ok || tab.Max.Y > fleetStatusH {
+		t.Fatalf("the tab of the TAZ: %v %v", tab, ok)
+	}
+	tap(a, tab)
 	if !a.fleetList {
-		t.Fatal("a tap on the status bar opened no list")
+		t.Fatal("a tap on the tab of this screen opened no list")
+	}
+	a.fleetList = false
+	frameText(a)
+	mini, ok := a.KeyRect("Mini 2")
+	if !ok || mini.Max.Y > fleetStatusH {
+		t.Fatalf("the tab of the Mini: %v %v", mini, ok)
+	}
+	tap(a, mini)
+	if s.Active() != s.Apps()[1] {
+		t.Fatal("a tap on the tab of the Mini did not show the Mini")
 	}
 }
 
