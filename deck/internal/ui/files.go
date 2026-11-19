@@ -311,11 +311,12 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	var pic, box, keys image.Rectangle
 	if pg.wide {
 		// The picture and the slicer data side by side, as high as each other; the keys in the row
-		// of actions.
+		// of actions. The table is at least 280 wide, so that its values keep their size.
 		content, acts := pg.split()
-		side := min(content.Dy(), tableH, content.Dx()/2)
+		side := min(content.Dy(), tableH, content.Dx()/2, content.Dx()-16-280)
 		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
-		pic, box, keys = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0], acts
+		h := min(tableH, content.Dy())
+		pic, box, keys = kit.Rows(cols[0], 0, kit.Px(max(side, h)))[0], kit.Rows(cols[1], 0, kit.Px(h))[0], acts
 	} else {
 		// The picture has the width of the page, as the table and the keys under it.
 		r := kit.Rows(pg.body(), 12, kit.Fr(1), kit.Px(tableH), kit.Px(80))
