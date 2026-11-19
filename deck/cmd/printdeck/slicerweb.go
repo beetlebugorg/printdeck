@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"printdeck/internal/printer"
 
 	"printdeck/internal/remote"
 	"printdeck/internal/system"
@@ -81,6 +82,28 @@ type slicerPrinter struct {
 	Color string `json:"color"` // "#rrggbb"
 	Kind  string `json:"kind"`  // "fdm" or "resin"
 	URL   string `json:"url"`
+	// Files is the print file that the printer takes: "gcode" (Klipper), "gcode.3mf" (a Bambu
+	// Lab printer: a sliced 3MF with Metadata/plate_<n>.gcode), or "ctb" (a ChiTu resin printer,
+	// from ChiTuBox only). Model is the model that the printer reports, for example "Bambu Lab
+	// X2D", or "".
+	Files string `json:"files"`
+	Model string `json:"model,omitempty"`
+}
+
+// printerFormat returns the file format and the model of the printer with the ID, for
+// /slicer/printer.json ("" for the first printer). The deck sets it at its start.
+var printerFormat func(id string) (files, model string)
+
+// backendFormat is the file format and the model of a printer backend.
+func backendFormat(pr printerBackend) (files, model string) {
+	switch b := pr.(type) {
+	case *printer.Bambu:
+		model, _ = b.Client.Version()
+		return "gcode.3mf", model
+	case *printer.ChiTu:
+		return "ctb", b.Machine().Board
+	}
+	return "gcode", ""
 }
 
 // deckPrinterList returns the printers of a deck with many printers, or is nil.
@@ -94,11 +117,24 @@ func slicerPrinterFile() any {
 		URL      string          `json:"url"`
 		HTTPS    string          `json:"https"`
 		Printers []slicerPrinter `json:"printers,omitempty"`
+		// The file format and the model of the printer at url (the first printer).
+		Files string `json:"files,omitempty"`
+		Model string `json:"model,omitempty"`
 	}{Name: system.DeckName(), Kind: "printdeck", HTTPS: httpsURL()}
+	if printerFormat != nil {
+		out.Files, out.Model = printerFormat("")
+	}
 	if deckPrinterList != nil {
 		for i, id := range deckPrinterList() {
 			p := slicerPrinter{ID: id.ID, Name: id.Name, Label: id.Label, Kind: "fdm",
 				Color: fmt.Sprintf("#%02x%02x%02x", id.Color.R, id.Color.G, id.Color.B)}
+			if printerFormat != nil {
+				key := id.ID
+				if i == 0 {
+					key = ""
+				}
+				p.Files, p.Model = printerFormat(key)
+			}
 			if id.Resin {
 				p.Kind = "resin"
 			}

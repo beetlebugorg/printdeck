@@ -219,6 +219,14 @@ func run(cfg config.Config) {
 		apps, backends, cfgs = append(apps, a), append(backends, pr), append(cfgs, pcfg)
 	}
 	app, pr := apps[0], backends[0]
+	printerFormat = func(id string) (string, string) {
+		for i, p := range printers {
+			if (id == "" && i == 0) || (id != "" && p.ID == id) {
+				return backendFormat(backends[i])
+			}
+		}
+		return "", ""
+	}
 	deckPrefs(cfg.StateDir, apps)
 	events := make(chan touch.Event, 64)
 	// On the Printdeck OS image, the first start opens the setup screen, and the deck checks
