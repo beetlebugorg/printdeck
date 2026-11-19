@@ -65,6 +65,27 @@ jobs:
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: os/get-zslice.sh
 
+      # The print view of zslice for the 3D view of the deck: the C library for aarch64, from a
+      # pinned commit of zslice. The deck links it with cgo, with libjpeg-turbo and the GPU code.
+      - name: Get the source of zslice
+        uses: actions/checkout@v5
+        with:
+          repository: beetlebugorg/zslice
+          ref: f25f99c20a0ef07f4fe36ac276468526a19c3bb1
+          path: zslice-src
+
+      - name: Build the library of zslice for aarch64
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/zig.tar.xz" https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz
+          echo "70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00  $RUNNER_TEMP/zig.tar.xz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/zig.tar.xz" -C "$RUNNER_TEMP"
+          out="$RUNNER_TEMP/zslice-arm64"
+          cd zslice-src
+          "$RUNNER_TEMP/zig-x86_64-linux-0.16.0/zig" build lib -Doptimize=ReleaseFast -Dtarget=aarch64-linux-gnu.2.36 --prefix "$out"
+          mkdir -p "$out/include" && cp include/*.h "$out/include/"
+          ls -la "$out/lib"
+          echo "PRINTDECK_ZSLICE_LIB=$out" >> "$GITHUB_ENV"
+
       - name: Build
         env:
           PRINTDECK_SIGNING_KEY: ${{ github.event_name != 'pull_request' && secrets.PRINTDECK_SIGNING_KEY || '' }}
