@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"strings"
 	"testing"
+	"time"
 
 	"printdeck/internal/printer"
 )
@@ -89,4 +91,22 @@ func TestX2DFilament(t *testing.T) {
 		}
 	}
 	shot(t, a, "x2d-filament")
+}
+
+// The print page and the wide screen of an X2D: the tall readouts keep the value and the
+// target apart.
+func TestX2DPrintShots(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a := New()
+		p := newX2D()
+		p.State_.Printing, p.State_.File, p.State_.Completion = true, "benchy.gcode.3mf", 81
+		p.State_.Layer, p.State_.Layers, p.State_.HasTimeLeft, p.State_.TimeLeft = 82, 127, true, 17*time.Minute
+		a.Printer = p
+		a.Wide = wide
+		f := frameText(a)
+		if !strings.Contains(f, "→220") {
+			t.Errorf("wide %v: no target", wide)
+		}
+		shot(t, a, fmt.Sprintf("x2d-print-wide%v", wide))
+	}
 }
