@@ -66,8 +66,8 @@ func (b *Bambu) threeMF(p string) (bambuFile, error) {
 }
 
 // openFile opens the 3MF p of the store for the zip reader: the store opens it in its folder
-// (os.OpenInRoot), so p cannot leave the folder. The reader reads the parts of the zip that it
-// needs, not the whole file.
+// (os.OpenInRoot), so p cannot leave the folder. The zip reader reads only the parts that it
+// needs.
 func (b *Bambu) openFile(p string) (io.ReaderAt, int64, func(), error) {
 	rc, err := b.Store.Open(p)
 	if err != nil {
