@@ -154,12 +154,18 @@ func led(c *gfx.Canvas, x, y int, on bool) {
 // open page, the material in the printer), dark for cap keyOff. A key that only acts has no LED.
 // A pressed key gets darker.
 func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool) {
-	keyBeside(c, r, label, cap, ink, pressed, 0)
+	keyAt(c, r, label, cap, ink, pressed, 0, 0)
 }
 
 // keyBeside is key with room at the right of the label: right pixels of the cap stay free, for a
 // sign such as the lock of printerKey.
 func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool, right int) {
+	keyAt(c, r, label, cap, ink, pressed, right, 0)
+}
+
+// keyAt is keyBeside with a label of at most px pixels (0 for no limit). The keys of one row use
+// the same px from rowLabelPx, so that their labels have one size.
+func keyAt(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool, right, px int) {
 	on, hasLED := cap == keyOn, cap == keyOn || cap == keyOff
 	if hasLED {
 		cap = raised
@@ -178,10 +184,7 @@ func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RG
 	c.RoundRect(r, 4, border)
 	c.RoundRect(r.Inset(2), 3, face)
 	// The printed frame: closer to the edge on a small key.
-	in := 6
-	if min(r.Dx(), r.Dy()) < 50 {
-		in = 4
-	}
+	in := keyFrame(r)
 	c.RoundRect(r.Inset(in), 2, darken(face, 0.10))
 	c.RoundRect(r.Inset(in+1), 2, face)
 	// The LED: lit orange when the key is on, dark when it is off.
@@ -201,12 +204,114 @@ func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RG
 	if pressed {
 		area = area.Add(image.Pt(0, 1))
 	}
-	size := 20
-	if area.Dy() < 40 {
-		size = 16
-	}
 	area.Max.X -= right
-	keyLabel(c, area, strings.ToUpper(label), size, ink)
+	f := fitKeyLabel(area, strings.ToUpper(label), keyLabelSize(area), px)
+	f.draw(c, area, ink)
+}
+
+// keyFrame is the inset of the printed frame of key r: closer to the edge on a small key.
+func keyFrame(r image.Rectangle) int {
+	if min(r.Dx(), r.Dy()) < 50 {
+		return 4
+	}
+	return 6
+}
+
+// keyLabelSize is the size of the label of a key with the label area area, before the fit.
+func keyLabelSize(area image.Rectangle) int {
+	if area.Dy() < 40 {
+		return 16
+	}
+	return 20
+}
+
+// rowLabelPx is the label size for one row of keys: the largest size at which each label fits its
+// key rs[i]. Give it to keyAt or buttonAt for each key of the row.
+func rowLabelPx(rs []image.Rectangle, labels []string) int {
+	px := 0
+	for i, r := range rs {
+		area := r.Inset(keyFrame(r))
+		f := fitKeyLabel(area, strings.ToUpper(labels[i]), keyLabelSize(area), 0)
+		if px == 0 || f.px < px {
+			px = f.px
+		}
+	}
+	return px
+}
+
+// labelFit is the place of the label of a key: one or two lines of px pixels in the room in.
+type labelFit struct {
+	in    image.Rectangle
+	label string
+	px    int
+	split int // the index of the space between the two lines, or -1 for one line
+}
+
+// draw draws the label in area, the label area of the key.
+func (f labelFit) draw(c *gfx.Canvas, area image.Rectangle, ink color.RGBA) {
+	face := gfx.ExactFace(true, f.px)
+	if f.split < 0 {
+		c.Text(f.in, f.label, face, ink, gfx.Center)
+		return
+	}
+	lineH := face.Metrics().Height.Ceil()
+	y := area.Min.Y + area.Dy()/2 - lineH
+	c.Text(image.Rect(f.in.Min.X, y, f.in.Max.X, y+lineH), f.label[:f.split], face, ink, gfx.Center)
+	c.Text(image.Rect(f.in.Min.X, y+lineH, f.in.Max.X, y+2*lineH), f.label[f.split+1:], face, ink, gfx.Center)
+}
+
+// fitKeyLabel finds the place of the label of a key in area, at size pixels or smaller, and at most
+// px pixels when px is more than 0. A label is never cut: one line down to 13 pixels; then two
+// lines, when the key is high enough; then the size that fits the key, also under the floor of
+// the large text.
+func fitKeyLabel(area image.Rectangle, label string, size, px int) labelFit {
+	// The size of the label with the large text, and the smallest size before a label goes to
+	// two lines: 2/3 of it, and not below keyLabelMin.
+	top := gfx.FaceSize(size)
+	if px > 0 {
+		top = min(top, px)
+	}
+	floor := min(top, max(keyLabelMin, top*2/3))
+	pad := max(2, min(keyLabelPad, area.Dx()/12)) // less on a small key, such as a step of a move
+	oneLine := func(in image.Rectangle, lo int) (labelFit, bool) {
+		for px := top; px >= lo; px-- {
+			if gfx.Width(gfx.ExactFace(true, px), label) <= in.Dx() {
+				return labelFit{in, label, px, -1}, true
+			}
+		}
+		return labelFit{}, false
+	}
+	twoLines := func(in image.Rectangle, lo int) (labelFit, bool) {
+		i := splitAt(label)
+		if i <= 0 {
+			return labelFit{}, false
+		}
+		for px := top; px >= lo; px-- {
+			f := gfx.ExactFace(true, px)
+			lineH := f.Metrics().Height.Ceil()
+			if area.Dy() >= 2*lineH+2 && gfx.Width(f, label[:i]) <= in.Dx() && gfx.Width(f, label[i+1:]) <= in.Dx() {
+				return labelFit{in, label, px, i}, true
+			}
+		}
+		return labelFit{}, false
+	}
+	in := kit.Inset(area, pad, 0, pad, 0)
+	wide := kit.Inset(area, 2, 0, 2, 0)
+	// A little smaller on one line; then two lines at a larger size before one smaller line.
+	// Then the whole width of the key, then smaller text, to keyLabelLast at the least.
+	for _, try := range []struct {
+		lines func(image.Rectangle, int) (labelFit, bool)
+		in    image.Rectangle
+		lo    int
+	}{
+		{oneLine, in, max(floor, top*5/6)}, {twoLines, in, floor}, {oneLine, in, floor},
+		{oneLine, wide, floor}, {twoLines, wide, floor}, {oneLine, wide, keyLabelLast}, {twoLines, wide, keyLabelLast},
+	} {
+		if f, ok := try.lines(try.in, try.lo); ok {
+			return f
+		}
+	}
+	return labelFit{wide, label, keyLabelLast, -1}
 }
 
 // shrinkFace is the face of size pixels, or smaller down to least, at which s fits in width.
@@ -239,53 +344,8 @@ func labelCols(r image.Rectangle, gap int, labels ...string) []image.Rectangle {
 // keyLabelPad is the most room between the label of a key and its printed frame, on each side.
 const keyLabelPad = 8
 
-// keyLabel draws the label of a key in area, at size pixels or smaller. A label is never cut: one
-// line down to 13 pixels; then two lines, when the key is high enough; then the size that fits
-// the key, also under the floor of the large text.
-func keyLabel(c *gfx.Canvas, area image.Rectangle, label string, size int, ink color.RGBA) {
-	// The size of the label with the large text, and the smallest size before a label goes to
-	// two lines: 2/3 of it, and not below keyLabelMin.
-	top := gfx.FaceSize(size)
-	floor := min(top, max(keyLabelMin, top*2/3))
-	pad := max(2, min(keyLabelPad, area.Dx()/12)) // less on a small key, such as a step of a move
-	oneLine := func(in image.Rectangle, lo int) bool {
-		for px := top; px >= lo; px-- {
-			if f := gfx.ExactFace(true, px); gfx.Width(f, label) <= in.Dx() {
-				c.Text(in, label, f, ink, gfx.Center)
-				return true
-			}
-		}
-		return false
-	}
-	twoLines := func(in image.Rectangle, lo int) bool {
-		i := splitAt(label)
-		if i <= 0 {
-			return false
-		}
-		for px := top; px >= lo; px-- {
-			f := gfx.ExactFace(true, px)
-			lineH := f.Metrics().Height.Ceil()
-			if area.Dy() >= 2*lineH+2 && gfx.Width(f, label[:i]) <= in.Dx() && gfx.Width(f, label[i+1:]) <= in.Dx() {
-				y := area.Min.Y + area.Dy()/2 - lineH
-				c.Text(image.Rect(in.Min.X, y, in.Max.X, y+lineH), label[:i], f, ink, gfx.Center)
-				c.Text(image.Rect(in.Min.X, y+lineH, in.Max.X, y+2*lineH), label[i+1:], f, ink, gfx.Center)
-				return true
-			}
-		}
-		return false
-	}
-	in := kit.Inset(area, pad, 0, pad, 0)
-	// A little smaller on one line; then two lines at a larger size before one smaller line.
-	if oneLine(in, max(floor, top*5/6)) || twoLines(in, floor) || oneLine(in, floor) {
-		return
-	}
-	// The whole width of the key, then smaller text, to keyLabelLast at the least.
-	wide := kit.Inset(area, 2, 0, 2, 0)
-	if oneLine(wide, floor) || twoLines(wide, floor) || oneLine(wide, keyLabelLast) || twoLines(wide, keyLabelLast) {
-		return
-	}
-	c.Text(wide, label, gfx.ExactFace(true, keyLabelLast), ink, gfx.Center)
-}
+// keyMin is the smallest width and height of a key to touch.
+const keyMin = 56
 
 // The sizes of a key label: below keyLabelMin, a label goes to two lines or uses the whole width
 // of its key first; keyLabelLast is the smallest size.
