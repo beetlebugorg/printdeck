@@ -92,13 +92,17 @@
   </section>{{end}}
   <section id="cfg" hidden>
     <h2>PRINTER.CFG</h2>
+    {{if .CfgPrinters}}<label>Printer <select id="cfgPrinter">{{range .CfgPrinters}}
+      <option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select></label>{{end}}
     <textarea id="cfgText" spellcheck="false" autocomplete="off"></textarea>
     <button type="button" id="cfgSave">Save and restart Klipper</button>
     <button type="button" id="cfgUndo">Load the backup</button>
     <div id="cfgMsg" class="hint"></div>
     <div class="hint">Save checks the file, keeps the old file as a backup, and restarts Klipper.
       Load the backup puts the old file in the box: Save it to go back. Scripts can use
-      GET and PUT on /system/printer.cfg with the slicer API key in X-Api-Key. Not during a print.</div>
+      GET and PUT on /system/printer.cfg with the slicer API key in X-Api-Key, and
+      ?printer=&lt;id&gt; for another printer of the deck. Not during a print.</div>
   </section>
   <section>
     <h2>BACKUP</h2>
@@ -151,14 +155,27 @@
   function load(url) {
     return fetch(url, {cache: "no-store"}).then(r => r.ok ? r.text() : Promise.reject(r.status));
   }
-  load("/system/printer.cfg").then(t => { text.value = t; box.hidden = false; }).catch(() => {});
-  document.getElementById("cfgUndo").onclick = () => load("/system/printer.cfg?backup=1")
+  // The printer of the editor, on a deck with many printers.
+  const pick = document.getElementById("cfgPrinter");
+  function url(extra) {
+    const q = new URLSearchParams(extra || "");
+    if (pick && pick.value) q.set("printer", pick.value);
+    const s = q.toString();
+    return "/system/printer.cfg" + (s ? "?" + s : "");
+  }
+  function show() {
+    load(url()).then(t => { text.value = t; box.hidden = false; say(""); }).catch(() => {});
+  }
+  show();
+  if (pick) pick.onchange = show;
+  document.getElementById("cfgUndo").onclick = () => load(url("backup=1"))
     .then(t => { text.value = t; say("The backup is in the box. Save it to go back."); })
     .catch(() => say("There is no backup.", true));
   document.getElementById("cfgSave").onclick = () => {
-    if (!confirm("Save printer.cfg and restart Klipper?")) return;
+    const name = pick ? pick.options[pick.selectedIndex].text : "the printer";
+    if (!confirm("Save printer.cfg of " + name + " and restart its Klipper?")) return;
     say("Saving…");
-    fetch("/system/printer.cfg", {method: "PUT", body: text.value, headers: {"Content-Type": "text/plain"}})
+    fetch(url(), {method: "PUT", body: text.value, headers: {"Content-Type": "text/plain"}})
       .then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(t)))
       .then(j => say(j.error ? "Saved. " + j.error : "Saved. Klipper restarts.", !!j.error))
       .catch(e => say(String(e), true));

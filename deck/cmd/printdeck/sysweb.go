@@ -67,6 +67,9 @@ type systemView struct {
 	TimeLapse       bool // the deck has the time lapse
 	Videos          []struct{ Name, Size, Time string }
 	FirstLayer      string // the file and the time of the picture of the first layer, or ""
+	// CfgPrinters are the Klipper printers of a deck with many printers, for the choice of the
+	// printer.cfg editor: the ID ("" for the first printer) and the name. Empty for one printer.
+	CfgPrinters []struct{ ID, Name string }
 }
 
 // sysMetrics are the samples of the host for the system page, or nil.
@@ -228,6 +231,21 @@ func renderMessage(w http.ResponseWriter, klippyLog, apiKey, title, msg string, 
 		Failed: failed, Source: sourceURL(osVersion()), Slicer: dirExists(slicerDir), HTTPS: httpsURL()}
 	if deckTLS != nil && v.HTTPS == "" {
 		v.HTTPSProblem = deckTLS.Problem()
+	}
+	if deckPrinterList != nil {
+		for _, p := range deckPrinterList() {
+			if p.Resin {
+				continue
+			}
+			id := p.ID
+			if id == "first" {
+				id = ""
+			}
+			v.CfgPrinters = append(v.CfgPrinters, struct{ ID, Name string }{id, p.Label + " · " + p.Name})
+		}
+		if len(v.CfgPrinters) < 2 {
+			v.CfgPrinters = nil
+		}
 	}
 	if up := sysUpdater; up != nil {
 		u := up.Status()

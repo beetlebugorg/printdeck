@@ -28,7 +28,14 @@ func TestPrinterCfg(t *testing.T) {
 	os.WriteFile(path, []byte(old), 0o664)
 	pr := &cfgFake{}
 	mux := http.NewServeMux()
-	registerPrinterCfg(mux, path, filepath.Join(dir, "state.bak"), pr, func(r *http.Request) bool { return r.Header.Get("X-Api-Key") == "k" })
+	// A second printer, with its own file (?printer=mini2).
+	path2 := filepath.Join(dir, "mini2.cfg")
+	os.WriteFile(path2, []byte("[printer]\nkinematics: corexy\n"), 0o664)
+	pr2 := &cfgFake{}
+	registerPrinterCfg(mux, map[string]cfgTarget{
+		"":      {path, filepath.Join(dir, "state.bak"), pr},
+		"mini2": {path2, filepath.Join(dir, "mini2.bak"), pr2},
+	}, func(r *http.Request) bool { return r.Header.Get("X-Api-Key") == "k" })
 	do := func(method, url, body, key string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, url, strings.NewReader(body))
 		if key != "" {
@@ -43,6 +50,15 @@ func TestPrinterCfg(t *testing.T) {
 	}
 	if w := do("GET", "/system/printer.cfg", "", "k"); w.Code != 200 || w.Body.String() != old {
 		t.Errorf("GET: %d %q", w.Code, w.Body.String())
+	}
+	if w := do("GET", "/system/printer.cfg?printer=mini2", "", "k"); w.Code != 200 || !strings.Contains(w.Body.String(), "corexy") {
+		t.Errorf("GET of the second printer: %d %q", w.Code, w.Body.String())
+	}
+	if w := do("GET", "/system/printer.cfg?printer=nope", "", "k"); w.Code != http.StatusNotFound {
+		t.Errorf("GET of no such printer: %d", w.Code)
+	}
+	if w := do("PUT", "/system/printer.cfg?printer=mini2", "[printer]\nkinematics: cartesian\n", "k"); w.Code != 200 || pr2.restarts != 1 || pr.restarts != 0 {
+		t.Errorf("PUT of the second printer: %d, restarts %d and %d", w.Code, pr2.restarts, pr.restarts)
 	}
 	if w := do("PUT", "/system/printer.cfg", "[fan]\npin: PB4\n", "k"); w.Code != http.StatusBadRequest {
 		t.Errorf("PUT with no [printer]: %d", w.Code)
@@ -82,7 +98,7 @@ func TestPrinterCfgReadOnlyFile(t *testing.T) {
 	os.WriteFile(path, []byte(old), 0o444)
 	os.WriteFile(backup, []byte("older"), 0o444)
 	mux := http.NewServeMux()
-	registerPrinterCfg(mux, path, backup, &cfgFake{}, func(*http.Request) bool { return true })
+	registerPrinterCfg(mux, map[string]cfgTarget{"": {path, backup, &cfgFake{}}}, func(*http.Request) bool { return true })
 	neu := "[printer]\nkinematics: cartesian\nmax_velocity: 300\n"
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, httptest.NewRequest("PUT", "/system/printer.cfg", strings.NewReader(neu)))
