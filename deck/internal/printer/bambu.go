@@ -14,7 +14,6 @@ import (
 
 	"printdeck/internal/bambu"
 	"printdeck/internal/board"
-	"printdeck/internal/gcodemeta"
 )
 
 // Bambu is the backend of a Bambu Lab printer on the network (for example the X2D): the deck reads
@@ -34,6 +33,8 @@ type Bambu struct {
 	// ("" keeps them in memory).
 	Spools   *Spools
 	TrayPath string
+	// Store is the folder of the 3MF files of the printer, or nil.
+	Store Store
 	// OnTrayQuestion runs when a tray has a new spool with no RFID tag: the screens ask which roll
 	// it is (TrayQuestion). It can be nil.
 	OnTrayQuestion func()
@@ -49,6 +50,12 @@ type Bambu struct {
 	nextProject string
 	camera      string // the RTSPS address of the camera
 	cur         bambuPrint
+
+	sent   bambuSent // the last file that the deck started, under mu
+	notify func()    // the notify of Run, for the progress of an upload
+
+	filesMu  sync.Mutex
+	files3MF map[string]bambuFile // the 3MF files that the deck read, by path
 
 	trayMu   sync.Mutex
 	trays    map[int]string    // the roll of each tray, by slot (trayLinks)
@@ -71,6 +78,7 @@ func NewBambu(addr, serial, code, pin, name string, hist *History) *Bambu {
 
 // Run follows the printer until ctx ends. notify runs after each change of the state.
 func (b *Bambu) Run(ctx context.Context, notify func()) {
+	b.notify = notify
 	for {
 		err := b.Client.Run(ctx, func(r bambu.Report) {
 			b.update(r, time.Now())
@@ -330,20 +338,14 @@ func (b *Bambu) command(name string, f func() error) {
 
 // The files, the pictures and the layers: the deck reads no file of the printer yet.
 
-func (b *Bambu) Files() []File                                { return nil }
-func (b *Bambu) LoadFiles()                                   {}
 func (b *Bambu) Preview() image.Image                         { return nil }
 func (b *Bambu) LayerTimes() []float64                        { return nil }
 func (b *Bambu) SetViewLayer(int)                             {}
 func (b *Bambu) ViewLayer() int                               { return -1 }
-func (b *Bambu) FileMeta(string) gcodemeta.Meta               { return gcodemeta.Meta{} }
 func (b *Bambu) Connect()                                     {}
 func (b *Bambu) Console() []ConsoleLine                       { return nil }
 func (b *Bambu) SendConsole(string)                           {}
 func (b *Bambu) RecordPicture(Record) (image.Image, bool)     { return nil, false }
-func (b *Bambu) FilePicture(File, string) image.Image         { return nil }
-func (b *Bambu) DeleteFile(string) error                      { return ErrNotSupported }
-func (b *Bambu) PrintFile(string)                             {}
 func (b *Bambu) Boards() ([]board.Info, bool)                 { return nil, false }
 func (b *Bambu) ProbeBoards()                                 {}
 func (b *Bambu) FlashBoard(string, board.FlashProgress) error { return ErrNotSupported }

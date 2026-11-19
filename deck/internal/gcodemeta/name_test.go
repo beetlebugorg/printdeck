@@ -17,6 +17,9 @@ func TestCleanName(t *testing.T) {
 		{"UM2_Spool holder.gcode", "Spool holder"},
 		// No machine prefix
 		{"benchy.gcode", "Benchy"},
+		// A sliced 3MF of Bambu Studio or OrcaSlicer
+		{"test_cube.gcode.3mf", "Test cube"},
+		{"plate_hook.3mf", "Plate hook"},
 		{"3DBenchy.gcode", "3DBenchy"},
 		{"printdeck_body.gcode", "Printdeck body"},
 		{"cable_clip_x8.gcode", "Cable clip x8"},

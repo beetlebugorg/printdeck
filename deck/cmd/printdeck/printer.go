@@ -42,6 +42,8 @@ func newPrinter(cfg config.Config, id string) printerBackend {
 		b := printer.NewBambu(s.Addr, s.Serial, s.Code, s.Pin, s.Name, hist)
 		b.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
 		b.TrayPath = filepath.Join(cfg.StateDir, "ams-trays.json")
+		// The 3MF files that slicers send to the deck for this printer.
+		b.Store = &gcodestore.Store{Dir: cfg.GcodeDir, ThreeMF: true}
 		b.SavePin = func(pin string) {
 			s.Pin = pin
 			if err := printer.SaveSetting(cfg.StateDir, s); err != nil {

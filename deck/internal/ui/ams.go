@@ -256,3 +256,33 @@ func colorSuffix(hex string) string {
 	}
 	return ", " + strings.ToLower(colorName(hex))
 }
+
+// trayMatcher is a printer that feeds each filament of a file from a tray of its AMS
+// (printer.Bambu).
+type trayMatcher interface {
+	FileTrays(path string) ([]printer.TrayMatch, error)
+}
+
+// trayChoices asks to start a file on a printer with an AMS. The question shows the tray of each
+// filament. A filament that no tray has stops the start: the user puts a spool of it in the AMS.
+func (a *App) trayChoices(tm trayMatcher, path, name string, start func()) *confirmBox {
+	matches, err := tm.FileTrays(path)
+	if err != nil {
+		return infoBox("NOT A SLICED 3MF", name+"\n\nSlice it for this printer in Bambu Studio or OrcaSlicer, and send the 3MF.")
+	}
+	units := 1
+	if ams, ok := a.amsOf(); ok {
+		units = max(1, len(ams.AMS().Units))
+	}
+	var parts []string
+	for _, m := range matches {
+		if m.Slot < 0 {
+			return infoBox("NO TRAY FOR "+strings.ToUpper(m.Filament.Type),
+				fmt.Sprintf("%s\n\nFilament %d is %s %s. No tray of the AMS has %s. Put a spool of it in the AMS, then start again.",
+					name, m.Filament.ID, strings.ToLower(colorName(m.Filament.Color)), m.Filament.Type, m.Filament.Type))
+		}
+		parts = append(parts, trayName(printer.AMSTray{Unit: m.Slot / 4, Index: m.Slot % 4}, units))
+	}
+	choices := []menuItem{{"Print", "The bed is clear · " + strings.Join(parts, ", "), dim, start}}
+	return &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), name, 340) + "?", choices: choices, camera: true}
+}

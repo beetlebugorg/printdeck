@@ -21,6 +21,32 @@ import (
 // Store is a folder of printable files.
 type Store struct {
 	Dir string
+	// ThreeMF is a store of a Bambu Lab printer: its print files are sliced 3MF files
+	// (".gcode.3mf", ".3mf") in place of G-code.
+	ThreeMF bool
+}
+
+// is3MF reports a 3MF file.
+func is3MF(name string) bool { return strings.EqualFold(filepath.Ext(name), ".3mf") }
+
+// isPrint reports a print file of the store: G-code, or a 3MF in a store of 3MF files.
+func (s *Store) isPrint(name string) bool {
+	if s.ThreeMF {
+		return is3MF(name)
+	}
+	return isGcode(name)
+}
+
+// cleanPath is clean, and accepts a 3MF in a store of 3MF files.
+func (s *Store) cleanPath(path string) (string, error) {
+	if s.ThreeMF && is3MF(path) {
+		// The checks of the folders and the names of clean, with the extension of a model.
+		if _, err := clean(strings.TrimSuffix(path, filepath.Ext(path)) + ".stl"); err != nil {
+			return "", err
+		}
+		return strings.TrimPrefix(filepath.ToSlash(path), "/"), nil
+	}
+	return clean(path)
 }
 
 // ErrBadName is the error for a path that leaves the folder or has no G-code or STL extension.
@@ -52,8 +78,8 @@ func clean(path string) (string, error) {
 	return path, nil
 }
 
-// Files lists the G-code files, newest first.
-func (s *Store) Files() []printer.File { return s.list(isGcode) }
+// Files lists the print files, newest first: G-code, or 3MF in a store of 3MF files.
+func (s *Store) Files() []printer.File { return s.list(s.isPrint) }
 
 // Models lists the STL models, newest first.
 func (s *Store) Models() []printer.File { return s.list(isModel) }
@@ -78,7 +104,7 @@ func (s *Store) list(keep func(string) bool) []printer.File {
 
 // Open opens a file of the store.
 func (s *Store) Open(path string) (io.ReadCloser, error) {
-	p, err := clean(path)
+	p, err := s.cleanPath(path)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +113,7 @@ func (s *Store) Open(path string) (io.ReadCloser, error) {
 
 // Stat returns the information of a file of the store.
 func (s *Store) Stat(path string) (fs.FileInfo, error) {
-	p, err := clean(path)
+	p, err := s.cleanPath(path)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +137,7 @@ func (s *Store) Save(path string, r io.Reader) (string, error) {
 // the file system of the temporary file, before any change to it. An error of check stops the save,
 // and a file of the same name stays as it was. check can be nil.
 func (s *Store) SaveChecked(path string, r io.Reader, check func(tmpPath string) error) (string, error) {
-	p, err := clean(path)
+	p, err := s.cleanPath(path)
 	if err != nil {
 		return "", err
 	}
@@ -190,7 +216,7 @@ func addObjects(root *os.Root, tmpName, p string) (bool, error) {
 
 // FullPath returns the path in the file system of a file of the store.
 func (s *Store) FullPath(path string) (string, error) {
-	p, err := clean(path)
+	p, err := s.cleanPath(path)
 	if err != nil {
 		return "", err
 	}
@@ -199,7 +225,7 @@ func (s *Store) FullPath(path string) (string, error) {
 
 // Delete removes a file of the store.
 func (s *Store) Delete(path string) error {
-	p, err := clean(path)
+	p, err := s.cleanPath(path)
 	if err != nil {
 		return err
 	}

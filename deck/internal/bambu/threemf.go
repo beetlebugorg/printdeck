@@ -4,6 +4,9 @@ import (
 	"archive/zip"
 	"encoding/xml"
 	"errors"
+	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"strconv"
 )
@@ -76,4 +79,78 @@ func PlateFilaments(r io.ReaderAt, size int64, plate int) ([]Filament, error) {
 		out = append(out, Filament{ID: id, Type: fl.Type, Color: fl.Color, Grams: g, Meters: m})
 	}
 	return out, nil
+}
+
+// Plate is one sliced plate of a 3MF.
+type Plate struct {
+	Index     int     // from 1: the G-code of the plate is Metadata/plate_<Index>.gcode
+	Seconds   float64 // the print time that the slicer predicts
+	Grams     float64 // the filament of the plate
+	Filaments []Filament
+}
+
+// GcodePath is the path of the G-code of the plate in the 3MF, for the start command.
+func (p Plate) GcodePath() string { return fmt.Sprintf("Metadata/plate_%d.gcode", p.Index) }
+
+// Plates returns the sliced plates of the 3MF in r, in their order.
+func Plates(r io.ReaderAt, size int64) ([]Plate, error) {
+	zr, err := zip.NewReader(r, size)
+	if err != nil {
+		return nil, err
+	}
+	f, err := zr.Open("Metadata/slice_info.config")
+	if err != nil {
+		return nil, ErrNoSliceInfo
+	}
+	defer f.Close()
+	var si sliceInfo
+	if err := xml.NewDecoder(io.LimitReader(f, 4<<20)).Decode(&si); err != nil {
+		return nil, err
+	}
+	var out []Plate
+	for _, sp := range si.Plates {
+		var p Plate
+		for _, m := range sp.Meta {
+			switch m.Key {
+			case "index":
+				p.Index, _ = strconv.Atoi(m.Value)
+			case "prediction":
+				p.Seconds, _ = strconv.ParseFloat(m.Value, 64)
+			case "weight":
+				p.Grams, _ = strconv.ParseFloat(m.Value, 64)
+			}
+		}
+		for _, fl := range sp.Filaments {
+			id, _ := strconv.Atoi(fl.ID)
+			g, _ := strconv.ParseFloat(fl.UsedG, 64)
+			m, _ := strconv.ParseFloat(fl.UsedM, 64)
+			p.Filaments = append(p.Filaments, Filament{ID: id, Type: fl.Type, Color: fl.Color, Grams: g, Meters: m})
+		}
+		if p.Index > 0 {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil, ErrNoSliceInfo
+	}
+	return out, nil
+}
+
+// PlatePicture returns the picture of the plate index of the 3MF in r (Metadata/plate_<n>.png),
+// or nil.
+func PlatePicture(r io.ReaderAt, size int64, index int) image.Image {
+	zr, err := zip.NewReader(r, size)
+	if err != nil {
+		return nil
+	}
+	f, err := zr.Open(fmt.Sprintf("Metadata/plate_%d.png", index))
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	img, err := png.Decode(io.LimitReader(f, 8<<20))
+	if err != nil {
+		return nil
+	}
+	return img
 }
