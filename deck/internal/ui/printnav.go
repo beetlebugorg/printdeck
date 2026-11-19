@@ -194,7 +194,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	case a.resin():
 		pages = []homePage{{"Build plate", pageMove}, {"Machine", pageMachine}}
 	case a.ownControls():
-		pages = []homePage{{"Machine", pageMachine}}
+		pages = []homePage{{"Filament", pageFilament}, {"Machine", pageMachine}}
 	}
 	if a.Camera != nil {
 		pages = append(pages, homePage{"Camera", pageCamera})

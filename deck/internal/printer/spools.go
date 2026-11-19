@@ -336,6 +336,22 @@ func (s *Spools) Use(grams func(density float64) float64) (Spool, float64, bool)
 	return *sp, sp.Cost(g), true
 }
 
+// UseOn subtracts grams of filament from the roll with the ID: the roll in a tray of an AMS. It
+// returns the roll and the cost of the filament, and false when the deck has no such roll.
+func (s *Spools) UseOn(id string, grams float64) (Spool, float64, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	i := s.find(id)
+	if i < 0 || grams <= 0 {
+		return Spool{}, 0, false
+	}
+	sp := &s.data.Spools[i]
+	sp.Used += grams
+	s.save()
+	return *sp, sp.Cost(grams), true
+}
+
 // Density is the density of the filament of a roll in g/cm³: the density of its material in
 // Cura, else the density of its type.
 func (s *Spools) Density(sp Spool) float64 {

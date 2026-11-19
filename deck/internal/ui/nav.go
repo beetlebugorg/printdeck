@@ -34,7 +34,7 @@ var navKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Filament", pageFilam
 var resinNavKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Build plate", pageMove}, {"Machine", pageMachine}}
 
 // ownNavKeys are the keys of a printer with its own controls (a Bambu Lab printer).
-var ownNavKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Machine", pageMachine}}
+var ownNavKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Filament", pageFilament}, {"Machine", pageMachine}}
 
 // keys is the key panel of the app: navKeys (resinNavKeys for a resin printer, ownNavKeys for a
 // printer with its own controls), and Camera on a deck with a camera.

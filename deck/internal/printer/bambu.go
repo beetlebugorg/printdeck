@@ -30,6 +30,10 @@ type Bambu struct {
 	// SavePin keeps the certificate of the printer after the first connection (Setting.Pin).
 	// It can be nil.
 	SavePin func(pin string)
+	// Spools are the rolls of the printer, or nil. TrayPath keeps the roll of each tray of the AMS
+	// ("" keeps them in memory).
+	Spools   *Spools
+	TrayPath string
 
 	mu          sync.Mutex
 	st          State
@@ -41,6 +45,10 @@ type Bambu struct {
 	started     time.Time // the start of the print now
 	nextProject string
 	camera      string // the RTSPS address of the camera
+	cur         bambuPrint
+
+	trayMu sync.Mutex
+	trays  map[int]string // the roll of each tray, by slot (trayLinks)
 }
 
 // bambuRetry is the wait before a new connection after a lost link.
@@ -116,6 +124,8 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	st.Tool, st.ToolTarget = float64(r.Nozzle), float64(r.NozzleTarget)
 	st.Bed, st.BedTarget = float64(r.Bed), float64(r.BedTarget)
 	st.Fan, st.HasFan = r.FanPercent(), true
+	st.HasChamber = r.HasChamber()
+	st.Chamber, st.ChamberTarget = r.ChamberHeat()
 	st.SpeedPct = r.SpeedPct.Int()
 	st.Message = hmsText(r.HMS)
 
@@ -125,11 +135,13 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 			b.started = now
 			b.path = "bambu-" + strconv.FormatInt(now.Unix(), 10)
 			b.name, b.system = r.Name(), r.PrintType == "system"
+			b.cur = bambuPrint{}
 			if b.nextProject != "" && b.Hist != nil {
 				b.Hist.SetNextProject(b.path, b.nextProject)
 				b.nextProject = ""
 			}
 		}
+		b.track(r)
 		st.Printing, st.Paused = true, r.Paused()
 		st.Preparing = r.State == "PREPARE" || r.State == "SLICING"
 		st.FilePath, st.File, st.Title = b.path, b.name, b.name
@@ -165,6 +177,9 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		// A job of the printer itself (a calibration) is no print of the user.
 		if b.Hist != nil && !b.system {
 			b.Hist.add(*st, now, nil, 0, 0, nil)
+		}
+		if !b.system {
+			go b.countUse(b.cur, result == "complete")
 		}
 		b.path = ""
 	}
@@ -288,6 +303,9 @@ func (b *Bambu) NextProject() string {
 	return b.Hist.NextProject(st.FilePath)
 }
 
+// SpoolStore returns the rolls of the printer, or nil.
+func (b *Bambu) SpoolStore() *Spools { return b.Spools }
+
 // Pause, Resume and Cancel send the commands of the printer. An error shows in the panel.
 func (b *Bambu) Pause()  { b.command("Pause", b.Client.Pause) }
 func (b *Bambu) Resume() { b.command("Resume", b.Client.Resume) }
@@ -313,7 +331,6 @@ func (b *Bambu) LayerTimes() []float64                        { return nil }
 func (b *Bambu) SetViewLayer(int)                             {}
 func (b *Bambu) ViewLayer() int                               { return -1 }
 func (b *Bambu) FileMeta(string) gcodemeta.Meta               { return gcodemeta.Meta{} }
-func (b *Bambu) SpoolStore() *Spools                          { return nil }
 func (b *Bambu) Connect()                                     {}
 func (b *Bambu) Console() []ConsoleLine                       { return nil }
 func (b *Bambu) SendConsole(string)                           {}

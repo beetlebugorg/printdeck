@@ -69,6 +69,10 @@ type State struct {
 
 	Tool, ToolTarget float64
 	Bed, BedTarget   float64
+	// The chamber of a printer with a chamber sensor or heater, in °C. HasChamber is false for a
+	// printer with no chamber; ChamberTarget is 0 with no chamber heat.
+	Chamber, ChamberTarget float64
+	HasChamber             bool
 	// The power of each heater now, 0 to 1: the PWM of the heater. A heater that holds its
 	// temperature switches on and off.
 	ToolPower, BedPower float64
@@ -173,6 +177,17 @@ type ActionResult struct {
 	Name string
 	Err  string
 	End  time.Time
+}
+
+// Loaded is a spool that the printer has loaded, for the row of colored squares of the status
+// panel: the roll in a Klipper printer, or a tray of an AMS.
+type Loaded struct {
+	Color    string // "#rrggbb", or "" when the color is not known
+	Material string // "PLA", or ""
+	// Fraction is the part of a full spool that is left, 0 to 1, or -1 when it is not known.
+	Fraction float64
+	Active   bool // the spool feeds the nozzle now
+	Empty    bool // the place has no spool (an empty tray)
 }
 
 // Busy reports that a job is running or paused.

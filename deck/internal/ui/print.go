@@ -98,6 +98,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		a.drawMove(c)
 		return
 	case pageFilament:
+		if ams, ok := a.amsOf(); ok && a.ownControls() {
+			a.drawAMS(c, ams)
+			return
+		}
 		a.drawFilament(c, st)
 		return
 	case pageMaintenance:
