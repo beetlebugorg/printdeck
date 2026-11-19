@@ -97,6 +97,15 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	c.Text(l1, gfx.Fit(head, p.head, l1.Dx()-sw-12), head, lcdInk, gfx.Left)
 	c.Text(l1, p.side, side, lcdInk, gfx.Right)
 	c.Text(l2, gfx.Fit(small, p.msg, l2.Dx()), small, lcdInk, gfx.Left)
+	// The messages of a Bambu Lab printer: a tap shows each message whole, with its code.
+	if hr, ok := a.Printer.(hmsReporter); ok && st.Message != "" {
+		if msgs := hr.HMSMessages(); len(msgs) > 0 {
+			show := func() { a.confirm = infoBox("PRINTER MESSAGES", strings.Join(msgs, "\n\n")) }
+			hit := image.Rect(r.Min.X, rows[3].Min.Y-2, r.Max.X, rows[3].Max.Y+2)
+			a.addHit(kit.Hit{R: hit, Tap: show})
+			a.addFocus("Printer messages", hit, show)
+		}
+	}
 	if p.shortDetail != "" && gfx.Width(small, p.detail) > line(rows[4]).Dx() {
 		p.detail = p.shortDetail
 	}
@@ -164,6 +173,9 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		a.addHit(kit.Hit{R: cells[2], Tap: tap})
 	}
 }
+
+// hmsReporter is a printer with messages of its own health system (printer.Bambu).
+type hmsReporter interface{ HMSMessages() []string }
 
 // chamberSetter is a printer with a chamber heat (printer.Bambu).
 type chamberSetter interface{ SetChamberTemp(t int) error }

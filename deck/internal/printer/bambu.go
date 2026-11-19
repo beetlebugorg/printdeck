@@ -33,6 +33,8 @@ type Bambu struct {
 	// ("" keeps them in memory).
 	Spools   *Spools
 	TrayPath string
+	// HMS keeps the texts of the messages of the printer, or is nil for the texts of the program.
+	HMS *bambu.HMSFile
 	// Store is the folder of the 3MF files of the printer, or nil.
 	Store Store
 	// OnTrayQuestion runs when a tray has a new spool with no RFID tag: the screens ask which roll
@@ -60,6 +62,7 @@ type Bambu struct {
 	filesMu  sync.Mutex
 	files3MF map[string]bambuFile // the 3MF files that the deck read, by path
 
+	trayWG   sync.WaitGroup // the handling of the spool changes (spoolsChanged), for the tests
 	trayMu   sync.Mutex
 	trays    map[int]string    // the roll of each tray, by slot (trayLinks)
 	pending  []int             // the trays with a new spool that the screens ask about
@@ -82,6 +85,15 @@ func NewBambu(addr, serial, code, pin, name string, hist *History) *Bambu {
 // Run follows the printer until ctx ends. notify runs after each change of the state.
 func (b *Bambu) Run(ctx context.Context, notify func()) {
 	b.notify = notify
+	if b.HMS != nil {
+		go func() {
+			hctx, cancel := context.WithTimeout(ctx, time.Minute)
+			defer cancel()
+			if err := b.HMS.Refresh(hctx, b.Client.Serial); err != nil {
+				log.Printf("bambu: the texts of the printer messages: %v", err)
+			}
+		}()
+	}
 	for {
 		err := b.Client.Run(ctx, func(r bambu.Report) {
 			b.update(r, time.Now())
@@ -144,7 +156,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	st.HasChamber = r.HasChamber()
 	st.Chamber, st.ChamberTarget = r.ChamberHeat()
 	st.SpeedPct = r.SpeedPct.Int()
-	st.Message = hmsText(r.HMS)
+	st.Message, st.ErrDetail = b.hmsLines(r.HMS)
 	st.NoPosition = true
 	if v, ok := b.volume(); ok {
 		st.Axis = [2][3]float64{{0, 0, 0}, v}
@@ -193,7 +205,10 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 			result = "cancelled"
 		case r.State == "FAILED":
 			result = "error"
-			st.FinishedError = fmt.Sprintf("print_error %08X", int(r.Error))
+			st.FinishedError = fmt.Sprintf("Error %08X", int(r.Error))
+			if text := b.hms().ErrorText(int64(r.Error)); text != "" {
+				st.FinishedError = text + " (" + fmt.Sprintf("%08X", int(r.Error)) + ")"
+			}
 		case r.State != "FINISH":
 			result = "cancelled" // the printer went to IDLE with no end
 		}
@@ -215,16 +230,42 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	st.Text, st.Activity = "Ready", "Ready"
 }
 
-// hmsText is the text of the faults of the printer, or "".
-func hmsText(h []bambu.HMS) string {
+// hmsLines returns the messages of the printer (its HMS codes) for the panel: the first message,
+// with the count of the others, and each message with its code for the detail.
+func (b *Bambu) hmsLines(h []bambu.HMS) (first, all string) {
 	if len(h) == 0 {
-		return ""
+		return "", ""
 	}
-	codes := make([]string, len(h))
+	var lines []string
 	for i, e := range h {
-		codes[i] = e.String()
+		text, _ := b.hms().Text(e)
+		lines = append(lines, text+" ("+e.String()+")")
+		if i == 0 {
+			first = text
+		}
 	}
-	return "Printer message " + strings.Join(codes, ", ")
+	if len(h) > 1 {
+		first += fmt.Sprintf(" · %d more", len(h)-1)
+	}
+	return first, strings.Join(lines, "\n")
+}
+
+// hms returns the texts of the codes of the printer, or nil for the texts of the program.
+func (b *Bambu) hms() *bambu.HMSTexts {
+	if b.HMS == nil {
+		return nil
+	}
+	return b.HMS.Texts()
+}
+
+// HMSMessages returns each message of the printer with its code, for the screens.
+func (b *Bambu) HMSMessages() []string {
+	r, _ := b.Report()
+	_, all := b.hmsLines(r.HMS)
+	if all == "" {
+		return nil
+	}
+	return strings.Split(all, "\n")
 }
 
 // State returns the state of the printer.

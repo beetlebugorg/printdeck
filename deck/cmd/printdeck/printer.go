@@ -5,6 +5,7 @@ import (
 	"log"
 	"path/filepath"
 
+	"printdeck/internal/bambu"
 	"printdeck/internal/config"
 	"printdeck/internal/gcodestore"
 	"printdeck/internal/printer"
@@ -42,6 +43,7 @@ func newPrinter(cfg config.Config, id string) printerBackend {
 		b := printer.NewBambu(s.Addr, s.Serial, s.Code, s.Pin, s.Name, hist)
 		b.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
 		b.TrayPath = filepath.Join(cfg.StateDir, "ams-trays.json")
+		b.HMS = &bambu.HMSFile{Path: filepath.Join(cfg.StateDir, "hms-texts.json")}
 		// The 3MF files that slicers send to the deck for this printer.
 		b.Store = &gcodestore.Store{Dir: cfg.GcodeDir, ThreeMF: true}
 		b.SavePin = func(pin string) {
