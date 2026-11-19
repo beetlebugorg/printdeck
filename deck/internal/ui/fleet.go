@@ -313,7 +313,7 @@ func (a *App) drawFleetBanner(c *gfx.Canvas) bool {
 			who = card.Identity
 		}
 	}
-	r := image.Rect(12, fleetBarH+8, W-12, fleetBarH+8+128)
+	r := image.Rect(12, fleetStatusH+8, W-12, fleetStatusH+8+128)
 	c.RoundRect(r.Inset(-2), 12, edge)
 	c.RoundRect(r, 10, raised)
 	c.RoundRect(image.Rect(r.Min.X, r.Min.Y, r.Min.X+14, r.Max.Y), 10, who.Color)
@@ -369,7 +369,7 @@ func (a *App) drawFleet(c *gfx.Canvas) {
 
 // fleetStatusH is the height of the status bar of a deck with many printers: the band at the top
 // of each page, over the frame of the page.
-const fleetStatusH = 13
+const fleetStatusH = 22
 
 // shortState is the state of a printer in a word or two, for the status bar.
 func shortState(st printer.State) string {
@@ -396,27 +396,27 @@ func (a *App) drawFleetStatus(c *gfx.Canvas) {
 	bar := image.Rect(0, 0, W, fleetStatusH)
 	c.Fill(bar, lcd)
 	self := a.Fleet.Self()
-	c.Fill(image.Rect(0, fleetStatusH-2, W, fleetStatusH), self.Color)
-	face := gfx.Face(true, 11)
-	x := 10
+	c.Fill(image.Rect(0, fleetStatusH-3, W, fleetStatusH), self.Color)
+	face := gfx.Face(true, 14)
+	text := image.Rect(0, 0, W, fleetStatusH-3)
+	x := 12
 	for _, card := range a.Fleet.Cards() {
-		text := card.Label + " " + shortState(card.State)
-		w := 8 + 4 + gfx.Width(face, text)
-		if x+w > W-10 {
+		label := card.Label + " " + shortState(card.State)
+		w := 9 + 6 + gfx.Width(face, label)
+		if x+w > W-12 {
 			break
 		}
-		cy := (fleetStatusH - 2) / 2
-		c.RoundRect(image.Rect(x, cy-3, x+7, cy+4), 3, card.Color)
+		cy := text.Dy() / 2
+		c.RoundRect(image.Rect(x, cy-4, x+9, cy+5), 4, card.Color)
 		ink := lcdDim
 		if card.Active {
 			ink = lcdInk
 		}
-		c.Text(image.Rect(x+11, 0, x+w+4, fleetStatusH-2), text, face, ink, gfx.Left)
-		x += w + 14
+		c.Text(image.Rect(x+15, text.Min.Y, x+w+4, text.Max.Y), label, face, ink, gfx.Left)
+		x += w + 18
 	}
 	open := func() { a.fleetList = true; a.Redraw() }
-	// The hit is higher than the bar, so a finger finds it.
-	a.addHit(kit.Hit{R: image.Rect(0, 0, W, fleetStatusH+6), Tap: open})
+	a.addHit(kit.Hit{R: image.Rect(0, 0, W, fleetStatusH+4), Tap: open})
 	a.region("Status bar", bar)
 }
 
