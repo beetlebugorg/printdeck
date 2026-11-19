@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"printdeck/internal/config"
@@ -153,7 +154,7 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 		return nil
 	}
 	api := octoapi.New(k, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
-	api.Version, api.Ask = osVersion(), app.Ask
+	api.Version, api.Ask = osVersion(), askOn(app)
 	api.Spools = k.Spools
 	api.Diameter = func() float64 { return k.Machine().Diameter() }
 	materialFile := filepath.Join(cfg.StateDir, "material")
@@ -212,7 +213,7 @@ func newBambuAPI(cfg config.Config, b *printer.Bambu, app *ui.App, mux *http.Ser
 		store = &gcodestore.Store{Dir: cfg.GcodeDir, ThreeMF: true}
 	}
 	api := octoapi.New(b, store, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
-	api.Version, api.Ask = osVersion(), app.Ask
+	api.Version, api.Ask = osVersion(), askOn(app)
 	api.Spools = b.Spools
 	api.Signing, api.Rejected = app.Signing, app.ShowRejected
 	api.Queue = app.Queue
@@ -243,6 +244,24 @@ func newBambuAPI(cfg config.Config, b *printer.Bambu, app *ui.App, mux *http.Ser
 	return api
 }
 
+// deckAsk asks a question of the whole deck on the printer that the touch screen shows (the
+// Switcher of a deck with many printers), or holds nil. The deck sets it after the web server
+// starts, so it is atomic.
+var deckAsk atomic.Pointer[func(question, yes, no string, answer func(bool))]
+
+// askOn returns the Ask of the App Keys flow for the API of the printer of app: on the screen that
+// the touch screen shows on a deck with many printers, so the user sees the question, or else on
+// app.
+func askOn(app *ui.App) func(question, yes, no string, answer func(bool)) {
+	return func(question, yes, no string, answer func(bool)) {
+		if ask := deckAsk.Load(); ask != nil {
+			(*ask)(question, yes, no, answer)
+			return
+		}
+		app.Ask(question, yes, no, answer)
+	}
+}
+
 // newResinAPI registers the app API on the deck of a resin printer: the status, pause and cancel,
 // the push messages and the camera. It refuses uploads, each start and each resume (Resin): the UV
 // light goes on only after a press on the touch screen.
@@ -257,7 +276,7 @@ func newResinAPI(cfg config.Config, c *printer.ChiTu, app *ui.App, mux *http.Ser
 		}
 		return ""
 	}
-	api.Version, api.Ask = osVersion(), app.Ask
+	api.Version, api.Ask = osVersion(), askOn(app)
 	api.Frame = cameraFrame(app)
 	if cam, ok := app.Camera.(octoapi.Camera); ok {
 		api.Camera = cam

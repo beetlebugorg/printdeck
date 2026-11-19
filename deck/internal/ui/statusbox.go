@@ -202,26 +202,51 @@ func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
 	}
 	face := gfx.Face(true, 13)
 	sq := min(14, r.Dy()-4)
-	texts := make([]string, len(items))
-	w := 0
-	for i, it := range items {
-		t := it.Material
-		if it.Empty {
-			t = "Empty"
-		}
+	avail := r.Dx() * 2 / 3
+	// The texts: the material and the part left; the part left only; or no text, the first form
+	// that fits.
+	label := func(it printer.Loaded, form int) string {
+		pct := ""
 		if it.Fraction >= 0 && !it.Empty {
-			t += fmt.Sprintf(" %.0f%%", it.Fraction*100)
+			pct = fmt.Sprintf("%.0f%%", it.Fraction*100)
 		}
-		texts[i] = t
-		if i > 0 {
-			w += 8
+		switch {
+		case form == 2:
+			return ""
+		case it.Empty:
+			if form == 0 {
+				return "Empty"
+			}
+			return ""
+		case form == 1:
+			return pct
 		}
-		w += sq + 3 + gfx.Width(face, t)
+		return strings.TrimSpace(it.Material + " " + pct)
 	}
-	w = min(w, r.Dx()*2/3)
+	width := func(form int) int {
+		w := 0
+		for i, it := range items {
+			if i > 0 {
+				w += 8
+			}
+			w += sq
+			if t := label(it, form); t != "" {
+				w += 3 + gfx.Width(face, t)
+			}
+		}
+		return w
+	}
+	form := 0
+	for form < 2 && width(form) > avail {
+		form++
+	}
+	w := min(width(form), r.Dx())
 	x := r.Max.X - w
 	y := r.Min.Y + (r.Dy()-sq)/2
-	for i, it := range items {
+	for _, it := range items {
+		if x+sq > r.Max.X {
+			break
+		}
 		box := image.Rect(x, y, x+sq, y+sq)
 		col, known := printer.ParseHex(it.Color)
 		switch {
@@ -236,13 +261,13 @@ func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
 		if it.Active {
 			c.Fill(image.Rect(box.Min.X, box.Max.Y+1, box.Max.X, box.Max.Y+3), orange)
 		}
-		tw := gfx.Width(face, texts[i])
-		tr := image.Rect(box.Max.X+3, r.Min.Y, min(r.Max.X, box.Max.X+3+tw), r.Max.Y)
-		c.Text(tr, texts[i], face, lcdDim, gfx.Left)
-		x = tr.Max.X + 8
-		if x >= r.Max.X {
-			break
+		x = box.Max.X
+		if t := label(it, form); t != "" {
+			tw := gfx.Width(face, t)
+			c.Text(image.Rect(x+3, r.Min.Y, min(r.Max.X, x+3+tw), r.Max.Y), t, face, lcdDim, gfx.Left)
+			x += 3 + tw
 		}
+		x += 8
 	}
 	return w
 }

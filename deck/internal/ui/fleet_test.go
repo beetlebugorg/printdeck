@@ -202,3 +202,97 @@ func TestStopAll(t *testing.T) {
 		t.Errorf("stops %d %d %d, want 1 0 0", prs[0].Stops, prs[1].Stops, prs[2].Stops)
 	}
 }
+
+// The status bar at the top of each page shows each printer and its state, and a tap on it opens
+// the list of the printers from any page.
+func TestFleetStatusBar(t *testing.T) {
+	s, _ := fleetDeck(t)
+	a := s.Active()
+	a.pages = []page{pageMachine}
+	f := frameText(a)
+	for _, want := range []string{"TAZ 43%", "MINI Ready", "PHEN Done"} {
+		if !strings.Contains(f, want) {
+			t.Errorf("the status bar has no %q", want)
+		}
+	}
+	tap(a, image.Rect(0, 0, a.Screen().W, fleetStatusH))
+	if !a.fleetList {
+		t.Fatal("a tap on the status bar opened no list")
+	}
+}
+
+// After a restart the deck shows the printer that it showed last (Restore), and each switch goes
+// to OnSwitch.
+func TestSwitcherRestore(t *testing.T) {
+	s, _ := fleetDeck(t)
+	var saved []string
+	s.OnSwitch = func(id string) { saved = append(saved, id) }
+	s.Restore("phenom")
+	if s.Active() != s.Apps()[2] || len(saved) != 0 {
+		t.Fatalf("restore: active %v saved %v", s.Active() == s.Apps()[2], saved)
+	}
+	s.Restore("gone") // a printer that the deck no longer has
+	if s.Active() != s.Apps()[2] {
+		t.Fatal("an unknown printer changed the screen")
+	}
+	s.Show("mini")
+	if s.Active() != s.Apps()[1] || len(saved) != 1 || saved[0] != "mini" {
+		t.Fatalf("show: saved %v", saved)
+	}
+}
+
+// loadedPrinter is a demo printer with an AMS of four trays.
+type loadedPrinter struct {
+	*DemoPrinter
+	items []printer.Loaded
+}
+
+func (p loadedPrinter) Loaded() []printer.Loaded { return p.items }
+
+// Four trays with the part left do not fit with their material: the row shows the part left
+// only, and each square stays in the panel.
+func TestLoadedFits(t *testing.T) {
+	a := New()
+	full := printer.Loaded{Material: "PLA", Color: "#888888", Fraction: 1}
+	a.Printer = loadedPrinter{&DemoPrinter{View: -1, State_: printer.State{Reachable: true, Connected: true, Text: "Ready"}},
+		[]printer.Loaded{full, full, full, full}}
+	c, rec := gfx.NewRecording(a.Screen().W, a.Screen().H)
+	r := image.Rect(16, 100, 448, 120)
+	w := a.drawLoaded(c, r)
+	f := string(rec.JSON())
+	if w > r.Dx()*2/3 || strings.Contains(f, "PLA 100%") || strings.Count(f, "100%") != 4 {
+		t.Errorf("width %d, frame %s", w, f)
+	}
+	shot(t, a, "loaded")
+}
+
+// A question of a printer that is not on the screen shows as a banner on the screen, and Show goes
+// to it. A question of the whole deck (Switcher.Ask) opens on the printer on the screen.
+func TestFleetQuestions(t *testing.T) {
+	s, _ := fleetDeck(t)
+	taz, mini := s.Apps()[0], s.Apps()[1]
+	mini.Ask("New spool in Tray 2", "OK", "Back", func(bool) {})
+	notes := taz.Fleet.Notes()
+	if len(notes) == 0 || notes[0].ID != "mini" || notes[0].Text != "Asks · New spool in Tray 2" {
+		t.Fatalf("notes %v", notes)
+	}
+	if f := frameText(taz); !strings.Contains(strings.ToUpper(f), "SHOW MINI") {
+		t.Fatal("no banner of the question")
+	}
+	show, ok := taz.KeyRect("Show MINI")
+	if !ok {
+		t.Fatal("no Show key")
+	}
+	tap(taz, show)
+	if s.Active() != mini {
+		t.Fatal("Show did not go to the printer of the question")
+	}
+	if f := frameText(mini); !strings.Contains(f, "New spool in Tray 2") {
+		t.Error("the question is not on the screen of its printer")
+	}
+	// The Allow of an app goes to the printer on the screen.
+	s.Ask("Allow zslice to use this Printdeck and its printers?", "Allow", "Deny", func(bool) {})
+	if q := mini.hub.question(); q == nil || !strings.HasPrefix(q.question, "Allow zslice") || taz.hub.question() != nil {
+		t.Fatal("the deck question is not on the screen")
+	}
+}

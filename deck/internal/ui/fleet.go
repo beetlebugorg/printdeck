@@ -361,10 +361,63 @@ func (a *App) drawFleet(c *gfx.Canvas) {
 		a.drawFleetList(c)
 		return
 	}
-	drawFleetBar(c)
+	a.drawFleetStatus(c)
 	if a.fleetQuiet() && !a.jogging() {
 		a.drawFleetBanner(c)
 	}
+}
+
+// fleetStatusH is the height of the status bar of a deck with many printers: the band at the top
+// of each page, over the frame of the page.
+const fleetStatusH = 13
+
+// shortState is the state of a printer in a word or two, for the status bar.
+func shortState(st printer.State) string {
+	switch {
+	case !st.Reachable || !st.Connected:
+		return "Offline"
+	case st.Err != "":
+		return "Error"
+	case st.Paused:
+		return fmt.Sprintf("Paused %.0f%%", st.Completion)
+	case st.Printing:
+		return fmt.Sprintf("%.0f%%", st.Completion)
+	case st.Finished == "complete":
+		return "Done"
+	}
+	return "Ready"
+}
+
+// drawFleetStatus draws the status bar at the top of each page, as on a phone: a dot in the colour
+// of each printer, its label and its state. The printer of this screen has its label in full ink
+// and a line in its colour under the bar. A tap on the bar opens the list of the printers, on
+// each page.
+func (a *App) drawFleetStatus(c *gfx.Canvas) {
+	bar := image.Rect(0, 0, W, fleetStatusH)
+	c.Fill(bar, lcd)
+	self := a.Fleet.Self()
+	c.Fill(image.Rect(0, fleetStatusH-2, W, fleetStatusH), self.Color)
+	face := gfx.Face(true, 11)
+	x := 10
+	for _, card := range a.Fleet.Cards() {
+		text := card.Label + " " + shortState(card.State)
+		w := 8 + 4 + gfx.Width(face, text)
+		if x+w > W-10 {
+			break
+		}
+		cy := (fleetStatusH - 2) / 2
+		c.RoundRect(image.Rect(x, cy-3, x+7, cy+4), 3, card.Color)
+		ink := lcdDim
+		if card.Active {
+			ink = lcdInk
+		}
+		c.Text(image.Rect(x+11, 0, x+w+4, fleetStatusH-2), text, face, ink, gfx.Left)
+		x += w + 14
+	}
+	open := func() { a.fleetList = true; a.Redraw() }
+	// The hit is higher than the bar, so a finger finds it.
+	a.addHit(kit.Hit{R: image.Rect(0, 0, W, fleetStatusH+6), Tap: open})
+	a.region("Status bar", bar)
 }
 
 // labelFrom suggests the short label of a printer from its name: the first word, at most 4
