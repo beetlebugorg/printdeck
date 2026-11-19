@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"printdeck/internal/jpegdec"
+	"printdeck/internal/turbojpeg"
 )
 
 // Device is a camera that the deck found.
@@ -128,8 +129,11 @@ type Frame struct {
 
 	// The Huffman decode of the JPEG, once for all the users of the frame: each user then makes
 	// the pixels of its scale and its part only (decode). nil when the JPEG has no such decode.
+	// A deck with libjpeg-turbo keeps its pictures in turbo instead.
 	sparseOnce sync.Once
 	sparse     *jpegdec.Sparse
+	turboMu    sync.Mutex
+	turbo      [4]*image.YCbCr // the picture of libjpeg-turbo at 1/2^shift of the size, or nil
 
 	plans     map[string]*viewPlan // the plan of each view, or nil for no plan (views.go)
 	views     map[string]*Frame    // the pictures of the views by view and width
@@ -236,10 +240,9 @@ func (f *Frame) pictureFor(w int) *image.YCbCr {
 
 // cropPicture returns a picture for the crop c (x0, y0, x1, y1 in the pixels of the frame) at the
 // width ow, and the crop in the pixels of that picture. A frame with its picture gives the
-// picture. Else the frame decodes the part of its JPEG around the crop only (jpegdec.DecodeRegion),
-// at 1/2, 1/4 or 1/8 of the size when that keeps ow pixels or more across the crop: the Huffman
-// decode of the whole JPEG, and the inverse DCT of the blocks of the crop. A 4K frame then costs
-// little for a small crop. The picture is not kept: a caller keeps what it makes of it.
+// picture. Else it decodes at 1/2, 1/4 or 1/8 of the size when that keeps ow pixels or more
+// across the crop (decode): with libjpeg-turbo the whole picture at that scale, which the frame
+// keeps for its next users; with jpegdec only the blocks of the crop.
 func (f *Frame) cropPicture(c [4]float64, ow int) (*image.YCbCr, [4]float64) {
 	f.mu.Lock()
 	pic, b := f.pic, f.jpeg
@@ -279,6 +282,16 @@ func (f *Frame) cropPicture(c [4]float64, ow int) (*image.YCbCr, [4]float64) {
 // result of the Huffman decode, so the next ones cost the pixels only. The caller does not hold
 // f.mu.
 func (f *Frame) decode(shift int, r image.Rectangle) (image.Image, error) {
+	// libjpeg-turbo decodes the whole picture at the scale, once for each scale; a part is a part
+	// of that picture.
+	if p := f.turboPicture(shift); p != nil {
+		if r.Empty() {
+			return p, nil
+		}
+		k := 1 << max(0, min(3, shift))
+		sr := image.Rect(r.Min.X/k, r.Min.Y/k, (r.Max.X+k-1)/k, (r.Max.Y+k-1)/k).Intersect(p.Rect)
+		return p.SubImage(sr), nil
+	}
 	f.sparseOnce.Do(func() {
 		if s, err := jpegdec.DecodeSparse(f.jpeg); err == nil {
 			f.sparse = s
@@ -291,6 +304,38 @@ func (f *Frame) decode(shift int, r image.Rectangle) (image.Image, error) {
 		return jpegdec.DecodeScaled(bytes.NewReader(f.jpeg), shift)
 	}
 	return jpegdec.DecodeRegion(bytes.NewReader(f.jpeg), shift, r)
+}
+
+// turboPicture returns the picture of the JPEG of the frame at 1/2^shift of its size from
+// libjpeg-turbo, and keeps it. It returns nil with no libjpeg-turbo, or for a JPEG that
+// libjpeg-turbo does not decode to planes (gray): then jpegdec decodes it.
+func (f *Frame) turboPicture(shift int) *image.YCbCr {
+	if !turbojpeg.Available || f.jpeg == nil {
+		return nil
+	}
+	shift = max(0, min(3, shift))
+	f.turboMu.Lock()
+	defer f.turboMu.Unlock()
+	if p := f.turbo[shift]; p != nil {
+		return p
+	}
+	p, err := turbojpeg.Decode(f.jpeg, shift)
+	if err != nil {
+		return nil
+	}
+	f.turbo[shift] = p
+	return p
+}
+
+// decodeJPEG decodes the JPEG b at 1/2^shift of its size: with libjpeg-turbo when the deck has it,
+// else with jpegdec.
+func decodeJPEG(b []byte, shift int) (image.Image, error) {
+	if turbojpeg.Available {
+		if p, err := turbojpeg.Decode(b, shift); err == nil {
+			return p, nil
+		}
+	}
+	return jpegdec.DecodeScaled(bytes.NewReader(b), shift)
 }
 
 // toYCbCrPicture returns a decoded JPEG as a YCbCr picture: a gray picture gets no color. It

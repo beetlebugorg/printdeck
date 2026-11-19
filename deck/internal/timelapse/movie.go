@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"printdeck/internal/jpegdec"
+	"printdeck/internal/turbojpeg"
 )
 
 // Movie is a time lapse video that is open for the player. It keeps the index of the frames (the
@@ -157,7 +158,14 @@ func (p *Picture) JPEG() []byte { return p.jpeg }
 // Picture returns the decoded picture. A bad JPEG gives a gray picture.
 func (p *Picture) Picture() image.Image {
 	p.once.Do(func() {
-		img, err := jpegdec.DecodeScaled(bytes.NewReader(p.jpeg), p.shift)
+		var img image.Image
+		var err error
+		if turbojpeg.Available {
+			img, err = turbojpeg.Decode(p.jpeg, p.shift)
+		}
+		if !turbojpeg.Available || err != nil {
+			img, err = jpegdec.DecodeScaled(bytes.NewReader(p.jpeg), p.shift)
+		}
 		if err != nil {
 			img = image.NewGray(image.Rect(0, 0, max(1, p.w>>p.shift), max(1, p.h>>p.shift)))
 		}
