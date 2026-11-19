@@ -202,7 +202,7 @@ func TestBambuSpoolChanges(t *testing.T) {
 	if _, ok := b.TrayQuestion(); ok {
 		t.Error("a question after the answers")
 	}
-	// The next start of the deck asks nothing: the deck has its tray file.
+	// The next start of the deck asks no question: the deck has its tray file.
 	b2 := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
 	b2.Spools, b2.TrayPath = b.Spools, b.TrayPath
 	b2.update(r, time.Now())

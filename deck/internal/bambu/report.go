@@ -99,8 +99,8 @@ type Tray struct {
 	Type   string `json:"tray_type"`  // "PLA"
 	Color  string `json:"tray_color"` // "898989FF"; "00000000" is no color
 	Brand  string `json:"tray_sub_brands"`
-	Remain Num    `json:"remain"`  // the percent left of a spool with an RFID tag of Bambu Lab, or -1
-	TagUID string `json:"tag_uid"` // the RFID tag, all zeros with no tag
+	Remain Num    `json:"remain"`      // the percent left of a spool with an RFID tag of Bambu Lab, or -1
+	TagUID string `json:"tag_uid"`     // the RFID tag, all zeros with no tag
 	Weight Num    `json:"tray_weight"` // the grams of a full spool, from the RFID tag, or 0
 }
 
