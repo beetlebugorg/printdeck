@@ -144,3 +144,30 @@ func TestBambuX2DNozzleInfo(t *testing.T) {
 		t.Errorf("plate %q", b.PlateID())
 	}
 }
+
+// A print of a file that the deck sent has the file of the store as its path: the screens show
+// its model and its picture, and Reprint prints it again. The view follows the layer.
+func TestBambuSentPrintPath(t *testing.T) {
+	b := NewBambu("192.168.1.50", "00TEST000000000", "12345678", "", "X2D", &History{Path: filepath.Join(t.TempDir(), "h.json")})
+	b.sent = bambuSent{path: "part.gcode.3mf", name: "part.gcode.3mf"}
+	r := x2dParse(t, x2dReport)
+	r.Subtask, r.File, r.TaskID, r.Layer = "part", "/data/Metadata/plate_1.gcode", "795187646", 12
+	b.update(r, time.Now())
+	if st := b.State(); st.FilePath != "part.gcode.3mf" {
+		t.Errorf("path %q", st.FilePath)
+	}
+	if l := b.ViewLayer(); l != 12 {
+		t.Errorf("view layer %d, want 12", l)
+	}
+	b.SetViewLayer(5)
+	if l := b.ViewLayer(); l != 5 {
+		t.Errorf("view layer %d after the slider, want 5", l)
+	}
+	// A print that the deck did not send keeps its own name.
+	r.Subtask, r.TaskID = "Panda", "9542"
+	b.update(bambu.Report{State: "IDLE"}, time.Now())
+	b.update(r, time.Now())
+	if st := b.State(); st.FilePath == "part.gcode.3mf" {
+		t.Errorf("a print of the printer has the path of the sent file")
+	}
+}

@@ -192,8 +192,10 @@ func run(cfg config.Config) {
 		a := ui.New()
 		a.Printer = pr
 		a.Animate = true
-		if _, ok := pr.(*printer.Klippy); ok {
-			// The last print of the home screen as a 3D view that the finger turns (zslice).
+		switch pr.(type) {
+		case *printer.Klippy, *printer.Bambu:
+			// The last print of the home screen as a 3D view that the finger turns (zslice). A
+			// Bambu Lab printer has its sliced 3MF files in the same folder.
 			if v := startZsliceViewer(pcfg.GcodeDir); v != nil {
 				a.Viewer = v
 			}
