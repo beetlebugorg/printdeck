@@ -238,3 +238,23 @@ func TestX2DDryAMS(t *testing.T) {
 	}
 	shot(t, a, "x2d-drying")
 }
+
+// A failed print shows the whole reason of the printer, with no line cut.
+func TestFailedReasonWhole(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a := New()
+		p := newX2D()
+		reason := "The print has stopped because the available hotend quantity or model does not match the sliced file. Please verify the hotend model and quantity before restarting the print job. (05004047)"
+		p.State_ = printer.State{Reachable: true, Connected: true, Text: "Ready", Finished: "error", FinishedFile: "part.gcode.3mf",
+			FinishedError: reason}
+		a.Printer = p
+		a.Wide = wide
+		f := frameText(a)
+		for _, w := range []string{"restarting the print", "(05004047)"} {
+			if !strings.Contains(f, w) {
+				t.Errorf("wide %v: no %q", wide, w)
+			}
+		}
+		shot(t, a, fmt.Sprintf("x2d-failed-wide%v", wide))
+	}
+}
