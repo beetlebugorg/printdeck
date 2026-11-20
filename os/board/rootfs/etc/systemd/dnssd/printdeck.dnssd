@@ -1,0 +1,9 @@
+# The deck on the LAN for the apps (zslice): a DNS-SD service of systemd-resolved, with the name
+# of the host. printdeck=1 marks a Printdeck, and path is the list of its printers, with the
+# HTTPS address of the deck ("https") and the address of each printer. The list needs the login
+# or a deck key.
+[Service]
+Name=%H
+Type=_http._tcp
+Port=80
+TxtText=printdeck=1 path=/slicer/printer.json
