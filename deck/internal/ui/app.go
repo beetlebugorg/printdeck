@@ -200,8 +200,7 @@ type App struct {
 	Printer Printer
 	// Fleet links the App to the other printers of its deck (fleet.go), or is nil for a deck with
 	// one printer.
-	Fleet     Fleet
-	fleetList bool // the list of the printers is open
+	Fleet Fleet
 	// Printers adds, changes and removes the printers of the deck (Settings, Printers), or is
 	// nil.
 	Printers PrinterAdmin
