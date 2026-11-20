@@ -21,7 +21,10 @@ type Report struct {
 	TaskID    string `json:"task_id"`
 	PrintType string `json:"print_type"` // "local", "cloud", "system" (a calibration of the printer)
 	Error     Num    `json:"print_error"`
-	HMS       []HMS  `json:"hms"`
+	// ErrSeq is "err": a counter in its first two characters and the print error, for example
+	// "1A0300400C". A new error changes the counter.
+	ErrSeq string `json:"err"`
+	HMS    []HMS  `json:"hms"`
 
 	Nozzle       Num    `json:"nozzle_temper"`
 	NozzleTarget Num    `json:"nozzle_target_temper"`
