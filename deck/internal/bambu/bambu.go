@@ -477,10 +477,10 @@ func (c *Client) Gcode(lines ...string) error {
 	return c.send("print", "gcode_line", map[string]any{"param": strings.Join(lines, "\n") + "\n"})
 }
 
-// SetNozzleTemp sets the target of the extruder id of a printer with two extruders, in °C
-// (set_nozzle_temp, as Bambu Studio sends it).
+// SetNozzleTemp sets the target of the extruder id of a printer with two extruders, in °C, with
+// M104 T<id> (as bambuddy sends it; T is the extruder id of the reports).
 func (c *Client) SetNozzleTemp(id, temp int) error {
-	return c.send("print", "set_nozzle_temp", map[string]any{"extruder_index": id, "target_temp": max(0, temp)})
+	return c.Gcode(fmt.Sprintf("M104 T%d S%d", id, max(0, temp)))
 }
 
 // SelectExtruder makes the extruder id the extruder in use, on a printer with two extruders
@@ -521,23 +521,62 @@ func (c *Client) SetLight(node string, on bool) error {
 		"led_on_time": 500, "led_off_time": 500, "loop_times": 0, "interval_time": 0})
 }
 
-// ChangeFilament loads the filament of the tray slot (Unit*4+Index, or an external spool) into the
-// nozzle, as Bambu Studio does with ams_change_filament: the printer unloads the filament in the
-// nozzle first. from and to are the nozzle temperatures of the old and the new filament, in °C.
-func (c *Client) ChangeFilament(slot, from, to int) error {
-	amsID, slotID := slot/4, slot%4
+// The AMS commands follow Bambu Studio, as bambuddy (an open farm program for Bambu Lab printers)
+// documents them from captures of Studio: backend/app/services/bambu_mqtt.py.
+
+// ChangeFilament loads the filament of the tray slot (Unit*4+Index, or an external spool) into its
+// nozzle (ams_change_filament): the printer unloads the filament in the nozzle first. For a tray of
+// an AMS the temperatures are -1: the printer takes those of the filaments. For an external spool
+// they are temp, the nozzle temperature in °C.
+func (c *Client) ChangeFilament(slot, temp int) error {
+	f := map[string]any{"target": slot, "ams_id": slot / 4, "slot_id": slot % 4, "curr_temp": -1, "tar_temp": -1}
 	if slot == ExternalMain || slot == ExternalDeputy {
-		amsID, slotID = slot, 0
+		f["ams_id"], f["slot_id"], f["curr_temp"], f["tar_temp"] = 255, 0, temp, temp
+		if slot == ExternalDeputy {
+			f["slot_id"] = 254
+		}
 	}
-	return c.send("print", "ams_change_filament", map[string]any{"target": slot, "curr_temp": from, "tar_temp": to,
-		"ams_id": amsID, "slot_id": slotID})
+	return c.answered("The load of the filament", "ams_change_filament", f)
 }
 
-// UnloadFilament pulls the filament out of the nozzle, back to its tray (ams_change_filament to
-// 255).
-func (c *Client) UnloadFilament(from int) error {
-	return c.send("print", "ams_change_filament", map[string]any{"target": 255, "curr_temp": from, "tar_temp": from,
-		"ams_id": 255, "slot_id": 255})
+// UnloadFilament pulls the filament out of the nozzle back to the AMS amsID (255 for an external
+// spool), at the nozzle temperature temp in °C (ams_change_filament to 255).
+func (c *Client) UnloadFilament(amsID, temp int) error {
+	return c.answered("The unload of the filament", "ams_change_filament", map[string]any{"target": 255,
+		"ams_id": amsID, "slot_id": 255, "curr_temp": temp, "tar_temp": temp})
+}
+
+// DryAMS starts the drying of the AMS amsID at temp °C for hours hours, for the filament type
+// (ams_filament_drying, mode 1).
+func (c *Client) DryAMS(amsID, temp, hours int, filament string) error {
+	return c.answered("The drying", "ams_filament_drying", map[string]any{"ams_id": amsID, "temp": temp,
+		"cooling_temp": 20, "duration": hours, "humidity": 0, "mode": 1, "rotate_tray": false,
+		"filament": filament, "close_power_conflict": false})
+}
+
+// StopDryAMS stops the drying of the AMS amsID (ams_filament_drying, mode 0).
+func (c *Client) StopDryAMS(amsID int) error {
+	return c.answered("The stop of the drying", "ams_filament_drying", map[string]any{"ams_id": amsID, "temp": 0,
+		"cooling_temp": 0, "duration": 0, "humidity": 0, "mode": 0, "rotate_tray": false, "filament": "",
+		"close_power_conflict": false})
+}
+
+// answered sends a print command and waits for the answer of the printer: a failure is an error
+// with the reason of the printer. No answer is not an error: the printer gives none to some
+// commands.
+func (c *Client) answered(what, command string, fields map[string]any) error {
+	r, ok, err := c.sendWait("print", command, fields, 10*time.Second)
+	if err != nil {
+		return err
+	}
+	if ok && r.Failed() {
+		reason := r.Reason
+		if reason == "" {
+			reason = fmt.Sprintf("error %d", r.ErrCode)
+		}
+		return fmt.Errorf("%s: the printer refused it: %s", what, reason)
+	}
+	return nil
 }
 
 // ReadRFID asks the AMS to read the RFID tag of the spool in the tray slot again (ams_get_rfid).

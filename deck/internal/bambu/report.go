@@ -124,6 +124,14 @@ type AMSUnit struct {
 	HumidityPct Num    `json:"humidity_raw"` // the relative humidity in percent
 	Temp        Num    `json:"temp"`         // °C
 	Trays       []Tray `json:"tray"`
+	// DryTime is the drying time left in minutes, 0 when the AMS does not dry. DrySetting is the
+	// drying that runs.
+	DryTime    Num `json:"dry_time"`
+	DrySetting struct {
+		Temp     Num    `json:"dry_temperature"`
+		Hours    Num    `json:"dry_duration"`
+		Filament string `json:"dry_filament"`
+	} `json:"dry_setting"`
 }
 
 // Tray is one slot of an AMS.

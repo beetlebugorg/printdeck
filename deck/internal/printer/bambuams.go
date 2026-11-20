@@ -50,6 +50,13 @@ type AMSTray struct {
 
 // AMSUnit is one AMS.
 type AMSUnit struct {
+	// Drying is true while the AMS dries: DryLeft is the time left, and DryTemp, DryHours and
+	// DryFilament the drying that runs.
+	Drying      bool
+	DryLeft     time.Duration
+	DryTemp     int
+	DryHours    int
+	DryFilament string
 	Index       int
 	Temp        float64 // °C
 	HumidityPct float64 // relative humidity in percent
@@ -92,7 +99,9 @@ func (b *Bambu) AMS() AMS {
 	for _, u := range r.AMS.Units {
 		ui, _ := strconv.Atoi(u.ID)
 		out.Units = append(out.Units, AMSUnit{Index: ui, Temp: float64(u.Temp),
-			HumidityPct: float64(u.HumidityPct), Humidity: u.Humidity.Int()})
+			HumidityPct: float64(u.HumidityPct), Humidity: u.Humidity.Int(),
+			Drying: u.DryTime > 0, DryLeft: time.Duration(u.DryTime) * time.Minute,
+			DryTemp: u.DrySetting.Temp.Int(), DryHours: u.DrySetting.Hours.Int(), DryFilament: u.DrySetting.Filament})
 		for _, t := range u.Trays {
 			ti, _ := strconv.Atoi(t.ID)
 			slot := ui*4 + ti
@@ -575,28 +584,49 @@ func (b *Bambu) LoadTray(slot int) error {
 	if !ok || !t.Loaded {
 		return fmt.Errorf("the tray has no spool")
 	}
-	from := loadTemp(t)
-	for _, o := range b.AMS().Trays {
-		if o.Active {
-			from = loadTemp(o)
-		}
-	}
-	return b.command("The load of the filament", func() error { return b.Client.ChangeFilament(slot, from, loadTemp(t)) })
+	return b.command("The load of the filament", func() error { return b.Client.ChangeFilament(slot, loadTemp(t)) })
 }
 
-// UnloadTray pulls the filament out of the nozzle in use, back to its tray. It returns an error
-// during a print.
+// UnloadTray pulls the filament out of the nozzle in use back to the AMS of its tray (or the
+// external spool). It returns an error during a print, or with no spool in the nozzle.
 func (b *Bambu) UnloadTray() error {
 	if b.State().Busy() {
 		return fmt.Errorf("the printer prints: unload the filament after the print")
 	}
-	from := 220
 	for _, o := range b.AMS().Trays {
 		if o.Active {
-			from = loadTemp(o)
+			ams := o.Unit
+			if o.External {
+				ams = 255
+			}
+			return b.command("The unload of the filament", func() error { return b.Client.UnloadFilament(ams, loadTemp(o)) })
 		}
 	}
-	return b.command("The unload of the filament", func() error { return b.Client.UnloadFilament(from) })
+	return fmt.Errorf("no spool feeds the nozzle")
+}
+
+// The drying of an AMS 2 Pro: 45 to 65 °C, up to 24 hours.
+const (
+	minDryTemp  = 45
+	maxDryTemp  = 65
+	maxDryHours = 24
+)
+
+// DryAMS starts the drying of the AMS unit for the filament type, at temp °C for hours hours. It
+// returns an error during a print: the printer does not start a drying then.
+func (b *Bambu) DryAMS(unit int, filament string, temp, hours int) error {
+	if b.State().Busy() {
+		return fmt.Errorf("the printer prints: dry the AMS after the print")
+	}
+	if temp < minDryTemp || temp > maxDryTemp || hours < 1 || hours > maxDryHours {
+		return fmt.Errorf("a drying of %d° for %d h is out of range", temp, hours)
+	}
+	return b.command("The drying of the AMS", func() error { return b.Client.DryAMS(unit, temp, hours, filament) })
+}
+
+// StopDryAMS stops the drying of the AMS unit.
+func (b *Bambu) StopDryAMS(unit int) error {
+	return b.command("The stop of the drying", func() error { return b.Client.StopDryAMS(unit) })
 }
 
 // ReadTrayTag asks the AMS to read the RFID tag of the spool in the tray slot again.
