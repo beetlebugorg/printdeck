@@ -20,12 +20,18 @@ type x2dPrinter struct {
 	selected   []int
 	chamberSet []int
 	loads      []int // the trays of LoadTray, and -1 for UnloadTray
+	dries      []string
 }
 
 func (p *x2dPrinter) AMS() printer.AMS           { return p.ams }
 func (p *x2dPrinter) LoadTray(slot int) error    { p.loads = append(p.loads, slot); return nil }
 func (p *x2dPrinter) UnloadTray() error          { p.loads = append(p.loads, -1); return nil }
 func (p *x2dPrinter) ReadTrayTag(slot int) error { return nil }
+func (p *x2dPrinter) DryAMS(unit int, filament string, temp, hours int) error {
+	p.dries = append(p.dries, fmt.Sprintf("%d %s %d %d", unit, filament, temp, hours))
+	return nil
+}
+func (p *x2dPrinter) StopDryAMS(unit int) error  { p.dries = append(p.dries, "stop"); return nil }
 func (p *x2dPrinter) LinkTray(int, string) error { return nil }
 func (p *x2dPrinter) SetTool2Temp(t int) error   { p.tool2 = append(p.tool2, t); return nil }
 func (p *x2dPrinter) SelectTool(n int) error     { p.selected = append(p.selected, n); return nil }
@@ -195,4 +201,40 @@ func TestPrinterLapsePage(t *testing.T) {
 		t.Errorf("sets %v", pl.sets)
 	}
 	shot(t, a, "x2d-timelapse")
+}
+
+// The AMS row of the Filament page dries the AMS: a preset for the filament of its trays first,
+// then a question. A drying AMS shows the time left, and a tap stops it.
+func TestX2DDryAMS(t *testing.T) {
+	a := New()
+	p := newX2D()
+	a.Printer = p
+	a.pages = []page{pageFilament}
+	if f := frameText(a); !strings.Contains(f, "tap to dry") {
+		t.Fatalf("no drying row: %s", f)
+	}
+	a.askDry(p, p.ams.Units[0], p.ams, 1)
+	if a.confirm == nil || len(a.confirm.choices) == 0 || a.confirm.choices[0].title != "PLA" {
+		t.Fatalf("choices %+v", a.confirm)
+	}
+	a.confirm.choices[0].tap()
+	a.confirm.onYes()
+	deadline := time.After(2 * time.Second)
+	for len(p.dries) == 0 {
+		select {
+		case f := <-a.posted:
+			f()
+		case <-deadline:
+			t.Fatal("no drying")
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+	if p.dries[0] != "0 PLA 55 8" {
+		t.Errorf("dries %v", p.dries)
+	}
+	p.ams.Units[0].Drying, p.ams.Units[0].DryLeft, p.ams.Units[0].DryFilament, p.ams.Units[0].DryTemp = true, 200*time.Minute, "PLA", 55
+	if f := frameText(a); !strings.Contains(f, "Drying PLA 55° · 3:20 left") {
+		t.Errorf("no drying state: %s", f)
+	}
+	shot(t, a, "x2d-drying")
 }

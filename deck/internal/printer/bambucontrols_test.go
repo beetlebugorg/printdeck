@@ -2,6 +2,7 @@ package printer
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -86,9 +87,15 @@ func TestBambuLoadTray(t *testing.T) {
 	defer cancel()
 	go b.Run(ctx, nil)
 	waitFor(t, "link", func() bool { return b.State().Connected })
-	r := amsReport("IDLE", "0")
-	r.AMS.Units[0].Trays[2].TempMax = 230
-	b.update(r, time.Now())
+	// The AMS comes from the printer, so the answers of the printer keep it in the state.
+	var ams map[string]any
+	json.Unmarshal([]byte(`{"gcode_state":"IDLE","ams":{"tray_now":"0","tray_exist_bits":"f","ams":[{"id":"0","tray":[
+		{"id":"0","tray_type":"PLA","tray_color":"898989FF","nozzle_temp_max":"220"},
+		{"id":"1","tray_type":"PLA","tray_color":"DCDCDCFF"},
+		{"id":"2","tray_type":"PLA","tray_color":"161616FF","nozzle_temp_max":"230"},
+		{"id":"3","tray_type":"PLA","tray_color":"F72323FF"}]}]}}`), &ams)
+	f.Send(ams)
+	waitFor(t, "the AMS", func() bool { return len(b.AMS().Trays) == 4 })
 	if err := b.LoadTray(2); err != nil {
 		t.Fatal(err)
 	}
@@ -105,10 +112,10 @@ func TestBambuLoadTray(t *testing.T) {
 		}
 		return len(cmds) == 2
 	})
-	if c := cmds[0]; c["target"] != 2.0 || c["tar_temp"] != 230.0 || c["curr_temp"] != 220.0 || c["ams_id"] != 0.0 || c["slot_id"] != 2.0 {
+	if c := cmds[0]; c["target"] != 2.0 || c["tar_temp"] != -1.0 || c["curr_temp"] != -1.0 || c["ams_id"] != 0.0 || c["slot_id"] != 2.0 {
 		t.Errorf("load %v", c)
 	}
-	if c := cmds[1]; c["target"] != 255.0 || c["ams_id"] != 255.0 {
+	if c := cmds[1]; c["target"] != 255.0 || c["ams_id"] != 0.0 || c["slot_id"] != 255.0 || c["curr_temp"] != 220.0 {
 		t.Errorf("unload %v", c)
 	}
 	b.update(amsReport("RUNNING", "0"), time.Now())
@@ -160,5 +167,51 @@ func TestBambuCameraChecks(t *testing.T) {
 	}
 	if cam["command"] != "ipcam_timelapse" || cam["control"] != "enable" {
 		t.Errorf("camera %v", cam)
+	}
+}
+
+// A drying of the AMS sends ams_filament_drying with mode 1, and a stop mode 0. A drying out of
+// range, or during a print, does not go to the printer.
+func TestBambuDryAMS(t *testing.T) {
+	f, err := bambu.NewFake("00TEST000000000", "12345678")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	f.Send(map[string]any{"gcode_state": "IDLE"})
+	b := NewBambu(f.Addr(), f.Serial, f.Code, "", "X2D", nil)
+	b.Client.Roots = f.Roots
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	go b.Run(ctx, nil)
+	waitFor(t, "link", func() bool { return b.State().Connected })
+	if err := b.DryAMS(0, "PLA", 55, 8); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.StopDryAMS(0); err != nil {
+		t.Fatal(err)
+	}
+	if b.DryAMS(0, "PC", 90, 8) == nil {
+		t.Error("a drying at 90°")
+	}
+	var dries []map[string]any
+	waitFor(t, "requests", func() bool {
+		dries = nil
+		for _, q := range f.Requests() {
+			if p, ok := q["print"].(map[string]any); ok && p["command"] == "ams_filament_drying" {
+				dries = append(dries, p)
+			}
+		}
+		return len(dries) == 2
+	})
+	if d := dries[0]; d["ams_id"] != 0.0 || d["temp"] != 55.0 || d["duration"] != 8.0 || d["mode"] != 1.0 || d["filament"] != "PLA" {
+		t.Errorf("drying %v", d)
+	}
+	if d := dries[1]; d["mode"] != 0.0 {
+		t.Errorf("stop %v", d)
+	}
+	b.update(amsReport("RUNNING", "0"), time.Now())
+	if b.DryAMS(0, "PLA", 55, 8) == nil {
+		t.Error("a drying during a print")
 	}
 }

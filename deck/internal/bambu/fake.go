@@ -161,6 +161,12 @@ func (f *Fake) serve(c net.Conn) {
 			if p, ok := req["pushing"].(map[string]any); ok && p["command"] == "pushall" {
 				m.writePacket(pktPublish, 0, append(appendStr(nil, "device/"+f.Serial+"/report"), full...))
 			}
+			// The printer answers each print command with its result, as the X2D does.
+			if p, ok := req["print"].(map[string]any); ok && p["command"] != "project_file" {
+				a, _ := json.Marshal(map[string]any{"print": map[string]any{"command": p["command"],
+					"sequence_id": p["sequence_id"], "result": "SUCCESS", "reason": "SUCCESS"}})
+				m.writePacket(pktPublish, 0, append(appendStr(nil, "device/"+f.Serial+"/report"), a...))
+			}
 			if p, ok := req["print"].(map[string]any); ok && p["command"] == "project_file" {
 				url, _ := p["url"].(string)
 				result, reason, answer := "success", "", true

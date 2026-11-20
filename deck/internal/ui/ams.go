@@ -65,12 +65,32 @@ func (a *App) drawAMS(c *gfx.Canvas, ams amsPrinter) {
 	}
 	units := len(st.Units)
 	two := a.Printer.State().HasTool2
-	r := kit.Rows(area, 10, kit.Px(28), kit.Fr(1))
-	var lines []string
-	for _, u := range st.Units {
-		lines = append(lines, unitLine(u, units))
+	dr, canDry := ams.(amsDryer)
+	unitH := 28
+	if canDry && units > 0 {
+		unitH = 64 // a row for each AMS, with its drying: a tap dries it or stops the drying
 	}
-	c.Text(r[0], strings.Join(lines, "   "), gfx.Face(false, 16), dim, gfx.Left)
+	r := kit.Rows(area, 10, kit.Px(unitH), kit.Fr(1))
+	if canDry && units > 0 {
+		cols := make([]kit.Size, units)
+		for i := range cols {
+			cols[i] = kit.Fr(1)
+		}
+		for i, rr := range kit.Cols(r[0], 10, cols...) {
+			u := st.Units[i]
+			sub := "Not drying · tap to dry"
+			if u.Drying {
+				sub = fmt.Sprintf("Drying %s %d° · %s left", u.DryFilament, u.DryTemp, shortDuration(u.DryLeft))
+			}
+			a.menuRow(c, rr, unitLine(u, units), sub, dim, func() { a.askDry(dr, u, st, units) })
+		}
+	} else {
+		var lines []string
+		for _, u := range st.Units {
+			lines = append(lines, unitLine(u, units))
+		}
+		c.Text(r[0], strings.Join(lines, "   "), gfx.Face(false, 16), dim, gfx.Left)
+	}
 	spools := a.Printer.SpoolStore()
 	l := kit.List{Area: r[1], N: len(st.Trays), RowH: 84, Gap: 8, Scroll: &a.spoolScroll}
 	a.list(c, l, func(i int) string { return trayName(st.Trays[i], units) }, func(c *gfx.Canvas, i int, rr image.Rectangle) {
@@ -172,6 +192,59 @@ func (a *App) askTray(ams amsPrinter, t printer.AMSTray, units int) {
 			}})
 	}
 	a.confirm = &confirmBox{question: name, choices: choices}
+}
+
+// amsDryer is a printer that dries its AMS (printer.Bambu).
+type amsDryer interface {
+	DryAMS(unit int, filament string, temp, hours int) error
+	StopDryAMS(unit int) error
+}
+
+// dryPresets are the drying of the deck for each filament, in °C and hours. The AMS 2 Pro dries at
+// 45 to 65 °C, so the hot filaments dry at 65 °C for longer.
+var dryPresets = []struct {
+	material    string
+	temp, hours int
+}{{"PLA", 55, 8}, {"PETG", 65, 8}, {"ABS", 65, 8}, {"ASA", 65, 8}, {"TPU", 65, 8}, {"PA", 65, 12}, {"PC", 65, 12}}
+
+// askDry asks to dry the AMS u, with a preset for each filament; the material of its trays first.
+// An AMS that dries asks to stop the drying.
+func (a *App) askDry(dr amsDryer, u printer.AMSUnit, st printer.AMS, units int) {
+	name := "the AMS"
+	if units > 1 {
+		name = fmt.Sprintf("AMS %d", u.Index+1)
+	}
+	unit := u.Index
+	if u.Drying {
+		a.confirm = &confirmBox{question: fmt.Sprintf("Stop the drying of %s? %s left.", name, shortDuration(u.DryLeft)),
+			yes: "Stop drying", onYes: func() { a.do(func() error { return dr.StopDryAMS(unit) }) }}
+		return
+	}
+	if a.Printer.State().Busy() {
+		a.Toast("Dry the AMS after the print")
+		return
+	}
+	loaded := map[string]bool{}
+	for _, t := range st.Trays {
+		if t.Unit == unit && t.Loaded {
+			loaded[strings.ToUpper(t.Material)] = true
+		}
+	}
+	var first, rest []menuItem
+	for _, p := range dryPresets {
+		p := p
+		item := menuItem{p.material, fmt.Sprintf("%d° for %d h", p.temp, p.hours), dim, func() {
+			a.confirm = &confirmBox{question: fmt.Sprintf("Dry %s for %s at %d° for %d hours? Keep the lid closed.", name, p.material, p.temp, p.hours),
+				yes: "Dry", onYes: func() { a.do(func() error { return dr.DryAMS(unit, p.material, p.temp, p.hours) }) }}
+		}}
+		if loaded[p.material] {
+			item.sub += " · in this AMS"
+			first = append(first, item)
+		} else {
+			rest = append(rest, item)
+		}
+	}
+	a.confirm = &confirmBox{question: "Dry " + name + " for which filament?", choices: append(first, rest...)}
 }
 
 // trayLoader is a printer that loads and unloads the filament of its trays (printer.Bambu).
