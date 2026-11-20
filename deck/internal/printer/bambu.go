@@ -513,3 +513,38 @@ func (b *Bambu) PrintPairTowers(int, int, string, [2]float64, [2]float64) error 
 	return ErrNotSupported
 }
 func (b *Bambu) SetInputShaper(float64, float64) error { return ErrNotSupported }
+
+// NozzleInfo is a nozzle of a printer for the slicers: its ID in the reports, its role ("main"
+// with the AMS, "aux" with the external spool), its diameter in mm and its type code as the
+// printer reports it (for example "HS01").
+type NozzleInfo struct {
+	ID       int
+	Role     string
+	Diameter float64
+	Type     string
+}
+
+// Nozzles returns the nozzles of the last report, or none.
+func (b *Bambu) Nozzles() []NozzleInfo {
+	r, ok := b.Report()
+	if !ok {
+		return nil
+	}
+	var out []NozzleInfo
+	two := len(r.Device.Nozzle.Info) > 1
+	for _, n := range r.Device.Nozzle.Info {
+		role := "main"
+		if two && n.ID != mainExtruder {
+			role = "aux"
+		}
+		out = append(out, NozzleInfo{ID: n.ID, Role: role, Diameter: n.Diameter, Type: n.Type})
+	}
+	return out
+}
+
+// PlateID returns the code of the build plate that the printer found on the heatbed (for example
+// "P0101"), or "" when it found none.
+func (b *Bambu) PlateID() string {
+	r, _ := b.Report()
+	return r.Device.Plate.CurID
+}

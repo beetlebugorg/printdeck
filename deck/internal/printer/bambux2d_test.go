@@ -128,3 +128,19 @@ func TestBambuX2DMatchByNozzle(t *testing.T) {
 		t.Fatalf("matches %+v", m)
 	}
 }
+
+// The nozzles of the X2D for the slicers: extruder 1 is the main nozzle with the AMS, extruder 0
+// the aux nozzle. The plate is the code that the printer found, or "".
+func TestBambuX2DNozzleInfo(t *testing.T) {
+	b := NewBambu("192.168.1.50", "00TEST000000000", "12345678", "", "X2D", &History{Path: filepath.Join(t.TempDir(), "h.json")})
+	r := x2dParse(t, `{"gcode_state":"IDLE","device":{"plate":{"base":1,"mat":1,"cur_id":"P0101"},"nozzle":{"info":[
+		{"id":0,"diameter":0.4,"type":"HS01"},{"id":1,"diameter":0.4,"type":"HS01"}]}}}`)
+	b.update(r, time.Now())
+	n := b.Nozzles()
+	if len(n) != 2 || n[0].Role != "aux" || n[1].Role != "main" || n[1].Type != "HS01" || n[1].Diameter != 0.4 {
+		t.Errorf("nozzles %+v", n)
+	}
+	if b.PlateID() != "P0101" {
+		t.Errorf("plate %q", b.PlateID())
+	}
+}

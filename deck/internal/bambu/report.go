@@ -80,6 +80,13 @@ type Device struct {
 			Type     string  `json:"type"`
 		} `json:"info"`
 	} `json:"nozzle"`
+	// Plate is the build plate that the printer found: CurID is the code of the plate on the
+	// heatbed (for example "P0101"), or "" when the printer found none.
+	Plate struct {
+		CurID string `json:"cur_id"`
+		Base  Num    `json:"base"`
+		Mat   Num    `json:"mat"`
+	} `json:"plate"`
 	CTC struct {
 		Info struct {
 			Temp Num `json:"temp"`

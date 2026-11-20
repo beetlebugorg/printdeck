@@ -112,6 +112,36 @@ type printdeckJSON struct {
 	// Filaments are the spools that the printer has loaded (filamentsOf), or null when the printer
 	// does not tell them.
 	Filaments []filamentJSON `json:"filaments,omitempty"`
+	// Nozzles are the nozzles of a Bambu Lab printer, and Plate the code of the build plate that
+	// it found on the heatbed (for example "P0101"), or "" (nozzlesOf).
+	Nozzles []nozzleJSON `json:"nozzles,omitempty"`
+	Plate   string       `json:"plate,omitempty"`
+}
+
+// nozzleJSON is a nozzle of a Bambu Lab printer: its id in the reports, its role ("main" with the
+// AMS, "aux" with the external spool), its diameter in mm, and its type code as the printer
+// reports it (for example "HS01").
+type nozzleJSON struct {
+	ID       int     `json:"id"`
+	Role     string  `json:"role"`
+	Diameter float64 `json:"diameter"`
+	Type     string  `json:"type"`
+}
+
+// nozzlesOf returns the nozzles and the plate of a printer that reports them (printer.Bambu).
+func nozzlesOf(p any) ([]nozzleJSON, string) {
+	n, ok := p.(interface {
+		Nozzles() []printer.NozzleInfo
+		PlateID() string
+	})
+	if !ok {
+		return nil, ""
+	}
+	var out []nozzleJSON
+	for _, z := range n.Nozzles() {
+		out = append(out, nozzleJSON{ID: z.ID, Role: z.Role, Diameter: z.Diameter, Type: z.Type})
+	}
+	return out, n.PlateID()
 }
 
 // filamentJSON is a spool that the printer has loaded. Slot is its name on the printer: "A1" for
@@ -256,6 +286,7 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	out.Filaments = filamentsOf(s.Printer)
+	out.Nozzles, out.Plate = nozzlesOf(s.Printer)
 	if st := s.Printer.State(); st.Busy() {
 		j := &jobJSON{File: st.FilePath, Title: st.Name(), State: "printing", Layer: st.Layer, Layers: st.Layers,
 			Progress: st.Completion / 100, Left: -1, Release: -1, Pos: st.FilePos}
