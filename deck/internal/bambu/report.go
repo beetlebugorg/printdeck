@@ -314,6 +314,18 @@ func (r Report) FanPercent() float64 {
 	return float64(r.Fan) / 15 * 100
 }
 
+// Elapsed returns an estimate of the time since the start of the print, for a print that the deck
+// sees first after its start (after a restart of the deck). The printer reports no start time.
+// mc_percent follows the time of the print, so the time so far is the time left times
+// percent / (100 - percent). It is 0 at the start of a print, and with no time left.
+func (r Report) Elapsed() time.Duration {
+	p, left := float64(r.Percent), float64(r.Remaining)
+	if p <= 0 || p >= 100 || left <= 0 {
+		return 0
+	}
+	return time.Duration(left*p/(100-p)*float64(time.Minute)).Round(time.Minute)
+}
+
 // TimeLeft returns the time left of the print.
 func (r Report) TimeLeft() time.Duration {
 	return time.Duration(r.Remaining) * time.Minute
