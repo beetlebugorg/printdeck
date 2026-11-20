@@ -90,7 +90,52 @@ type slicerPrinter struct {
 	// X2D", or "".
 	Files string `json:"files"`
 	Model string `json:"model,omitempty"`
+	slicerLive
 }
+
+// slicerLive is the state of a printer now, for the printer list of a slicer: State is "ready",
+// "printing", "paused", "connecting", "offline" or "error". Progress is 0 to 1, and Left the
+// seconds left, during a print (Left is -1 when the printer does not know). Job is the name of
+// the print. Camera is the address of the stream of the camera of the printer, from the address of
+// the printer, or "".
+type slicerLive struct {
+	State    string  `json:"state,omitempty"`
+	Progress float64 `json:"progress,omitempty"`
+	Left     int     `json:"left,omitempty"`
+	Job      string  `json:"job,omitempty"`
+	Camera   string  `json:"camera,omitempty"`
+}
+
+// liveOf returns the state of the printer pr now, and its camera: camera is true when the printer
+// has a camera of its own.
+func liveOf(st printer.State, camera bool, url string) slicerLive {
+	l := slicerLive{State: "ready"}
+	switch {
+	case st.Starting || !st.Reachable && st.Err == "" && !st.ErrFinal:
+		l.State = "connecting"
+	case !st.Reachable || !st.Connected:
+		l.State = "offline"
+	case st.Err != "":
+		l.State = "error"
+	case st.Busy():
+		l.State = "printing"
+		if st.Paused {
+			l.State = "paused"
+		}
+		l.Progress, l.Left, l.Job = st.Completion/100, -1, st.Name()
+		if st.HasTimeLeft {
+			l.Left = int(st.TimeLeft.Seconds())
+		}
+	}
+	if camera {
+		l.Camera = url + "/webcam/stream"
+	}
+	return l
+}
+
+// printerLive returns the state and the camera of the printer with the ID ("" for the first
+// printer), for /slicer/printer.json. The deck sets it at its start.
+var printerLive func(id, url string) slicerLive
 
 // printerFormat returns the file format and the model of the printer with the ID, for
 // /slicer/printer.json ("" for the first printer). The deck sets it at its start.
@@ -122,9 +167,13 @@ func slicerPrinterFile() any {
 		// The file format and the model of the printer at url (the first printer).
 		Files string `json:"files,omitempty"`
 		Model string `json:"model,omitempty"`
+		slicerLive
 	}{Name: system.DeckName(), Kind: "printdeck", HTTPS: httpsURL()}
 	if printerFormat != nil {
 		out.Files, out.Model = printerFormat("")
+	}
+	if printerLive != nil {
+		out.slicerLive = printerLive("", "")
 	}
 	if deckPrinterList != nil {
 		for i, id := range deckPrinterList() {
@@ -142,6 +191,13 @@ func slicerPrinterFile() any {
 			}
 			if i > 0 {
 				p.URL = "/printers/" + id.ID
+			}
+			if printerLive != nil {
+				key := id.ID
+				if i == 0 {
+					key = ""
+				}
+				p.slicerLive = printerLive(key, p.URL)
 			}
 			out.Printers = append(out.Printers, p)
 		}
