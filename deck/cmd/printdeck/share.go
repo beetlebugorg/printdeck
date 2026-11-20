@@ -468,6 +468,8 @@ func startShare(link *cloud.Link, stateDir, configPath, gcodeDir string, app *ui
 			pl.model = printer.ConfigModel(configPath)
 		case *printer.ChiTu:
 			pl.name, pl.model = b.Name, b.Model()
+		case *printer.Bambu:
+			pl.modelOf = func() string { m, _ := b.Client.Version(); return m }
 		}
 		if name != "" {
 			pl.name = name // the name of the printer on the deck (Settings, Printers)

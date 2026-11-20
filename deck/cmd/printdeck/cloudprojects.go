@@ -31,6 +31,9 @@ type projectLink struct {
 	k        printerBackend // the printer of the deck: Klipper, or a ChiTu resin printer
 	stateDir string
 	model    string // the brand and the model of the printer, for the prints
+	// modelOf returns the model when model is "": a Bambu Lab printer reports its model after the
+	// first link.
+	modelOf func() string
 	// name is the name of the printer at the service, or "" for the model (printerName).
 	name string
 	// key is the key of the printer at the service, or "" for the first printer (serviceKey).
@@ -386,7 +389,7 @@ func (p *projectLink) sendPrint(ctx context.Context, id *cloud.Identity, project
 // facts of its file and its roll.
 func (p *projectLink) printRequest(r printer.Record) cloud.PrintRequest {
 	in := cloud.PrintRequest{Name: r.Name(), File: r.File, Result: r.Result, Ended: r.End.UTC(),
-		Seconds: int(r.Duration.Seconds()), Material: r.Material, Grams: r.Grams, Roll: r.Spool, Printer: p.model,
+		Seconds: int(r.Duration.Seconds()), Material: r.Material, Grams: r.Grams, Roll: r.Spool, Printer: p.printerModel(),
 		Note: r.Note, Key: printKey(r), PrinterID: p.printerID(), Started: r.End.Add(-r.Duration).UTC()}
 	prep := 0.0
 	for _, ph := range r.Phases {
@@ -449,4 +452,12 @@ func (p *projectLink) recordPicture(r printer.Record) []byte {
 		time.Sleep(500 * time.Millisecond)
 	}
 	return nil
+}
+
+// printerModel is the brand and the model of the printer, or "".
+func (p *projectLink) printerModel() string {
+	if p.model == "" && p.modelOf != nil {
+		return p.modelOf()
+	}
+	return p.model
 }
