@@ -128,4 +128,3 @@ func TestBambuX2DMatchByNozzle(t *testing.T) {
 		t.Fatalf("matches %+v", m)
 	}
 }
-}
