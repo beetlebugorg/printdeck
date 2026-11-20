@@ -100,3 +100,16 @@ func TestBambuX2DSteps(t *testing.T) {
 		t.Errorf("filament change: preparing %v message %q", st.Preparing, st.Message)
 	}
 }
+
+// A print that the deck sees first at 33 %, with 64 minutes left (after a restart of the deck):
+// the time so far is about 32 minutes.
+func TestBambuElapsedAfterRestart(t *testing.T) {
+	b := NewBambu("192.168.1.50", "00TEST000000000", "12345678", "", "X2D", &History{Path: filepath.Join(t.TempDir(), "h.json")})
+	r := x2dParse(t, x2dReport)
+	r.Percent, r.Remaining = 33, 64
+	now := time.Date(2026, 11, 19, 18, 0, 0, 0, time.UTC)
+	b.update(r, now)
+	if st := b.State(); st.Elapsed != 32*time.Minute {
+		t.Errorf("elapsed %v, want 32m", st.Elapsed)
+	}
+}

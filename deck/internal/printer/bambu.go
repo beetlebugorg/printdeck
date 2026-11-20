@@ -184,7 +184,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	if r.Busy() {
 		// A new print: no print before, or another task.
 		if b.path == "" || r.TaskID != was.TaskID && r.TaskID != "" {
-			b.started = now
+			b.started = now.Add(-r.Elapsed())
 			b.path = "bambu-" + strconv.FormatInt(now.Unix(), 10)
 			b.name, b.system = r.Name(), r.PrintType == "system"
 			b.cur = bambuPrint{}
