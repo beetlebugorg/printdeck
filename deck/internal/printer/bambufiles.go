@@ -174,12 +174,19 @@ func (b *Bambu) MatchTrays(pl bambu.Plate) []TrayMatch {
 		}
 		return t.Color
 	}
+	// On a printer with two nozzles (the X2D), the AMS feeds the main nozzle and the external
+	// spool the aux nozzle: a filament on the aux nozzle (Nozzle 2) takes the external spool, and
+	// a filament on the main nozzle (Nozzle 1) a tray of the AMS.
+	two := b.State().HasTool2
 	used := map[int]bool{}
 	var out []TrayMatch
 	for _, f := range pl.Filaments {
 		best, bestD := -1, math.Inf(1)
 		for _, t := range trays {
 			if !t.Loaded || !strings.EqualFold(t.Material, f.Type) {
+				continue
+			}
+			if two && (f.Nozzle == 2 && !t.External || f.Nozzle == 1 && t.External) {
 				continue
 			}
 			d := colorDistance(colorOf(t), f.Color)

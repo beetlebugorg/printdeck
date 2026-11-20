@@ -128,3 +128,17 @@ func TestPlatePictureTooLarge(t *testing.T) {
 		t.Errorf("a picture of %v", img.Bounds())
 	}
 }
+
+// filament_maps gives the nozzle of each filament of a plate.
+func TestPlatesFilamentMaps(t *testing.T) {
+	var b bytes.Buffer
+	z := zip.NewWriter(&b)
+	w, _ := z.Create("Metadata/slice_info.config")
+	w.Write([]byte(`<config><plate><metadata key="index" value="1"/><metadata key="filament_maps" value="1 2"/>` +
+		`<filament id="1" type="PLA" color="#000000" used_g="58.87"/><filament id="2" type="PLA" color="#d0d0cc" used_g="64.01"/></plate></config>`))
+	z.Close()
+	pl, err := Plates(bytes.NewReader(b.Bytes()), int64(b.Len()))
+	if err != nil || len(pl) != 1 || len(pl[0].Filaments) != 2 || pl[0].Filaments[0].Nozzle != 1 || pl[0].Filaments[1].Nozzle != 2 {
+		t.Fatalf("%+v %v", pl, err)
+	}
+}

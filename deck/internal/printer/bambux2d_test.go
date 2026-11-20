@@ -113,3 +113,19 @@ func TestBambuElapsedAfterRestart(t *testing.T) {
 		t.Errorf("elapsed %v, want 32m", st.Elapsed)
 	}
 }
+
+// On the X2D, a filament on the aux nozzle takes the external spool, and a filament on the main
+// nozzle a tray of the AMS, also when another tray has a nearer color.
+func TestBambuX2DMatchByNozzle(t *testing.T) {
+	b := NewBambu("192.168.1.50", "00TEST000000000", "12345678", "", "X2D", &History{Path: filepath.Join(t.TempDir(), "h.json")})
+	b.update(x2dParse(t, x2dReport), time.Now())
+	pl := bambu.Plate{Index: 1, Filaments: []bambu.Filament{
+		{ID: 1, Type: "PLA", Color: "#000000", Nozzle: 1},
+		{ID: 2, Type: "PLA", Color: "#d0d0cc", Nozzle: 2},
+	}}
+	m := b.MatchTrays(pl)
+	if len(m) != 2 || m[0].Slot != 2 || m[1].Slot != bambu.ExternalMain {
+		t.Fatalf("matches %+v", m)
+	}
+}
+}
