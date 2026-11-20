@@ -79,12 +79,13 @@ func TestStartPrint(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	go c.Run(ctx, nil)
-	for c.StartPrint(Start{}) == ErrOffline {
+	for !c.Connected() {
 		time.Sleep(10 * time.Millisecond)
 	}
-	err = c.StartPrint(Start{File: "cube.gcode.3mf", Name: "cube", Plate: "Metadata/plate_1.gcode", Trays: []int{0, -1, 5}, BedLevel: true})
-	if err != nil {
-		t.Fatal(err)
+	r, ok, err := c.StartPrint(Start{File: "cube.gcode.3mf", Name: "cube", Plate: "Metadata/plate_1.gcode", Trays: []int{0, -1, 5}, BedLevel: true},
+		StartURLs("cube.gcode.3mf")[0])
+	if err != nil || !ok || r.Failed() || r.Command != "project_file" {
+		t.Fatalf("answer %+v %v %v", r, ok, err)
 	}
 	var p map[string]any
 	for end := time.Now().Add(3 * time.Second); p == nil; {

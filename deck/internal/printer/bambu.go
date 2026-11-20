@@ -73,6 +73,7 @@ type Bambu struct {
 	lapsePath string    // the file of the last time lapse that the printer reported
 	endedPath string    // the print that ended last, for its time lapse
 	endedAt   time.Time // its end
+	startForm int       // the index in bambu.StartURLs of the address of the last start that worked
 }
 
 // bambuRetry is the wait before a new connection after a lost link.

@@ -55,14 +55,16 @@ type Client struct {
 	Pin   string
 	Roots *x509.CertPool
 
-	mu     sync.Mutex
-	conn   *mqttConn
-	seen   string
-	inter  []*x509.Certificate // the intermediate certificates of the last full chain of the printer
-	seq    int
-	merged map[string]any
-	model  string // the product name of the printer from get_version, for example "Bambu Lab X2D"
-	fw     string // the firmware version of the printer
+	mu    sync.Mutex
+	conn  *mqttConn
+	seen  string
+	inter []*x509.Certificate // the intermediate certificates of the last full chain of the printer
+	seq   int
+	// waiters are the commands that wait for their answer, by sequence_id (sendWait).
+	waiters map[string]chan Reply
+	merged  map[string]any
+	model   string // the product name of the printer from get_version, for example "Bambu Lab X2D"
+	fw      string // the firmware version of the printer
 }
 
 // Version returns the product name and the firmware version of the printer, or "" before the
@@ -305,6 +307,7 @@ func (c *Client) serve(ctx context.Context, nc net.Conn, onReport func(Report)) 
 		if id != 0 {
 			m.writePacket(pktPuback, 0, []byte{byte(id >> 8), byte(id)})
 		}
+		c.deliver(payload)
 		r, ok := c.merge(payload)
 		if !ok {
 			c.readVersion(payload)
@@ -359,23 +362,100 @@ var ErrOffline = errors.New("no link to the printer")
 // send publishes a request of the kind ("print", "pushing", "info") with the command and the
 // fields.
 func (c *Client) send(kind, command string, fields map[string]any) error {
+	_, err := c.sendSeq(kind, command, fields, nil)
+	return err
+}
+
+// Reply is the answer of the printer to a command: Result is "success" or "fail" (any case), and
+// Reason the text of a failure.
+type Reply struct {
+	Command, Result, Reason string
+	ErrCode                 int64
+}
+
+// Failed reports a reply with a failure.
+func (r Reply) Failed() bool {
+	return strings.EqualFold(r.Result, "fail") || strings.EqualFold(r.Result, "failed")
+}
+
+// sendWait sends the command and waits up to wait for the answer of the printer. ok is false when
+// no answer came: the printer gives no answer to some commands.
+func (c *Client) sendWait(kind, command string, fields map[string]any, wait time.Duration) (r Reply, ok bool, err error) {
+	ch := make(chan Reply, 1)
+	seq, err := c.sendSeq(kind, command, fields, ch)
+	defer func() {
+		c.mu.Lock()
+		delete(c.waiters, seq)
+		c.mu.Unlock()
+	}()
+	if err != nil {
+		return Reply{}, false, err
+	}
+	select {
+	case r := <-ch:
+		return r, true, nil
+	case <-time.After(wait):
+		return Reply{}, false, nil
+	}
+}
+
+// deliver gives an answer in payload to the command that waits for it.
+func (c *Client) deliver(payload []byte) {
+	var msg map[string]map[string]any
+	if json.Unmarshal(payload, &msg) != nil {
+		return
+	}
+	for _, body := range msg {
+		seq, _ := body["sequence_id"].(string)
+		cmd, _ := body["command"].(string)
+		result, has := body["result"].(string)
+		if seq == "" || !has || cmd == "push_status" {
+			continue
+		}
+		c.mu.Lock()
+		ch := c.waiters[seq]
+		c.mu.Unlock()
+		if ch == nil {
+			continue
+		}
+		r := Reply{Command: cmd, Result: result}
+		r.Reason, _ = body["reason"].(string)
+		if e, ok := body["err_code"].(float64); ok {
+			r.ErrCode = int64(e)
+		}
+		select {
+		case ch <- r:
+		default:
+		}
+	}
+}
+
+// sendSeq sends the command with a new sequence_id, and returns it. A non-nil ch gets the answer
+// of the printer (deliver).
+func (c *Client) sendSeq(kind, command string, fields map[string]any, ch chan Reply) (string, error) {
 	c.mu.Lock()
 	m := c.conn
 	c.seq++
-	seq := c.seq
+	seq := strconv.Itoa(c.seq)
+	if ch != nil {
+		if c.waiters == nil {
+			c.waiters = map[string]chan Reply{}
+		}
+		c.waiters[seq] = ch
+	}
 	c.mu.Unlock()
 	if m == nil {
-		return ErrOffline
+		return seq, ErrOffline
 	}
-	body := map[string]any{"sequence_id": strconv.Itoa(seq), "command": command}
+	body := map[string]any{"sequence_id": seq, "command": command}
 	for k, v := range fields {
 		body[k] = v
 	}
 	b, err := json.Marshal(map[string]any{kind: body})
 	if err != nil {
-		return err
+		return seq, err
 	}
-	return m.publish("device/"+c.Serial+"/request", b)
+	return seq, m.publish("device/"+c.Serial+"/request", b)
 }
 
 // PushAll asks the printer for its full state.
@@ -500,6 +580,16 @@ func enable(on bool) string {
 	return "disable"
 }
 
+// startWait is how long StartPrint waits for the answer of the printer. A test makes it shorter.
+var startWait = 15 * time.Second
+
+// StartURLs are the addresses of the 3MF name on the card for project_file, in the order to try:
+// printers and firmware versions take different ones. The deck tries the next one only after the
+// printer answers the start with a failure.
+func StartURLs(name string) []string {
+	return []string{"ftp:///" + name, "file:///sdcard/" + name, "file:///mnt/sdcard/" + name, "ftp://" + name}
+}
+
 // Start is a print of a 3MF on the card of the printer.
 type Start struct {
 	File  string // the name of the 3MF at the top of the card
@@ -514,10 +604,11 @@ type Start struct {
 	BedLevel, FlowCali, VibrationCali, LayerInspect bool
 }
 
-// StartPrint starts the print s. The printer needs the 3MF on its card first (Upload). The
-// fields are those of Bambu Studio for a print over LAN; ams_mapping2 is the form of the H2D and
-// the X2D, which have more than one nozzle.
-func (c *Client) StartPrint(s Start) error {
+// StartPrint starts the print s, with the address url of its 3MF on the card (StartURLs). The
+// printer needs the 3MF on its card first (Upload). The fields are those of Bambu Studio for a
+// print over LAN; ams_mapping2 is the form of the H2D and the X2D, which have more than one
+// nozzle. It returns the answer of the printer, and ok false when no answer came in startWait.
+func (c *Client) StartPrint(s Start, url string) (Reply, bool, error) {
 	mapping := make([]int, len(s.Trays))
 	mapping2 := make([]map[string]int, len(s.Trays))
 	for i, t := range s.Trays {
@@ -528,7 +619,7 @@ func (c *Client) StartPrint(s Start) error {
 			mapping2[i] = map[string]int{"ams_id": t / 4, "slot_id": t % 4}
 		}
 	}
-	return c.send("print", "project_file", map[string]any{
+	return c.sendWait("print", "project_file", map[string]any{
 		"param":          s.Plate,
 		"project_id":     "0",
 		"profile_id":     "0",
@@ -536,7 +627,7 @@ func (c *Client) StartPrint(s Start) error {
 		"subtask_id":     "0",
 		"subtask_name":   s.Name,
 		"file":           s.File,
-		"url":            "ftp:///" + s.File,
+		"url":            url,
 		"md5":            "",
 		"bed_type":       "auto",
 		"timelapse":      s.Timelapse,
@@ -547,7 +638,7 @@ func (c *Client) StartPrint(s Start) error {
 		"use_ams":        len(s.Trays) > 0,
 		"ams_mapping":    mapping,
 		"ams_mapping2":   mapping2,
-	})
+	}, startWait)
 }
 
 // CameraURL returns the RTSPS address of the camera: the address in the report, or the usual
@@ -561,4 +652,11 @@ func (c *Client) CameraURL(r Report) string {
 		host = h
 	}
 	return fmt.Sprintf("rtsps://%s:%d/streaming/live/1", host, CameraPort)
+}
+
+// Connected reports that the MQTT link is up.
+func (c *Client) Connected() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.conn != nil
 }
