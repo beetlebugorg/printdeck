@@ -231,13 +231,18 @@ const (
 )
 
 // feedSlot returns the tray of the code v of "snow": Unit*4+Index for a tray of an AMS, 255 or
-// 254 for an external spool, or -1 for none.
+// 254 for an external spool (0xFF00, 0xFE00), or -1 for none (0xFFFF, 0xFEFF).
 func feedSlot(v int64) int {
 	unit, tray := int(v>>8&0xff), int(v&0xff)
 	switch {
 	case v == 0xffff || v < 0:
 		return -1
 	case unit == ExternalMain || unit == ExternalDeputy:
+		// 0xFF00 and 0xFE00 are the external spools. 0xFEFF is no spool: the X2D reports it for
+		// the main nozzle with no filament in it.
+		if tray != 0 {
+			return -1
+		}
 		return unit
 	case unit >= 0x80 || tray > 3:
 		return -1 // an AMS HT, or a code that the deck does not know
