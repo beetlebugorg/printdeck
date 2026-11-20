@@ -62,6 +62,21 @@ func TestBambuX2DNozzles(t *testing.T) {
 	if l := b.Loaded(); len(l) != 5 || !l[4].External || !l[4].Active {
 		t.Errorf("loaded %+v", l)
 	}
+	// After the print: the main nozzle has no spool (0xFEFF) and prints. No sixth spool, and no
+	// spool feeds.
+	r := x2dParse(t, x2dReport)
+	r.Device.Extruder.Info[1].Feed = 0xfeff
+	r.Device.Extruder.State = 0x12
+	b.update(r, time.Now())
+	ams = b.AMS()
+	if len(ams.Trays) != 5 {
+		t.Fatalf("%d spools after the print, want 5", len(ams.Trays))
+	}
+	for _, tr := range ams.Trays {
+		if tr.Active {
+			t.Errorf("spool %d feeds with no spool in the main nozzle", tr.Slot)
+		}
+	}
 }
 
 // Before the first layer, the steps of the start of the print show with the step now.
