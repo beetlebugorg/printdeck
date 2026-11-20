@@ -170,6 +170,16 @@ func (t *HMSTexts) Text(h HMS) (text string, ok bool) {
 	return part + " message", false
 }
 
+// Silent reports that the list of the printer has the code h with no text. Bambu Studio shows no
+// message for such a code, for example 0500-0600-0002-0070 of the X2D.
+func (t *HMSTexts) Silent(h HMS) bool {
+	if t == nil {
+		return false
+	}
+	s, ok := t.HMS[h.Key()]
+	return ok && s == ""
+}
+
 // ErrorText returns the text of the print error code (print_error), or "".
 func (t *HMSTexts) ErrorText(code int64) string {
 	key := fmt.Sprintf("%08X", code&0xffffffff)
