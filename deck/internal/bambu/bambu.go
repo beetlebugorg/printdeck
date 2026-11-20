@@ -580,6 +580,15 @@ func enable(on bool) string {
 	return "disable"
 }
 
+// calibration is the value of a calibration of a start: 2 (auto: the printer decides) when on,
+// 0 when off. Bambu Studio sends 0 off, 1 on or 2 auto.
+func calibration(on bool) int {
+	if on {
+		return 2
+	}
+	return 0
+}
+
 // startWait is how long StartPrint waits for the answer of the printer. A test makes it shorter.
 var startWait = 15 * time.Second
 
@@ -587,7 +596,7 @@ var startWait = 15 * time.Second
 // printers and firmware versions take different ones. The deck tries the next one only after the
 // printer answers the start with a failure.
 func StartURLs(name string) []string {
-	return []string{"ftp:///" + name, "file:///sdcard/" + name, "file:///mnt/sdcard/" + name, "ftp://" + name}
+	return []string{"ftp://" + name, "ftp:///" + name, "file:///sdcard/" + name, "file:///mnt/sdcard/" + name}
 }
 
 // Start is a print of a 3MF on the card of the printer.
@@ -613,31 +622,42 @@ func (c *Client) StartPrint(s Start, url string) (Reply, bool, error) {
 	mapping2 := make([]map[string]int, len(s.Trays))
 	for i, t := range s.Trays {
 		mapping[i] = t
-		if t < 0 {
+		switch {
+		case t < 0:
 			mapping2[i] = map[string]int{"ams_id": 255, "slot_id": 255}
-		} else {
+		case t == ExternalMain || t == ExternalDeputy:
+			mapping2[i] = map[string]int{"ams_id": t, "slot_id": 0} // the external spool
+		default:
 			mapping2[i] = map[string]int{"ams_id": t / 4, "slot_id": t % 4}
 		}
 	}
+	// The fields, their names and their types are those of the stock network plugin of Bambu
+	// Studio (open-bamboo-networking, print_job.cpp). The printer parses them strictly: a field
+	// that is missing or of another type made the X2D crash its MQTT handler ("forward coredump",
+	// HMS 0500-0300-0002-0010) on 2026-11-19.
 	return c.sendWait("print", "project_file", map[string]any{
-		"param":          s.Plate,
-		"project_id":     "0",
-		"profile_id":     "0",
-		"task_id":        "0",
-		"subtask_id":     "0",
-		"subtask_name":   s.Name,
-		"file":           s.File,
-		"url":            url,
-		"md5":            "",
-		"bed_type":       "auto",
-		"timelapse":      s.Timelapse,
-		"bed_levelling":  s.BedLevel,
-		"flow_cali":      s.FlowCali,
-		"vibration_cali": s.VibrationCali,
-		"layer_inspect":  s.LayerInspect,
-		"use_ams":        len(s.Trays) > 0,
-		"ams_mapping":    mapping,
-		"ams_mapping2":   mapping2,
+		"param":              s.Plate,
+		"project_id":         "0",
+		"profile_id":         "0",
+		"task_id":            "0",
+		"subtask_id":         "0",
+		"subtask_name":       s.Name,
+		"file":               s.File,
+		"url":                url,
+		"md5":                "from_sd_card",
+		"bed_type":           "auto",
+		"bed_leveling":       s.BedLevel,
+		"flow_cali":          s.FlowCali,
+		"vibration_cali":     s.VibrationCali,
+		"layer_inspect":      s.LayerInspect,
+		"timelapse":          s.Timelapse,
+		"use_ams":            len(s.Trays) > 0,
+		"ams_mapping":        mapping,
+		"ams_mapping2":       mapping2,
+		"auto_bed_leveling":  calibration(s.BedLevel),
+		"nozzle_offset_cali": calibration(true),
+		"extrude_cali_flag":  calibration(s.FlowCali),
+		"cfg":                "0",
 	}, startWait)
 }
 

@@ -38,8 +38,8 @@ func TestBambuStartAnswers(t *testing.T) {
 	if err := b.start(s); err != nil {
 		t.Fatal(err)
 	}
-	if b.startForm != 1 {
-		t.Errorf("start form %d, want 1 (file:///sdcard/)", b.startForm)
+	if b.startForm != 2 {
+		t.Errorf("start form %d, want 2 (file:///sdcard/)", b.startForm)
 	}
 	// The printer takes the start, then raises a message with no code text, and stays idle.
 	f.Send(map[string]any{"hms": []any{map[string]any{"attr": 0x05000300, "code": 0x00020010}}})
