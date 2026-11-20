@@ -14,10 +14,11 @@ import (
 
 // A deck with many printers (specs/many-printers-on-one-deck.md). Each printer has its own App.
 // The Switcher shows one App on the touch screen at a time. Each App shows which printer it
-// controls: a bar in the colour of the printer at the top of each page, the label of the printer
-// in each page title and in each dialog, and the printer chip in the status panel. A tap on the
-// chip opens the list of the printers. A message of another printer shows as a banner, and the
-// deck never switches the printer by itself.
+// controls: the status bar at the top of each page, with a tab for each printer, and the label of
+// the printer in each page title and in each dialog. A tap on another tab shows that printer. A
+// tap on the tab of this printer opens Settings, Printers, with the state of each printer and Stop
+// all. A message of another printer shows as a banner, and the deck never switches the printer by
+// itself.
 
 // Identity is how the screens show a printer: its name, a short label, its colour, and its kind.
 type Identity struct {
@@ -109,13 +110,6 @@ func accentMark() color.RGBA {
 	return orange
 }
 
-// drawFleetBar draws the bar in the colour of the printer at the top of the screen.
-func drawFleetBar(c *gfx.Canvas) {
-	if fleetSelf != nil {
-		c.Fill(image.Rect(0, 0, W, fleetBarH), fleetSelf.Color)
-	}
-}
-
 // fleetLine is the state of a printer in one line, for the list and the banners.
 func fleetLine(st printer.State) string {
 	switch {
@@ -149,127 +143,31 @@ func shortDuration(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d", m/60, m%60)
 }
 
-// drawFleetList draws the list of the printers over the screen. A tap on a card shows that
-// printer.
-func (a *App) drawFleetList(c *gfx.Canvas) {
-	a.in.Reset() // the list blocks everything below it
-	c.Fill(c.Bounds(), bg)
-	drawFleetBar(c)
-	head := image.Rect(margin, 18, W-margin, 18+keyH)
-	setHeading("Printers")
-	c.Fill(image.Rect(head.Min.X, head.Min.Y+13, head.Min.X+10, head.Min.Y+33), orange)
-	c.Text(image.Rect(head.Min.X+20, head.Min.Y, head.Max.X-118, head.Max.Y), "PRINTERS", gfx.Face(true, 24), text, gfx.Left)
-	a.button(c, backRect(head), "Close", raised, text, func() { a.fleetList = false; a.Redraw() })
-	cards := a.Fleet.Cards()
-	y := head.Max.Y + 20
-	bottom := contentY1 - 24
-	// Stop all, under the cards, while a printer prints or heats.
+// stopCount is the number of the printers of the deck that Stop all stops.
+func (a *App) stopCount() int {
 	n := 0
-	for _, card := range cards {
+	for _, card := range a.Fleet.Cards() {
 		if stoppable(card.State) {
 			n++
 		}
 	}
-	if n > 0 {
-		stop := image.Rect(margin, bottom-keyH, W-margin, bottom)
-		bottom = stop.Min.Y - 14
-		a.button(c, stop, "Stop all", redCap, onRed, func() {
-			a.confirm = &confirmBox{title: "STOP ALL",
-				question: fmt.Sprintf("Stop %d printers that print or heat, now? Each one needs a firmware restart after it.", n),
-				yes:      "Stop all", danger: true, allPrinters: true,
-				onYes: func() { a.fleetList = false; a.do(a.Fleet.StopAll) }}
-			if n == 1 {
-				a.confirm.question = "Stop the printer that prints or heats, now? It needs a firmware restart after it."
-			}
-		})
-	}
-	cardH := 124
-	if avail := bottom - y; len(cards) > 0 && cardH*len(cards)+14*(len(cards)-1) > avail {
-		cardH = max(96, (avail-14*(len(cards)-1))/len(cards))
-	}
-	for _, card := range cards {
-		r := image.Rect(margin, y, W-margin, y+cardH)
-		a.drawFleetCard(c, r, card)
-		y += cardH + 14
-	}
+	return n
 }
 
-// drawFleetCard draws one printer of the list in r.
-func (a *App) drawFleetCard(c *gfx.Canvas, r image.Rectangle, card FleetCard) {
-	pressed := a.isPressed(r)
-	border := edge
-	if card.Active {
-		border = card.Color
+// askStopAll asks to stop each printer that prints, is paused or heats, with an emergency stop.
+func (a *App) askStopAll() {
+	n := a.stopCount()
+	if n == 0 {
+		a.Toast("No printer prints or heats")
+		return
 	}
-	c.RoundRect(r, 10, border)
-	inner := r.Inset(3)
-	fill := surface
-	if pressed {
-		fill = raised
+	a.confirm = &confirmBox{title: "STOP ALL",
+		question: fmt.Sprintf("Stop %d printers that print or heat, now? Each one needs a firmware restart after it.", n),
+		yes:      "Stop all", danger: true, allPrinters: true,
+		onYes: func() { a.do(a.Fleet.StopAll) }}
+	if n == 1 {
+		a.confirm.question = "Stop the printer that prints or heats, now? It needs a firmware restart after it."
 	}
-	c.RoundRect(inner, 8, fill)
-	// The colour edge at the left, as wide as a finger mark.
-	c.RoundRect(image.Rect(inner.Min.X, inner.Min.Y, inner.Min.X+14, inner.Max.Y), 8, card.Color)
-	c.Fill(image.Rect(inner.Min.X+8, inner.Min.Y, inner.Min.X+14, inner.Max.Y), card.Color)
-	in := kit.Inset(inner, 30, 14, 18, 14)
-	// Line 1: the label chip, the name, and "On screen" or the kind.
-	lf := gfx.Face(true, 16)
-	lw := gfx.Width(lf, card.Label) + 20
-	chip := image.Rect(in.Min.X, in.Min.Y, in.Min.X+lw, in.Min.Y+30)
-	c.RoundRect(chip, 15, card.Color)
-	c.Text(chip, card.Label, lf, inkOn(card.Color), gfx.Center)
-	tag, tagCol := "", dim
-	switch {
-	case card.Active:
-		tag, tagCol = "ON SCREEN", text
-	case card.Resin:
-		tag = "RESIN"
-	}
-	tf := gfx.Face(true, 13)
-	tw := gfx.Width(tf, tag)
-	nf := gfx.Face(true, 22)
-	name := image.Rect(chip.Max.X+12, in.Min.Y, in.Max.X-tw-12, in.Min.Y+30)
-	c.Text(name, gfx.Fit(nf, card.Name, name.Dx()), nf, text, gfx.Left)
-	if tag != "" {
-		c.Text(image.Rect(in.Max.X-tw, in.Min.Y, in.Max.X, in.Min.Y+30), tag, tf, tagCol, gfx.Right)
-	}
-	// Line 2: the state. A note of the printer is in its colour, with a dot.
-	sf := gfx.Face(false, 18)
-	line := image.Rect(in.Min.X, in.Min.Y+40, in.Max.X, in.Min.Y+66)
-	st := fleetLine(card.State)
-	if card.Note != "" {
-		dot := image.Rect(line.Min.X, line.Min.Y+7, line.Min.X+12, line.Min.Y+19)
-		c.RoundRect(dot, 6, card.Color)
-		line.Min.X += 20
-		st = card.Note
-	}
-	c.Text(line, gfx.Fit(sf, st, line.Dx()), sf, text, gfx.Left)
-	// Line 3: the progress of a print, or the temperatures.
-	if card.State.Busy() && in.Max.Y-line.Max.Y >= 18 {
-		bar := image.Rect(in.Min.X, in.Max.Y-12, in.Max.X, in.Max.Y-2)
-		c.RoundRect(bar, 5, edge)
-		if w := int(float64(bar.Dx()) * max(0, min(1, card.State.Completion/100))); w > 0 {
-			c.RoundRect(image.Rect(bar.Min.X, bar.Min.Y, bar.Min.X+w, bar.Max.Y), 5, card.Color)
-		}
-	} else if card.State.Reachable && !card.Resin && in.Max.Y-line.Max.Y >= 20 {
-		temps := fmt.Sprintf("Nozzle %.0f°  ·  Bed %.0f°", card.State.Tool, card.State.Bed)
-		c.Text(image.Rect(in.Min.X, line.Max.Y+4, in.Max.X, in.Max.Y), temps, gfx.Face(false, 15), dim, gfx.Left)
-	}
-	id := card.ID
-	if a.Record && !card.Active {
-		// A remote screen: the card opens the remote screen of that printer.
-		c.Link(r, "/?printer="+id)
-	}
-	tap := func() {
-		a.fleetList = false
-		if !card.Active {
-			a.Fleet.Switch(id)
-		}
-		a.Redraw()
-	}
-	a.addHit(kit.Hit{R: r, Tap: tap})
-	a.addFocus(card.Name, r, tap)
-	a.region(card.Name, r)
 }
 
 // drawFleetBanner draws the newest message of another printer at the top of the screen, with
@@ -320,18 +218,13 @@ func (a *App) drawFleetBanner(c *gfx.Canvas) bool {
 func (a *App) fleetQuiet() bool {
 	return a.confirm == nil && a.keypad == nil && a.consoleKB == nil && a.picker == nil && a.colors == nil &&
 		a.form == nil && a.textKB == nil && a.qrSheet == nil && !a.shareSheet && a.swap == nil && !a.tune && a.flash == nil &&
-		a.setup == nil && !a.fleetList
+		a.setup == nil
 }
 
 // drawFleet draws the parts of a deck with many printers over the frame: the status bar and a
 // banner of another printer, or the list of the printers.
 func (a *App) drawFleet(c *gfx.Canvas) {
 	if a.Fleet == nil {
-		return
-	}
-	if a.fleetList {
-		a.collect, a.focus = !a.Record, a.focus[:0]
-		a.drawFleetList(c)
 		return
 	}
 	// A keyboard, a keypad or a dialog covers the top of the screen with its title: the status
@@ -434,10 +327,13 @@ func (a *App) drawFleetTab(c *gfx.Canvas, r image.Rectangle, card FleetCard) {
 	c.Text(image.Rect(in.Min.X, half, in.Max.X, in.Max.Y), gfx.Fit(sf, state, in.Dx()), sf, sub, gfx.Left)
 	id := card.ID
 	tap := func() {
-		if card.Active {
-			a.fleetList = true
-		} else {
+		switch {
+		case !card.Active:
 			a.Fleet.Switch(id)
+		case a.Printers != nil:
+			a.open(pagePrinters) // the printers of the deck, with Stop all
+		case a.stopCount() > 0:
+			a.askStopAll()
 		}
 		a.Redraw()
 	}

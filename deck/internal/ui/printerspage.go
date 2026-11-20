@@ -68,11 +68,30 @@ func (a *App) drawPrinters(c *gfx.Canvas) {
 	if a.Printers.Changed() {
 		items = append(items, menuItem{"Restart the deck", "The changes start to work after a restart", text, a.Printers.Restart})
 	}
+	// The state of each printer, and Stop all, on a deck with many printers.
+	cards := map[string]FleetCard{}
+	if a.Fleet != nil {
+		for i, c := range a.Fleet.Cards() {
+			if i == 0 {
+				c.ID = "" // the first printer of the deck
+			}
+			cards[c.ID] = c
+		}
+		if a.stopCount() > 0 {
+			items = append(items, menuItem{"Stop all", "An emergency stop of each printer that prints or heats", red, a.askStopAll})
+		}
+	}
 	for _, p := range list {
 		p := p
 		sub := p.Label + " · " + printerColorName(p.Color) + " · " + p.Kind
 		if p.Addr != "" {
 			sub += " · " + p.Addr
+		}
+		if c, ok := cards[p.ID]; ok {
+			sub = fleetLine(c.State) + " · " + sub
+			if c.Active {
+				sub = "On screen · " + sub
+			}
 		}
 		items = append(items, menuItem{p.Name, sub, dim, func() { a.askPrinter(p, len(list)) }})
 	}
@@ -82,9 +101,28 @@ func (a *App) drawPrinters(c *gfx.Canvas) {
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
 }
 
-// askPrinter asks what to change of the printer p.
+// fleetID returns the ID in the Fleet of the printer with the ID id of PrinterEntry: "" is the
+// first printer of the deck.
+func (a *App) fleetID(id string) string {
+	if cards := a.Fleet.Cards(); id == "" && len(cards) > 0 {
+		return cards[0].ID
+	}
+	return id
+}
+
+// onScreen reports that the printer with the ID id of PrinterEntry is the printer of this screen.
+func (a *App) onScreen(id string) bool {
+	return a.Fleet == nil || a.Fleet.Self().ID == a.fleetID(id)
+}
+
+// askPrinter asks what to show or change of the printer p.
 func (a *App) askPrinter(p PrinterEntry, count int) {
-	choices := []menuItem{
+	var choices []menuItem
+	if a.Fleet != nil && !a.onScreen(p.ID) {
+		id := a.fleetID(p.ID)
+		choices = append(choices, menuItem{"Show", "Show " + p.Name + " on this screen", dim, func() { a.Fleet.Switch(id) }})
+	}
+	choices = append(choices, []menuItem{
 		{"Name", p.Name, dim, func() {
 			a.editPrinterText("Name of the printer", p.Name, 32, func(v string) { p.Name = v; a.saveDeckPrinter(p) })
 		}},
@@ -92,7 +130,7 @@ func (a *App) askPrinter(p PrinterEntry, count int) {
 			a.editPrinterText("Label of the printer", p.Label, 4, func(v string) { p.Label = strings.ToUpper(v); a.saveDeckPrinter(p) })
 		}},
 		{"Colour", printerColorName(p.Color), dim, func() { a.askPrinterColor(p) }},
-	}
+	}...)
 	if p.ID != "" && count > 1 {
 		choices = append(choices, menuItem{"Remove", "Its Klipper host stops. Its files stay on the deck.", dim, func() {
 			a.confirm = &confirmBox{question: "Remove " + p.Name + " from this deck?", yes: "Remove", danger: true, onYes: func() {

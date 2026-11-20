@@ -75,7 +75,7 @@ func tap(a *App, r image.Rectangle) {
 }
 
 // Each page of a deck with many printers names its printer, and its tab in the status bar opens
-// the list. A
+// Settings, Printers, with the state of each printer and Show. A
 // printer that ended a print shows a banner on the other printers, and Show switches.
 func TestFleetScreens(t *testing.T) {
 	s, prs := fleetDeck(t)
@@ -93,27 +93,30 @@ func TestFleetScreens(t *testing.T) {
 	if !ok {
 		t.Fatal("no tab of the printer in the status bar")
 	}
+	taz.Printers = &listAdmin{}
 	tap(taz, tab)
-	if !taz.fleetList {
-		t.Fatal("the tab of the printer opened no list")
+	if taz.topPage() != pagePrinters {
+		t.Fatal("the tab of the printer opened no Printers page")
 	}
-	f = frameText(taz)
-	for _, want := range []string{"PRINTERS", "TAZ Workhorse", "Mini 2", "Phenom", "ON SCREEN", "RESIN", "Printing · 43 %"} {
+	f = strings.ToUpper(frameText(taz))
+	for _, want := range []string{"TAZ WORKHORSE", "MINI 2", "PHENOM", "ON SCREEN · PRINTING · 43 %", "STOP ALL"} {
 		if !strings.Contains(f, want) {
-			t.Errorf("the list has no %q", want)
+			t.Errorf("the Printers page has no %q", want)
 		}
 	}
 	shot(t, taz, "list")
-	// A tap on the Mini switches to it.
+	// Show on the Mini switches to it.
+	taz.askPrinter((&listAdmin{}).List()[1], 3)
 	frameText(taz)
-	mini, ok := taz.KeyRect("Mini 2")
+	showMini, ok := taz.KeyRect("Show")
 	if !ok {
-		t.Fatal("no Mini card")
+		t.Fatal("no Show")
 	}
-	tap(taz, mini)
-	if s.Active() != s.Apps()[1] || taz.fleetList {
-		t.Fatal("the tap did not switch to the Mini")
+	tap(taz, showMini)
+	if s.Active() != s.Apps()[1] {
+		t.Fatal("Show did not switch to the Mini")
 	}
+	taz.pages = nil
 	m := s.Active()
 	m.pages = []page{pageFiles}
 	if f := frameText(m); !strings.Contains(f, "MINI · FILES") {
@@ -206,7 +209,7 @@ func TestStopAll(t *testing.T) {
 }
 
 // The status bar at the top of each page has a tab for each printer, with its state. A tap on
-// another tab shows that printer, and a tap on the tab of this screen opens the list.
+// another tab shows that printer, and a tap on the tab of this screen opens Settings, Printers.
 func TestFleetStatusBar(t *testing.T) {
 	s, _ := fleetDeck(t)
 	a := s.Active()
@@ -218,18 +221,16 @@ func TestFleetStatusBar(t *testing.T) {
 		}
 	}
 	shot(t, a, "statusbar")
-	if a.fleetList || s.Active() != a {
-		t.Fatal("bad start")
-	}
 	tab, ok := a.KeyRect("Printers")
 	if !ok || tab.Max.Y > fleetStatusH {
 		t.Fatalf("the tab of the TAZ: %v %v", tab, ok)
 	}
+	// With no Printers page (a remote screen), the tab of this screen asks Stop all.
 	tap(a, tab)
-	if !a.fleetList {
-		t.Fatal("a tap on the tab of this screen opened no list")
+	if a.confirm == nil || a.confirm.title != "STOP ALL" {
+		t.Fatal("a tap on the tab of this screen did not ask Stop all")
 	}
-	a.fleetList = false
+	a.confirm = nil
 	frameText(a)
 	mini, ok := a.KeyRect("Mini 2")
 	if !ok || mini.Max.Y > fleetStatusH {
@@ -346,4 +347,13 @@ func TestFleetPagesShots(t *testing.T) {
 			}
 		}
 	}
+}
+
+// listAdmin lists the printers of fleetDeck.
+type listAdmin struct{ fakeAdmin }
+
+func (*listAdmin) List() []PrinterEntry {
+	return []PrinterEntry{{Name: "TAZ Workhorse", Label: "TAZ", Kind: "Klipper"},
+		{ID: "mini", Name: "Mini 2", Label: "MINI", Color: 1, Kind: "Klipper"},
+		{ID: "phenom", Name: "Phenom", Label: "PHEN", Color: 2, Kind: "Resin"}}
 }

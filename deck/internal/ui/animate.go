@@ -46,9 +46,6 @@ func (a *App) pageKey() pageKey {
 	if a.away {
 		k.top += " away"
 	}
-	if a.fleetList {
-		k.depth, k.top = k.depth+1, "printers"
-	}
 	if a.setup != nil {
 		k.top += " setup"
 	}
