@@ -648,6 +648,10 @@ type Start struct {
 	// spool.
 	Trays     []int
 	Timelapse bool
+	// Task is the id of the task, for task_id and subtask_id: a new number for each start, or ""
+	// for "0". A printer can ignore a start with the id of the task before it (bambuddy saw a P1S
+	// stay IDLE with a repeated "0"; the X2D took two starts with SUCCESS and did not begin them).
+	Task string
 	// The checks of the printer before the print.
 	BedLevel, FlowCali, VibrationCali, LayerInspect bool
 }
@@ -678,12 +682,16 @@ func (c *Client) StartPrint(s Start, url string) (Reply, bool, error) {
 	// Studio (open-bamboo-networking, print_job.cpp). The printer parses them strictly: a field
 	// that is missing or of another type made the X2D crash its MQTT handler ("forward coredump",
 	// HMS 0500-0300-0002-0010) on 2026-11-19.
+	task := s.Task
+	if task == "" {
+		task = "0"
+	}
 	return c.sendWait("print", "project_file", map[string]any{
 		"param":              s.Plate,
 		"project_id":         "0",
 		"profile_id":         "0",
-		"task_id":            "0",
-		"subtask_id":         "0",
+		"task_id":            task,
+		"subtask_id":         task,
 		"subtask_name":       s.Name,
 		"file":               s.File,
 		"url":                url,

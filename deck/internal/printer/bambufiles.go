@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -316,7 +317,8 @@ func (b *Bambu) sendAndStart(p string) error {
 	title := strings.TrimSuffix(strings.TrimSuffix(name, ".3mf"), ".gcode")
 	b.mu.Unlock()
 	start := bambu.Start{File: name, Name: title, Plate: pl.GcodePath(), Trays: trays,
-		BedLevel: true, FlowCali: true, VibrationCali: true, LayerInspect: true}
+		BedLevel: true, FlowCali: true, VibrationCali: true, LayerInspect: true,
+		Task: strconv.FormatInt(time.Now().Unix()%1e9, 10)}
 	return b.start(start)
 }
 
@@ -362,7 +364,7 @@ func (b *Bambu) start(s bambu.Start) error {
 		}
 		b.mu.Unlock()
 		b.mu.Lock()
-		before := map[string]bool{}
+		before := map[string]bool{"err:" + b.last.ErrSeq: true}
 		for _, h := range b.last.HMS {
 			before[h.String()] = true
 		}
@@ -390,7 +392,9 @@ func (b *Bambu) checkStart(name string, before map[string]bool) {
 		return
 	}
 	var why []string
-	if e := int64(b.last.Error); e != 0 {
+	// A print error from before the start is not the reason: the counter of "err" changes with a
+	// new error.
+	if e := int64(b.last.Error); e != 0 && !before["err:"+b.last.ErrSeq] {
 		t := b.hms().ErrorText(e)
 		if t == "" {
 			t = "print error"
