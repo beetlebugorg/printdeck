@@ -62,11 +62,12 @@ type Bambu struct {
 	filesMu  sync.Mutex
 	files3MF map[string]bambuFile // the 3MF files that the deck read, by path
 
-	trayWG   sync.WaitGroup // the handling of the spool changes (spoolsChanged), for the tests
-	trayMu   sync.Mutex
-	trays    map[int]string    // the roll of each tray, by slot (trayLinks)
-	pending  []int             // the trays with a new spool that the screens ask about
-	trayPrev map[int]traySpool // the spools of the last report, under mu
+	trayWG    sync.WaitGroup // the handling of the spool changes (spoolsChanged), for the tests
+	trayMu    sync.Mutex
+	trays     map[int]string    // the roll of each tray, by slot (trayLinks)
+	pending   []int             // the trays with a new spool that the screens ask about
+	trayPrev  map[int]traySpool // the spools of the last report, under mu
+	startForm int               // the index in bambu.StartURLs of the address of the last start that worked
 }
 
 // bambuRetry is the wait before a new connection after a lost link.
