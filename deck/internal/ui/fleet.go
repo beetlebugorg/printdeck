@@ -353,6 +353,10 @@ const fleetStatusH = 56
 // shortState is the state of a printer in a word or two, for the status bar.
 func shortState(st printer.State) string {
 	switch {
+	case !st.Reachable && st.Starting:
+		return "Starting"
+	case !st.Reachable && st.Err == "" && !st.ErrFinal:
+		return "Connecting"
 	case !st.Reachable || !st.Connected:
 		return "Offline"
 	case st.Err != "":

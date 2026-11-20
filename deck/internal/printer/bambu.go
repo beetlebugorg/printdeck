@@ -123,13 +123,14 @@ func (b *Bambu) offline(err error) {
 	st := &b.st
 	st.Reachable, st.Connected, st.Starting = false, false, false
 	st.Text, st.Activity = "Offline", "The printer does not answer"
+	st.ErrFinal = true
 	switch {
 	case errors.Is(err, bambu.ErrRefused):
 		st.Err = "The printer refused the access code"
 	case errors.Is(err, bambu.ErrCert):
 		st.Err = "The printer at " + b.Client.Addr + " is not the Bambu Lab printer with this serial number"
 	default:
-		st.Err = "No answer from the printer at " + b.Client.Addr
+		st.Err, st.ErrFinal = "No answer from the printer at "+b.Client.Addr, false
 	}
 	log.Printf("bambu: %s: %v", b.Client.Addr, err)
 }
@@ -149,7 +150,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	b.camera = b.Client.CameraURL(r)
 	b.watchTrays(r)
 	st := &b.st
-	st.Reachable, st.Connected, st.Err, st.Starting = true, true, "", false
+	st.Reachable, st.Connected, st.Err, st.Starting, st.ErrFinal = true, true, "", false, false
 	st.Tool, st.ToolTarget = float64(r.Nozzle), float64(r.NozzleTarget)
 	st.HasTool2, st.Tool2, st.Tool2Target, st.ToolNow = false, 0, 0, 0
 	if ex := r.Extruders(); len(ex) >= 2 {

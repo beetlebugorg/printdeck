@@ -221,9 +221,12 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	}
 	if !st.Reachable {
+		// A printer on the network (a resin printer, a Bambu Lab printer) has no Klipper: it
+		// connects, or it does not answer. A Klipper printer shows its start (Starting, its own
+		// wait for Klipper), its setup, and its errors.
 		switch {
-		case a.resin():
-			a.drawResinOffline(c, st)
+		case a.resin() || a.ownControls():
+			a.drawOffline(c, st)
 		case st.NeedsSetup:
 			a.drawPrinterSetup(c, st)
 		case st.Starting:

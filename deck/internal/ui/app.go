@@ -210,6 +210,7 @@ type App struct {
 	// Viewer draws the last print of the home screen as a 3D view that the finger turns, or is
 	// nil: the home screen then shows the picture of the print.
 	Viewer    ModelViewer
+	lostAt    time.Time       // the time that the printer stopped answering, or zero (connecting)
 	homeView  viewState       // the scrubber of the last print of the home screen
 	recView   viewState       // the scrubber of the page of a print
 	fileView  viewState       // the scrubber of the page of a file
@@ -617,6 +618,14 @@ func (a *App) Draw(c *gfx.Canvas) {
 	// menu of the display.
 	a.showShared()
 	a.setFleetSelf()
+	if a.Printer != nil {
+		// The time that the printer stopped answering, for the "Connecting" screen.
+		if a.Printer.State().Reachable {
+			a.lostAt = time.Time{}
+		} else if a.lostAt.IsZero() {
+			a.lostAt = a.Now()
+		}
+	}
 	rollsRow = len(a.loadedItems()) > 0
 	readoutMode = readoutsOneRow
 	if a.Printer != nil && a.Printer.State().HasTool2 && !a.resin() {
