@@ -70,3 +70,49 @@ func TestBambuControls(t *testing.T) {
 		t.Errorf("speed %q light %q", speed, light)
 	}
 }
+
+// A load of a tray sends ams_change_filament with the tray and the temperatures, and an unload
+// targets 255. During a print, neither goes to the printer.
+func TestBambuLoadTray(t *testing.T) {
+	f, err := bambu.NewFake("00TEST000000000", "12345678")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	f.Send(map[string]any{"gcode_state": "IDLE"})
+	b := NewBambu(f.Addr(), f.Serial, f.Code, "", "X2D", nil)
+	b.Client.Roots = f.Roots
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	go b.Run(ctx, nil)
+	waitFor(t, "link", func() bool { return b.State().Connected })
+	r := amsReport("IDLE", "0")
+	r.AMS.Units[0].Trays[2].TempMax = 230
+	b.update(r, time.Now())
+	if err := b.LoadTray(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.UnloadTray(); err != nil {
+		t.Fatal(err)
+	}
+	var cmds []map[string]any
+	waitFor(t, "requests", func() bool {
+		cmds = nil
+		for _, q := range f.Requests() {
+			if p, ok := q["print"].(map[string]any); ok && p["command"] == "ams_change_filament" {
+				cmds = append(cmds, p)
+			}
+		}
+		return len(cmds) == 2
+	})
+	if c := cmds[0]; c["target"] != 2.0 || c["tar_temp"] != 230.0 || c["curr_temp"] != 220.0 || c["ams_id"] != 0.0 || c["slot_id"] != 2.0 {
+		t.Errorf("load %v", c)
+	}
+	if c := cmds[1]; c["target"] != 255.0 || c["ams_id"] != 255.0 {
+		t.Errorf("unload %v", c)
+	}
+	b.update(amsReport("RUNNING", "0"), time.Now())
+	if b.LoadTray(1) == nil || b.UnloadTray() == nil {
+		t.Error("a load during a print")
+	}
+}

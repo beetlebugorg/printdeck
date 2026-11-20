@@ -441,6 +441,30 @@ func (c *Client) SetLight(node string, on bool) error {
 		"led_on_time": 500, "led_off_time": 500, "loop_times": 0, "interval_time": 0})
 }
 
+// ChangeFilament loads the filament of the tray slot (Unit*4+Index, or an external spool) into the
+// nozzle, as Bambu Studio does with ams_change_filament: the printer unloads the filament in the
+// nozzle first. from and to are the nozzle temperatures of the old and the new filament, in °C.
+func (c *Client) ChangeFilament(slot, from, to int) error {
+	amsID, slotID := slot/4, slot%4
+	if slot == ExternalMain || slot == ExternalDeputy {
+		amsID, slotID = slot, 0
+	}
+	return c.send("print", "ams_change_filament", map[string]any{"target": slot, "curr_temp": from, "tar_temp": to,
+		"ams_id": amsID, "slot_id": slotID})
+}
+
+// UnloadFilament pulls the filament out of the nozzle, back to its tray (ams_change_filament to
+// 255).
+func (c *Client) UnloadFilament(from int) error {
+	return c.send("print", "ams_change_filament", map[string]any{"target": 255, "curr_temp": from, "tar_temp": from,
+		"ams_id": 255, "slot_id": 255})
+}
+
+// ReadRFID asks the AMS to read the RFID tag of the spool in the tray slot again (ams_get_rfid).
+func (c *Client) ReadRFID(slot int) error {
+	return c.send("print", "ams_get_rfid", map[string]any{"ams_id": slot / 4, "slot_id": slot % 4})
+}
+
 // Start is a print of a 3MF on the card of the printer.
 type Start struct {
 	File  string // the name of the 3MF at the top of the card
