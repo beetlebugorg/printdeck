@@ -239,7 +239,12 @@ func (b *Bambu) PrintFile(p string) {
 		if err := b.sendAndStart(p); err != nil {
 			log.Printf("bambu: print %s: %v", p, err)
 			b.mu.Lock()
-			b.st.Upload.Result, b.st.Upload.Err, b.st.Upload.Ended = "failed", err.Error(), time.Now()
+			if b.st.Upload.Result == "sent" {
+				// The file is on the printer, and the start failed: the panel says so.
+				b.st.Upload.StartAnswer, b.st.Upload.Ended = err.Error(), time.Now()
+			} else {
+				b.st.Upload.Result, b.st.Upload.Err, b.st.Upload.Ended = "failed", err.Error(), time.Now()
+			}
 			b.st.Message = "The print did not start: " + err.Error()
 			b.mu.Unlock()
 		}
@@ -411,7 +416,7 @@ func (b *Bambu) checkStart(name string, before map[string]bool) {
 	default:
 		reason = "the printer gave no reason"
 	}
-	b.st.Upload.Result, b.st.Upload.Err, b.st.Upload.Ended = "failed", "it did not begin", time.Now()
+	b.st.Upload.StartAnswer, b.st.Upload.Ended = reason, time.Now()
 	b.st.Message = name + " did not start on the printer: " + reason
 	log.Printf("bambu: %s did not start in %v: %s", name, startCheck, reason)
 }
