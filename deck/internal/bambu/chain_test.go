@@ -77,3 +77,16 @@ func TestEmbeddedDeviceCA(t *testing.T) {
 		}
 	}
 }
+
+// The mapping of a two-color print of the X2D: tray 3 of the AMS and the external spool 255.
+// 0xFFFF is no tray.
+func TestAMSMappingExternal(t *testing.T) {
+	r := Report{Mapping: []int64{2, 0xff00, 0xfe00, 0xffff, 0x0103}}
+	got := r.AMSMapping()
+	want := []int{2, ExternalMain, ExternalDeputy, -1, 7}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+}
