@@ -185,6 +185,15 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 	// The toggle at the top, and the settings under it.
 	toggle := menuGroup{items: []menuItem{{"Time lapse", lapseLine(in, s), dim, a.toggleLapse}}, checks: []bool{s.On}}
 	var items []menuItem
+	if pl, ok := a.TimeLapse.(printerLapse); ok {
+		// The printer makes the time lapse itself (a Bambu Lab printer): the toggle is the setting
+		// of the printer, and the deck copies its videos.
+		toggle.items[0].sub = printerLapseLine(s.On)
+		items = append(items, menuItem{"Made by the printer", pl.LapseNote(), dim, nil},
+			menuItem{"Videos", videosLine(len(in.Videos)), dim, func() { a.open(pageHistory) }})
+		a.menuGroups(c, f.body(), f.wide, 60, 5, []menuGroup{toggle, {items: items}})
+		return
+	}
 	if a.resin() {
 		// A resin printer has no park and no first layer to look at: a frame at each layer, when
 		// the plate is up out of the vat.
@@ -216,6 +225,18 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 	}
 	a.menuGroups(c, f.body(), f.wide, 60, 5, []menuGroup{toggle, {items: items}})
 }
+
+// printerLapseLine is the line of the toggle of a time lapse that the printer makes.
+func printerLapseLine(on bool) string {
+	if on {
+		return "On · the printer records each print"
+	}
+	return "Off"
+}
+
+// printerLapse is a time lapse that the printer makes itself (a Bambu Lab printer). LapseNote is
+// the line about where the videos are, for example that the printer needs a USB drive.
+type printerLapse interface{ LapseNote() string }
 
 // firstSub is the file and the time of the picture of the first layer.
 func firstSub(in timelapse.Info, a *App) string {

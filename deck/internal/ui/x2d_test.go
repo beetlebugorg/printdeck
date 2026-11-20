@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"printdeck/internal/printer"
+	"printdeck/internal/timelapse"
 )
 
 // x2dPrinter is a demo printer with two nozzles, an AMS of four trays and an external spool, as
@@ -164,4 +165,34 @@ func TestX2DLoadTray(t *testing.T) {
 			t.Errorf("%q during a print", c.title)
 		}
 	}
+}
+
+// printerLapseFake is a time lapse that the printer makes.
+type printerLapseFake struct {
+	DemoTimeLapse
+	sets []bool
+}
+
+func (p *printerLapseFake) SetSettings(s timelapse.Settings) { p.sets = append(p.sets, s.On); p.S = s }
+func (p *printerLapseFake) LapseNote() string {
+	return "The deck copies each video from the drive of the printer"
+}
+
+// Settings, Time lapse of a printer that makes its time lapse: the toggle is the setting of the
+// printer, and the page has no settings of the time lapse of the deck.
+func TestPrinterLapsePage(t *testing.T) {
+	a := New()
+	a.Printer = newX2D()
+	pl := &printerLapseFake{}
+	a.TimeLapse = pl
+	a.pages = []page{pageTimeLapse}
+	f := frameText(a)
+	if !strings.Contains(f, "MADE BY THE PRINTER") || strings.Contains(f, "PARK FOR THE FRAMES") {
+		t.Fatalf("page: %s", f)
+	}
+	a.toggleLapse()
+	if len(pl.sets) != 1 || !pl.sets[0] {
+		t.Errorf("sets %v", pl.sets)
+	}
+	shot(t, a, "x2d-timelapse")
 }

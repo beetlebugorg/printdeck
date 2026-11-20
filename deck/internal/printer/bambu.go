@@ -67,6 +67,12 @@ type Bambu struct {
 	trays    map[int]string    // the roll of each tray, by slot (trayLinks)
 	pending  []int             // the trays with a new spool that the screens ask about
 	trayPrev map[int]traySpool // the spools of the last report, under mu
+	// VideoDir is the folder of the time lapse videos that the deck copies from the card of the
+	// printer (bambulapse.go), or "" for none.
+	VideoDir  string
+	lapsePath string    // the file of the last time lapse that the printer reported
+	endedPath string    // the print that ended last, for its time lapse
+	endedAt   time.Time // its end
 }
 
 // bambuRetry is the wait before a new connection after a lost link.
@@ -150,6 +156,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	b.last, b.has = r, true
 	b.camera = b.Client.CameraURL(r)
 	b.watchTrays(r)
+	defer b.watchLapse(r, now) // after the end of a print in this report
 	st := &b.st
 	st.Reachable, st.Connected, st.Err, st.Starting, st.ErrFinal = true, true, "", false, false
 	st.Tool, st.ToolTarget = float64(r.Nozzle), float64(r.NozzleTarget)
@@ -245,6 +252,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		}
 		if !b.system {
 			go b.countUse(b.cur, result == "complete")
+			b.endedPath, b.endedAt = b.path, now
 		}
 		b.path = ""
 	}

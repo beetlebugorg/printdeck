@@ -18,7 +18,8 @@ import (
 
 // Movie is a time lapse video that is open for the player. It keeps the index of the frames (the
 // sample table of the file) in memory, and reads one frame at a time from the file by its offset.
-// Movie reads files of WriteMOV, and other QuickTime files with one track of JPEG frames.
+// Movie reads files of WriteMOV, other QuickTime files with one track of JPEG frames, and MP4
+// files with an H.264 track (movie264.go), as the time lapse of a Bambu Lab printer.
 type Movie struct {
 	W, H int // the size of the frames
 	FPS  int // the frames a second
@@ -27,6 +28,9 @@ type Movie struct {
 	closer  io.Closer
 	offsets []int64 // the offset of each frame in the file
 	sizes   []uint32
+	avc     *avc // an H.264 track, or nil for JPEG frames
+
+	mu sync.Mutex // the decoder of an H.264 track
 }
 
 // The largest frame and the largest index that OpenMovie accepts.
@@ -70,17 +74,34 @@ func ReadMovie(r io.ReaderAt, size int64) (*Movie, error) {
 	}
 	trak, ok := videoTrack(b)
 	if !ok {
-		return nil, errors.New("timelapse: the video has no JPEG track")
+		return nil, errors.New("timelapse: the video has no JPEG or H.264 track")
 	}
 	m := &Movie{f: r}
 	if err := m.index(trak, size); err != nil {
 		return nil, err
+	}
+	stbl, _ := atomPath(trak, "mdia", "minf", "stbl")
+	if stsd, ok := child(stbl, "stsd"); ok && len(stsd) >= 16 && isAVC(string(stsd[12:16])) {
+		size := int(binary.BigEndian.Uint32(stsd[8:]))
+		if size < 8 || 8+size > len(stsd) {
+			return nil, errors.New("timelapse: a bad H.264 track in the video")
+		}
+		a, err := readAVC(stsd[8:8+size], stbl)
+		if err != nil {
+			return nil, err
+		}
+		m.avc = a
 	}
 	return m, nil
 }
 
 // Close closes the file of the video.
 func (m *Movie) Close() error {
+	m.mu.Lock()
+	if m.avc != nil {
+		m.avc.close()
+	}
+	m.mu.Unlock()
 	if m.closer == nil {
 		return nil
 	}
@@ -109,6 +130,18 @@ func (m *Movie) JPEG(i int) ([]byte, error) {
 
 // Frame reads frame i for a picture of width w pixels on the screen.
 func (m *Movie) Frame(i, w int) (*Picture, error) {
+	if m.avc != nil {
+		if i < 0 || i >= len(m.offsets) {
+			return nil, fmt.Errorf("timelapse: no frame %d", i)
+		}
+		m.mu.Lock()
+		p, err := m.frame264(i)
+		m.mu.Unlock()
+		if err != nil {
+			return nil, err
+		}
+		return decodedPicture(p, w), nil
+	}
 	b, err := m.JPEG(i)
 	if err != nil {
 		return nil, err
@@ -126,6 +159,10 @@ type Picture struct {
 
 	once sync.Once
 	pic  image.Image
+
+	// encode makes the JPEG of a frame that the deck decoded from H.264, once.
+	encode     func() []byte
+	encodeOnce sync.Once
 }
 
 // NewPicture returns the picture of the JPEG b of w x h pixels, for a width of screen pixels.
@@ -152,8 +189,13 @@ func DecodeWidth(w, screen int) int {
 	return (w + 1<<s - 1) >> s
 }
 
-// JPEG returns the JPEG of the file.
-func (p *Picture) JPEG() []byte { return p.jpeg }
+// JPEG returns the JPEG of the file, or of a decoded frame.
+func (p *Picture) JPEG() []byte {
+	if p.encode != nil {
+		p.encodeOnce.Do(func() { p.jpeg = p.encode() })
+	}
+	return p.jpeg
+}
 
 // Picture returns the decoded picture. A bad JPEG gives a gray picture.
 func (p *Picture) Picture() image.Image {
@@ -250,7 +292,7 @@ func videoTrack(b []byte) ([]byte, bool) {
 		if string(b[4:8]) == "trak" {
 			t := b[8:size]
 			if stsd, ok := atomPath(t, "mdia", "minf", "stbl", "stsd"); ok && len(stsd) >= 16 {
-				if c := string(stsd[12:16]); c == "jpeg" || c == "mjpa" {
+				if c := string(stsd[12:16]); c == "jpeg" || c == "mjpa" || isAVC(c) {
 					return t, true
 				}
 			}
@@ -259,6 +301,9 @@ func videoTrack(b []byte) ([]byte, bool) {
 	}
 	return nil, false
 }
+
+// isAVC reports an H.264 sample entry.
+func isAVC(c string) bool { return c == "avc1" || c == "avc3" }
 
 // index reads the size, the rate and the place of each frame from the track trak, in a file of
 // size bytes.

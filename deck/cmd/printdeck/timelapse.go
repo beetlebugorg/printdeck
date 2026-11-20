@@ -25,6 +25,12 @@ import (
 // a print stay in memory. The deck writes one video to the folder videos at the end of a print,
 // and the history record of the print gets its name.
 func startTimelapse(ctx context.Context, stateDir, configPath string, app *ui.App, pr printerBackend) {
+	if b, ok := pr.(*printer.Bambu); ok {
+		// The printer makes its time lapse: the deck copies the videos (printer/bambulapse.go).
+		b.VideoDir = videoDir(stateDir)
+		app.TimeLapse = bambuLapse{b}
+		return
+	}
 	hub, ok := app.Camera.(*camera.Hub)
 	if c, isResin := pr.(*printer.ChiTu); ok && isResin {
 		startResinTimelapse(ctx, stateDir, app, hub, c)
