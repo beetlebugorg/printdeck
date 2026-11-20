@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"printdeck/internal/bambu"
 	"strings"
+	"time"
 
 	"printdeck/internal/config"
 	"printdeck/internal/printer"
@@ -138,6 +141,18 @@ type printerAdmin struct {
 	restart func()
 	// helper asks the root helper for an action; tests replace it.
 	helper func(system.HelperRequest) error
+}
+
+// FindBambu listens for the notices of the Bambu Lab printers on the network for a few seconds.
+func (pa *printerAdmin) FindBambu() ([]ui.BambuFound, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	found, err := bambu.Discover(ctx, fmt.Sprintf(":%d", bambu.DiscoverPort))
+	var out []ui.BambuFound
+	for _, f := range found {
+		out = append(out, ui.BambuFound{Addr: f.Addr, Serial: f.Serial, Name: f.Name})
+	}
+	return out, err
 }
 
 func (pa *printerAdmin) List() []ui.PrinterEntry {

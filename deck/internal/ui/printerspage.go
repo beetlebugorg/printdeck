@@ -189,10 +189,75 @@ func (a *App) askAddPrinter() {
 	}}
 }
 
-// askAddBambu asks the name, the IP address, the serial number and the access code of a Bambu Lab
-// printer. The printer shows the address and the access code in its network settings, and the
-// serial number in its device settings.
+// BambuFound is a Bambu Lab printer that the deck found on the network.
+type BambuFound struct {
+	Addr, Serial, Name string
+}
+
+// bambuFinder is a PrinterAdmin that finds the Bambu Lab printers on the network. It waits a few
+// seconds.
+type bambuFinder interface{ FindBambu() ([]BambuFound, error) }
+
+// askAddBambu finds the Bambu Lab printers on the network, and asks which one to add: a printer
+// that the deck found needs only its name and its access code. With no printer found, or Type the
+// address, it asks each value (askBambuByHand).
 func (a *App) askAddBambu() {
+	bf, ok := a.Printers.(bambuFinder)
+	if !ok {
+		a.askBambuByHand()
+		return
+	}
+	a.Toast("Looking for Bambu Lab printers on the network…")
+	go func() {
+		found, err := bf.FindBambu()
+		a.post(func() {
+			have := map[string]bool{}
+			for _, p := range a.Printers.List() {
+				have[p.Addr] = true
+			}
+			var choices []menuItem
+			for _, f := range found {
+				f := f
+				if have[f.Addr] {
+					continue
+				}
+				name := f.Name
+				if name == "" {
+					name = "Bambu Lab printer"
+				}
+				choices = append(choices, menuItem{name + " · " + f.Addr, "Serial number " + f.Serial, dim, func() {
+					a.editPrinterText("Name of the new printer", name, 32, func(name string) {
+						a.askBambuCode(name, f.Addr, f.Serial)
+					})
+				}})
+			}
+			if len(choices) == 0 {
+				msg := "No new Bambu Lab printer on the network. Type its address."
+				if err != nil {
+					msg = "The deck could not look on the network: " + err.Error()
+				}
+				a.Toast(msg)
+				a.askBambuByHand()
+				return
+			}
+			choices = append(choices, menuItem{"Type the address", "A printer that is not in the list", dim, a.askBambuByHand})
+			a.confirm = &confirmBox{question: "Which Bambu Lab printer?", choices: choices}
+		})
+	}()
+}
+
+// askBambuCode asks the access code of the Bambu Lab printer, and adds it.
+func (a *App) askBambuCode(name, addr, serial string) {
+	a.editPrinterText("Access code of "+name, "", 16, func(code string) {
+		a.printerChange(func() error { return a.Printers.AddBambu(name, addr, serial, code) })
+	})
+	a.textKB.shift = false // the access code is case-sensitive
+}
+
+// askBambuByHand asks the name, the IP address, the serial number and the access code of a Bambu
+// Lab printer. The printer shows the address and the access code in its network settings, and the
+// serial number in its device settings.
+func (a *App) askBambuByHand() {
 	a.editPrinterText("Name of the new printer", "", 32, func(name string) {
 		a.editPrinterText("IP address of "+name, "", 15, func(addr string) {
 			if net.ParseIP(addr).To4() == nil {
@@ -200,11 +265,7 @@ func (a *App) askAddBambu() {
 				return
 			}
 			a.editPrinterText("Serial number of "+name, "", 20, func(serial string) {
-				serial = strings.ToUpper(strings.ReplaceAll(serial, " ", ""))
-				a.editPrinterText("Access code of "+name, "", 16, func(code string) {
-					a.printerChange(func() error { return a.Printers.AddBambu(name, addr, serial, code) })
-				})
-				a.textKB.shift = false // the access code is case-sensitive
+				a.askBambuCode(name, addr, strings.ToUpper(strings.ReplaceAll(serial, " ", "")))
 			})
 		})
 	})
