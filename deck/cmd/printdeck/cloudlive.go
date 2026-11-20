@@ -103,7 +103,7 @@ func (p *projectLink) liveStep(ctx context.Context, l *livePrint, st printer.Sta
 		return l
 	}
 	in := cloud.LiveRequest{Key: l.key, Name: st.Name(), Started: l.started.UTC(), Percent: st.Completion,
-		Layer: st.Layer, Layers: st.Layers, Paused: st.Paused, Model: l.model, Printer: p.model, PrinterID: p.printerID()}
+		Layer: st.Layer, Layers: st.Layers, Paused: st.Paused, Model: l.model, Printer: p.printerModel(), PrinterID: p.printerID()}
 	if st.HasTimeLeft {
 		in.Left = int(st.TimeLeft.Seconds())
 	}
@@ -157,7 +157,7 @@ func (p *projectLink) endLive(ctx context.Context, id *cloud.Identity, l *livePr
 			continue
 		}
 		in := cloud.LiveRequest{Key: l.key, Name: r.Name(), Started: l.started.UTC(), Percent: l.percent,
-			Result: r.Result, Model: l.model, Printer: p.model}
+			Result: r.Result, Model: l.model, Printer: p.printerModel()}
 		if r.Result == "complete" {
 			in.Percent = 100
 		}

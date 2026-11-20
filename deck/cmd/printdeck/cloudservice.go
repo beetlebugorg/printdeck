@@ -95,8 +95,8 @@ func (p *projectLink) printerName() string {
 	if p.name != "" {
 		return p.name
 	}
-	if p.model != "" {
-		return p.model
+	if m := p.printerModel(); m != "" {
+		return m
 	}
 	return hostName()
 }
@@ -121,7 +121,7 @@ func (p *projectLink) refreshService(ctx context.Context) error {
 	if p.k != nil && p.k.Machine().Process == printer.ProcessResin {
 		process = printer.ProcessResin
 	}
-	pr, err := p.Client.RegisterPrinter(ctx, id, cloud.PrinterRequest{Key: p.serviceKey(), Name: p.printerName(), Process: process, Model: p.model})
+	pr, err := p.Client.RegisterPrinter(ctx, id, cloud.PrinterRequest{Key: p.serviceKey(), Name: p.printerName(), Process: process, Model: p.printerModel()})
 	if err != nil {
 		return err
 	}
