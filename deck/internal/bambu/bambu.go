@@ -441,6 +441,41 @@ func (c *Client) SetLight(node string, on bool) error {
 		"led_on_time": 500, "led_off_time": 500, "loop_times": 0, "interval_time": 0})
 }
 
+// The checks of the camera AI of xcam_control_set.
+const (
+	CheckFirstLayer  = "first_layer_inspector"
+	CheckSpaghetti   = "spaghetti_detector"
+	CheckPlateMarker = "buildplate_marker_detector"
+)
+
+// SetCheck turns a check of the camera AI on or off (xcam_control_set, as Bambu Studio sends it).
+// sensitivity is "low", "medium" or "high" for the spaghetti check, or "".
+func (c *Client) SetCheck(module string, on bool, sensitivity string) error {
+	f := map[string]any{"module_name": module, "control": on, "enable": on, "print_halt": true}
+	if sensitivity != "" {
+		f["halt_print_sensitivity"] = sensitivity
+	}
+	return c.send("xcam", "xcam_control_set", f)
+}
+
+// SetTimelapse turns the time lapse of the prints on or off (ipcam_timelapse).
+func (c *Client) SetTimelapse(on bool) error {
+	return c.send("camera", "ipcam_timelapse", map[string]any{"control": enable(on)})
+}
+
+// SetRecord turns the recording of the prints on or off (ipcam_record_set).
+func (c *Client) SetRecord(on bool) error {
+	return c.send("camera", "ipcam_record_set", map[string]any{"control": enable(on)})
+}
+
+// enable is "enable" for on, else "disable".
+func enable(on bool) string {
+	if on {
+		return "enable"
+	}
+	return "disable"
+}
+
 // Start is a print of a 3MF on the card of the printer.
 type Start struct {
 	File  string // the name of the 3MF at the top of the card

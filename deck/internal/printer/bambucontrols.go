@@ -261,3 +261,60 @@ func (b *Bambu) Fans() (part, aux, chamber float64) {
 	r, _ := b.Report()
 	return r.FanPercent(), float64(r.AuxFan) / 15 * 100, float64(r.ChamberFan) / 15 * 100
 }
+
+// CameraChecks are the checks of the camera AI of a Bambu Lab printer, and its time lapse and
+// recording. Known is false before a report has them.
+type CameraChecks struct {
+	Known                             bool
+	FirstLayer, Spaghetti, PlateMark  bool
+	Sensitivity                       string // the spaghetti check: "low", "medium" or "high"
+	Timelapse, Record, HasCameraState bool
+}
+
+// CameraChecks returns the checks of the camera AI from the last report.
+func (b *Bambu) CameraChecks() CameraChecks {
+	r, ok := b.Report()
+	if !ok || r.XCam == nil {
+		return CameraChecks{}
+	}
+	return CameraChecks{Known: true, FirstLayer: r.XCam.FirstLayer, Spaghetti: r.XCam.Spaghetti,
+		PlateMark: r.XCam.PlateMarker, Sensitivity: r.XCam.Sensitivity,
+		Timelapse: r.IPCam.Timelapse == "enable", Record: r.IPCam.Record == "enable",
+		HasCameraState: r.IPCam.Timelapse != "" || r.IPCam.Record != ""}
+}
+
+// The checks of SetCameraCheck.
+const (
+	CheckFirstLayer = "first-layer"
+	CheckSpaghetti  = "spaghetti"
+	CheckPlateMark  = "plate-marker"
+	CheckTimelapse  = "timelapse"
+	CheckRecord     = "record"
+)
+
+// SetCameraCheck turns a check of the camera AI, the time lapse or the recording on or off.
+func (b *Bambu) SetCameraCheck(check string, on bool) error {
+	sens := b.CameraChecks().Sensitivity
+	var f func() error
+	switch check {
+	case CheckFirstLayer:
+		f = func() error { return b.Client.SetCheck(bambu.CheckFirstLayer, on, "") }
+	case CheckSpaghetti:
+		f = func() error { return b.Client.SetCheck(bambu.CheckSpaghetti, on, sens) }
+	case CheckPlateMark:
+		f = func() error { return b.Client.SetCheck(bambu.CheckPlateMarker, on, "") }
+	case CheckTimelapse:
+		f = func() error { return b.Client.SetTimelapse(on) }
+	case CheckRecord:
+		f = func() error { return b.Client.SetRecord(on) }
+	default:
+		return fmt.Errorf("no check %q", check)
+	}
+	return b.command("The setting of the camera", f)
+}
+
+// SetSpaghettiSensitivity sets the sensitivity of the spaghetti check: "low", "medium" or "high".
+func (b *Bambu) SetSpaghettiSensitivity(s string) error {
+	on := b.CameraChecks().Spaghetti
+	return b.command("The setting of the camera", func() error { return b.Client.SetCheck(bambu.CheckSpaghetti, on, s) })
+}

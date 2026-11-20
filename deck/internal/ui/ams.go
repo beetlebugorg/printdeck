@@ -385,5 +385,44 @@ func (a *App) askPrinterControls(bc bambuControls) {
 			}})
 		}
 	}
+	if cc, ok := bc.(cameraChecker); ok {
+		if ch := cc.CameraChecks(); ch.Known {
+			check := func(title, sub, id string, on bool) menuItem {
+				return menuItem{title, onOff(on) + " · " + sub, dim, func() {
+					run(func() error { return cc.SetCameraCheck(id, !on) })
+				}}
+			}
+			choices = append(choices,
+				check("First layer check", "the printer checks the first layer", printer.CheckFirstLayer, ch.FirstLayer),
+				check("Spaghetti check", "the camera pauses a print that fails", printer.CheckSpaghetti, ch.Spaghetti),
+				check("Build plate check", "the camera checks the plate before a print", printer.CheckPlateMark, ch.PlateMark))
+			if ch.Spaghetti && ch.Sensitivity != "" {
+				choices = append(choices, menuItem{"Spaghetti sensitivity", ch.Sensitivity, dim, func() {
+					var levels []menuItem
+					for _, l := range []string{"low", "medium", "high"} {
+						l := l
+						sub := ""
+						if l == ch.Sensitivity {
+							sub = "Now"
+						}
+						levels = append(levels, menuItem{l, sub, dim, func() { run(func() error { return cc.SetSpaghettiSensitivity(l) }) }})
+					}
+					a.confirm = &confirmBox{question: "Sensitivity of the spaghetti check", choices: levels}
+				}})
+			}
+			if ch.HasCameraState {
+				choices = append(choices,
+					check("Time lapse", "a video of each print", printer.CheckTimelapse, ch.Timelapse),
+					check("Recording", "the printer records each print", printer.CheckRecord, ch.Record))
+			}
+		}
+	}
 	a.confirm = &confirmBox{question: "Printer controls", choices: choices}
+}
+
+// cameraChecker is a printer with the checks of a camera AI (printer.Bambu).
+type cameraChecker interface {
+	CameraChecks() printer.CameraChecks
+	SetCameraCheck(check string, on bool) error
+	SetSpaghettiSensitivity(s string) error
 }

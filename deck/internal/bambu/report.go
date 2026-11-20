@@ -39,6 +39,7 @@ type Report struct {
 
 	Device Device `json:"device"`
 	IPCam  IPCam  `json:"ipcam"`
+	XCam   *XCam  `json:"xcam"`
 	AMS    struct {
 		Units []AMSUnit `json:"ams"`
 		Now   string    `json:"tray_now"` // the tray that feeds now (Unit*4+Index), "255" for none
@@ -90,6 +91,17 @@ type Device struct {
 type IPCam struct {
 	RTSP       string `json:"rtsp_url"`
 	Resolution string `json:"resolution"`
+	Timelapse  string `json:"timelapse"`    // "enable" or "disable"
+	Record     string `json:"ipcam_record"` // "enable" or "disable": the recording of each print
+}
+
+// XCam is the camera AI of the printer: the checks that watch a print.
+type XCam struct {
+	FirstLayer  bool   `json:"first_layer_inspector"`
+	Spaghetti   bool   `json:"spaghetti_detector"`
+	PlateMarker bool   `json:"buildplate_marker_detector"`
+	Halt        bool   `json:"print_halt"`             // a check pauses the print
+	Sensitivity string `json:"halt_print_sensitivity"` // "low", "medium" or "high"
 }
 
 // AMSUnit is one AMS.

@@ -70,3 +70,49 @@ func TestBambuControls(t *testing.T) {
 		t.Errorf("speed %q light %q", speed, light)
 	}
 }
+
+// The checks of the camera AI come from the report, and a change sends xcam_control_set or the
+// command of the camera.
+func TestBambuCameraChecks(t *testing.T) {
+	f, err := bambu.NewFake("00TEST000000000", "12345678")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	f.Send(map[string]any{"gcode_state": "IDLE"})
+	b := NewBambu(f.Addr(), f.Serial, f.Code, "", "X2D", nil)
+	b.Client.Roots = f.Roots
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	go b.Run(ctx, nil)
+	waitFor(t, "link", func() bool { return b.State().Connected })
+	f.Send(map[string]any{"xcam": map[string]any{"first_layer_inspector": true, "spaghetti_detector": true,
+		"buildplate_marker_detector": false, "halt_print_sensitivity": "medium"},
+		"ipcam": map[string]any{"timelapse": "disable", "ipcam_record": "enable"}})
+	waitFor(t, "xcam", func() bool { return b.CameraChecks().Known })
+	ch := b.CameraChecks()
+	if !ch.FirstLayer || !ch.Spaghetti || ch.PlateMark || ch.Sensitivity != "medium" || ch.Timelapse || !ch.Record {
+		t.Fatalf("%+v", ch)
+	}
+	b.SetCameraCheck(CheckSpaghetti, false)
+	b.SetCameraCheck(CheckTimelapse, true)
+	var xcam, cam map[string]any
+	waitFor(t, "requests", func() bool {
+		for _, q := range f.Requests() {
+			if x, ok := q["xcam"].(map[string]any); ok {
+				xcam = x
+			}
+			if c, ok := q["camera"].(map[string]any); ok {
+				cam = c
+			}
+		}
+		return xcam != nil && cam != nil
+	})
+	if xcam["command"] != "xcam_control_set" || xcam["module_name"] != "spaghetti_detector" || xcam["control"] != false ||
+		xcam["halt_print_sensitivity"] != "medium" {
+		t.Errorf("xcam %v", xcam)
+	}
+	if cam["command"] != "ipcam_timelapse" || cam["control"] != "enable" {
+		t.Errorf("camera %v", cam)
+	}
+}
