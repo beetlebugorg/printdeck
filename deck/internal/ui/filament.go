@@ -35,7 +35,9 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 		change = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 8), 8, kit.Px(54), kit.Px(22), kit.Px(52), kit.Px(80), kit.Fr(1.4), kit.Fr(1), kit.Fr(1), kit.Fr(1))
-		win, hint, mats, temps, change, load, ext, heat = r[0], r[1], kit.Inset(r[2], 0, -4, 0, 4), kit.Inset(r[3], 0, 6, 0, -6), r[4], r[5], r[6], r[7]
+		// The temperatures keep the gap of the rows to Change filament under them: on a deck with
+		// many printers the status bar makes the rows lower, and the boxes then touched.
+		win, hint, mats, temps, change, load, ext, heat = r[0], r[1], kit.Inset(r[2], 0, -4, 0, 4), kit.Inset(r[3], 0, 4, 0, 0), r[4], r[5], r[6], r[7]
 	}
 	window(c, win)
 	a.region("Loaded", win)
