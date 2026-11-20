@@ -39,12 +39,23 @@ type ModelViewer interface {
 // the print.
 func (a *App) drawLastPrintView(c *gfx.Canvas, r image.Rectangle, l printer.Record, summary string) {
 	in := r.Inset(12)
-	head := image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+48)
-	reprint := image.Rect(head.Max.X-120, head.Min.Y, head.Max.X, head.Max.Y)
-	nf, sf := gfx.Face(true, 20), gfx.Face(false, 15)
+	// The name in one line, or a long name in two lines in a smaller face: the head is then
+	// higher, and the model lower.
+	tw := in.Dx() - 120 - 12 - 4
+	nf, lines := fitLines(l.Name(), tw, true, 20, 2)
+	lh := 26
+	if len(lines) > 1 {
+		lh = nf.Metrics().Height.Ceil() + 2
+	}
+	head := image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+max(48, len(lines)*lh+22))
+	reprint := image.Rect(head.Max.X-120, head.Min.Y, head.Max.X, head.Min.Y+48)
+	sf := gfx.Face(false, 15)
 	textR := image.Rect(head.Min.X+4, head.Min.Y, reprint.Min.X-12, head.Max.Y)
-	c.Text(image.Rect(textR.Min.X, textR.Min.Y, textR.Max.X, textR.Min.Y+26), gfx.Fit(nf, l.Name(), textR.Dx()), nf, text, gfx.Left)
-	c.Text(image.Rect(textR.Min.X, textR.Min.Y+26, textR.Max.X, textR.Max.Y), gfx.Fit(sf, summary, textR.Dx()), sf, dim, gfx.Left)
+	for k, line := range lines {
+		y := textR.Min.Y + k*lh
+		c.Text(image.Rect(textR.Min.X, y, textR.Max.X, y+lh), line, nf, text, gfx.Left)
+	}
+	c.Text(image.Rect(textR.Min.X, textR.Min.Y+len(lines)*lh, textR.Max.X, textR.Max.Y), gfx.Fit(sf, summary, textR.Dx()), sf, dim, gfx.Left)
 	rec := l
 	open := func() {
 		a.record = rec
