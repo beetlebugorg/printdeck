@@ -323,8 +323,8 @@ func (a *App) fleetQuiet() bool {
 		a.setup == nil && !a.fleetList
 }
 
-// drawFleet draws the parts of a deck with many printers over the frame: the colour bar, and the
-// list of the printers or a banner of another printer.
+// drawFleet draws the parts of a deck with many printers over the frame: the status bar and a
+// banner of another printer, or the list of the printers.
 func (a *App) drawFleet(c *gfx.Canvas) {
 	if a.Fleet == nil {
 		return
@@ -334,8 +334,13 @@ func (a *App) drawFleet(c *gfx.Canvas) {
 		a.drawFleetList(c)
 		return
 	}
+	// A keyboard, a keypad or a dialog covers the top of the screen with its title: the status
+	// bar waits until it closes, so the title shows and a tap cannot switch the printer under it.
+	if !a.fleetQuiet() {
+		return
+	}
 	a.drawFleetStatus(c)
-	if a.fleetQuiet() && !a.jogging() {
+	if !a.jogging() {
 		a.drawFleetBanner(c)
 	}
 }
