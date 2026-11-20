@@ -171,3 +171,30 @@ func TestBambuSentPrintPath(t *testing.T) {
 		t.Errorf("a print of the printer has the path of the sent file")
 	}
 }
+
+// Before the first layer the X2D reports no time: the deck gives the time of the slicer of the
+// file that it sent, and less of it for each layer that is done.
+func TestBambuTimeFromSlicer(t *testing.T) {
+	dir := t.TempDir()
+	write3MF(t, filepath.Join(dir, "part.gcode.3mf"), `<config><plate><metadata key="index" value="1"/><metadata key="prediction" value="11640"/></plate></config>`)
+	b := NewBambu("192.168.1.50", "00TEST000000000", "12345678", "", "X2D", &History{Path: filepath.Join(t.TempDir(), "h.json")})
+	b.Store = dirStore(dir)
+	b.sent = bambuSent{path: "part.gcode.3mf", name: "part.gcode.3mf"}
+	r := x2dParse(t, x2dReport)
+	r.Subtask, r.TaskID, r.Layer, r.Layers, r.Remaining, r.Percent = "part", "7", 0, 156, 0, 0
+	b.update(r, time.Now())
+	if st := b.State(); !st.HasTimeLeft || st.TimeLeft != 194*time.Minute {
+		t.Errorf("before the first layer: %v %v", st.HasTimeLeft, st.TimeLeft)
+	}
+	r.Layer = 79
+	b.update(r, time.Now())
+	if st := b.State(); st.TimeLeft != 97*time.Minute || st.Completion != 50 {
+		t.Errorf("at layer 79 of 156: %v, %v%%", st.TimeLeft, st.Completion)
+	}
+	// The time of the printer, once it reports one.
+	r.Remaining, r.Percent = 90, 52
+	b.update(r, time.Now())
+	if st := b.State(); st.TimeLeft != 90*time.Minute || st.Completion != 52 {
+		t.Errorf("the time of the printer: %v, %v%%", st.TimeLeft, st.Completion)
+	}
+}
