@@ -11,6 +11,7 @@ import (
 	"printdeck/internal/ui"
 	"strings"
 	"testing"
+	"time"
 
 	"printdeck/internal/remote"
 )
@@ -130,5 +131,48 @@ func TestBackendFormat(t *testing.T) {
 	}
 	if f, _ := backendFormat(printer.NewChiTu("127.0.0.1", "Phenom", nil)); f != "ctb" {
 		t.Errorf("chitu %q", f)
+	}
+}
+
+// /slicer/printer.json gives the state of each printer and the address of its camera.
+func TestPrinterFileLive(t *testing.T) {
+	defer func(l func() []ui.Identity, f func(string, string) slicerLive) { deckPrinterList, printerLive = l, f }(deckPrinterList, printerLive)
+	deckPrinterList = func() []ui.Identity {
+		return []ui.Identity{{ID: "first", Name: "TAZ Workhorse", Label: "TAZ"}, {ID: "x2d", Name: "X2D", Label: "X2D"}}
+	}
+	printerLive = func(id, url string) slicerLive {
+		if id == "x2d" {
+			return liveOf(printer.State{Reachable: true, Connected: true, Printing: true, Completion: 81, File: "panda.gcode.3mf",
+				HasTimeLeft: true, TimeLeft: 17 * time.Minute}, true, url)
+		}
+		return liveOf(printer.State{Reachable: true, Connected: true, Text: "Ready"}, false, url)
+	}
+	b, _ := json.Marshal(slicerPrinterFile())
+	var got struct {
+		State    string `json:"state"`
+		Printers []struct {
+			ID, State, Job, Camera string
+			Progress               float64
+			Left                   int
+		} `json:"printers"`
+	}
+	json.Unmarshal(b, &got)
+	if got.State != "ready" || len(got.Printers) != 2 {
+		t.Fatalf("%s", b)
+	}
+	if p := got.Printers[1]; p.State != "printing" || p.Progress != 0.81 || p.Left != 1020 || p.Job != "Panda" ||
+		p.Camera != "/printers/x2d/webcam/stream" {
+		t.Errorf("%+v", p)
+	}
+	if p := got.Printers[0]; p.State != "ready" || p.Camera != "" {
+		t.Errorf("%+v", p)
+	}
+	for st, want := range map[*printer.State]string{
+		{}: "connecting", {Err: "No answer"}: "offline", {Err: "refused", ErrFinal: true}: "offline",
+		{Reachable: true, Connected: true, Paused: true, Printing: true}: "paused",
+	} {
+		if got := liveOf(*st, false, "").State; got != want {
+			t.Errorf("%+v: %q, want %q", *st, got, want)
+		}
 	}
 }

@@ -227,6 +227,14 @@ func run(cfg config.Config) {
 		}
 		return "", ""
 	}
+	printerLive = func(id, url string) slicerLive {
+		for i, p := range printers {
+			if (id == "" && i == 0) || (id != "" && p.ID == id) {
+				return liveOf(backends[i].State(), apps[i].Camera != nil, url)
+			}
+		}
+		return slicerLive{}
+	}
 	deckPrefs(cfg.StateDir, apps)
 	events := make(chan touch.Event, 64)
 	// On the Printdeck OS image, the first start opens the setup screen, and the deck checks
