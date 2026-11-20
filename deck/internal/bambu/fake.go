@@ -21,6 +21,9 @@ type Fake struct {
 	Serial, Code string
 	Cert         *x509.Certificate // the certificate of the broker
 	Roots        *x509.CertPool    // the CA of the certificate, for Client.Roots
+	// StartAnswer gives the answer to a project_file with the url: the result ("success" or
+	// "fail") and the reason. answer false gives no answer. nil answers each start with success.
+	StartAnswer func(url string) (result, reason string, answer bool)
 
 	ln       net.Listener
 	mu       sync.Mutex
@@ -157,6 +160,18 @@ func (f *Fake) serve(c net.Conn) {
 			f.mu.Unlock()
 			if p, ok := req["pushing"].(map[string]any); ok && p["command"] == "pushall" {
 				m.writePacket(pktPublish, 0, append(appendStr(nil, "device/"+f.Serial+"/report"), full...))
+			}
+			if p, ok := req["print"].(map[string]any); ok && p["command"] == "project_file" {
+				url, _ := p["url"].(string)
+				result, reason, answer := "success", "", true
+				if f.StartAnswer != nil {
+					result, reason, answer = f.StartAnswer(url)
+				}
+				if answer {
+					a, _ := json.Marshal(map[string]any{"print": map[string]any{"command": "project_file",
+						"sequence_id": p["sequence_id"], "result": result, "reason": reason}})
+					m.writePacket(pktPublish, 0, append(appendStr(nil, "device/"+f.Serial+"/report"), a...))
+				}
 			}
 			if p, ok := req["info"].(map[string]any); ok && p["command"] == "get_version" {
 				v := `{"info":{"command":"get_version","module":[{"name":"ota","product_name":"Bambu Lab X2D","sw_ver":"01.01.00.80"}]}}`

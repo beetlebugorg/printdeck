@@ -303,7 +303,78 @@ func (b *Bambu) sendAndStart(p string) error {
 	b.sent = bambuSent{path: p, name: name}
 	title := strings.TrimSuffix(strings.TrimSuffix(name, ".3mf"), ".gcode")
 	b.mu.Unlock()
-	log.Printf("bambu: start %s plate %d, trays %v", name, pl.Index, trays)
-	return b.Client.StartPrint(bambu.Start{File: name, Name: title, Plate: pl.GcodePath(), Trays: trays,
-		BedLevel: true, FlowCali: true, VibrationCali: true, LayerInspect: true})
+	start := bambu.Start{File: name, Name: title, Plate: pl.GcodePath(), Trays: trays,
+		BedLevel: true, FlowCali: true, VibrationCali: true, LayerInspect: true}
+	return b.start(start)
+}
+
+// startCheck is how long the deck waits for a print to start after the printer took the command.
+// A test makes it shorter.
+var startCheck = 90 * time.Second
+
+// start sends the start of s. The printers take different addresses of the 3MF on the card
+// (bambu.StartURLs): the deck tries the next one only when the printer answers with a failure, or
+// gives no answer and does not print. It keeps the address that worked. After the start, the deck checks that the print begins: a start
+// that the printer refuses, or that does not begin, shows the reason in the panel.
+func (b *Bambu) start(s bambu.Start) error {
+	urls := bambu.StartURLs(s.File)
+	b.mu.Lock()
+	if b.startForm > 0 && b.startForm < len(urls) {
+		urls[0], urls[b.startForm] = urls[b.startForm], urls[0]
+	}
+	b.mu.Unlock()
+	var reason string
+	for _, url := range urls {
+		r, answered, err := b.Client.StartPrint(s, url)
+		log.Printf("bambu: start %s with %s, trays %v: answer %v %+v, %v", s.File, url, s.Trays, answered, r, err)
+		if err != nil {
+			return err
+		}
+		if answered && r.Failed() {
+			reason = r.Reason
+			if reason == "" {
+				reason = fmt.Sprintf("error %d", r.ErrCode)
+			}
+			continue
+		}
+		if !answered && !b.State().Busy() {
+			// No answer, and no print: the printer did not take this address.
+			reason = "no answer from the printer"
+			continue
+		}
+		b.mu.Lock()
+		for i, u := range bambu.StartURLs(s.File) {
+			if u == url {
+				b.startForm = i
+			}
+		}
+		b.mu.Unlock()
+		go b.checkStart(s.Name)
+		return nil
+	}
+	return fmt.Errorf("the printer refused the print: %s", reason)
+}
+
+// checkStart waits startCheck for the print name to begin, and shows in the panel when it does not:
+// with the message of the printer, if it has one.
+func (b *Bambu) checkStart(name string) {
+	deadline := time.Now().Add(startCheck)
+	for time.Now().Before(deadline) {
+		if b.State().Busy() {
+			return
+		}
+		time.Sleep(startCheck / 30)
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.st.Busy() {
+		return
+	}
+	why := "the printer gave no reason"
+	if b.st.Message != "" {
+		why = b.st.Message
+	}
+	b.st.Upload.Result, b.st.Upload.Err, b.st.Upload.Ended = "failed", "it did not begin", time.Now()
+	b.st.Message = name + " did not start on the printer: " + why
+	log.Printf("bambu: %s did not start in %v: %s", name, startCheck, why)
 }
