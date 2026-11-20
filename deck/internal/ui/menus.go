@@ -841,7 +841,11 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 			menuItem{"Cameras", cameraLine(list), dim, func() { a.open(pageCameras) }})
 	}
 	if a.TimeLapse != nil {
-		items = append(items, menuItem{"Time lapse", timeLapseLine(a.TimeLapse.Settings()), dim, func() { a.open(pageTimeLapse) }})
+		line := timeLapseLine(a.TimeLapse.Settings())
+		if _, ok := a.TimeLapse.(printerLapse); ok {
+			line = printerLapseLine(a.TimeLapse.Settings().On)
+		}
+		items = append(items, menuItem{"Time lapse", line, dim, func() { a.open(pageTimeLapse) }})
 	}
 	if a.Phones != nil {
 		items = append(items, menuItem{"Phones", phonesLine(len(a.Phones.List())), dim, func() { a.open(pagePhones) }})

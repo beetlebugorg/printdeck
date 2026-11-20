@@ -85,6 +85,12 @@ type Device struct {
 			Temp Num `json:"temp"`
 		} `json:"info"`
 	} `json:"ctc"`
+	// Cam is the camera of the printer. TimelapsePath is the file of the last time lapse video, for
+	// example "/userdata/media/timelapse/video_2026-11-20_06-38-46_4.mp4" in the memory of the
+	// printer, or a file on its card.
+	Cam struct {
+		TimelapsePath string `json:"timelapse_path"`
+	} `json:"cam"`
 }
 
 // IPCam is the camera of the printer.
