@@ -166,6 +166,9 @@ type State struct {
 	// Starting is true while Klipper starts: it reports "startup", or its socket is not there yet,
 	// soon after the deck or Klipper started (startGrace). After that, the error shows.
 	Starting bool
+	// ErrFinal is true for an error that a wait does not end, for example an access code that the
+	// printer refused: the screens show it at once, with no "Connecting" before it.
+	ErrFinal bool
 	// Firmware is the version of the firmware on the board. FirmwareOld is true when it is not
 	// the Klipper commit of the host.
 	Firmware    string

@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"time"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
@@ -129,14 +130,35 @@ func (a *App) resinView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	}
 }
 
-// drawResinOffline is the screen of a resin printer that does not answer: "Connecting" at the start
-// of the deck, then "Printer not answering" with the address, a key to change the printer, and
-// Wi-Fi and help and Software update.
-func (a *App) drawResinOffline(c *gfx.Canvas, st printer.State) {
+// connectGrace is how long a printer that does not answer shows "Connecting": at the start of the
+// deck, and after the link to the printer stops. After it, the screen shows the error.
+const connectGrace = 30 * time.Second
+
+// connecting reports that the printer of the app does not answer yet, but can still connect: for
+// connectGrace after it stopped answering, or while it has no error yet. An error with a message
+// of Klipper (ErrDetail), or a final error (ErrFinal), shows at once. Draw keeps lostAt.
+func (a *App) connecting(st printer.State) bool {
+	if st.Reachable || st.ErrDetail != "" || st.ErrFinal {
+		return false
+	}
+	return st.Err == "" || a.Now().Sub(a.lostAt) < connectGrace
+}
+
+// drawOffline is the screen of a printer that does not answer: "Connecting" (connecting), then
+// "Printer not answering" with the error, a key to change the printer, and Wi-Fi and help and
+// Software update.
+func (a *App) drawOffline(c *gfx.Canvas, st printer.State) {
 	title, msg := "Connecting", "Connecting to the printer…"
-	if st.Err != "" {
+	if fleetSelf != nil && fleetSelf.Name != "" {
+		msg = "Connecting to " + fleetSelf.Name + "…"
+	}
+	if !a.connecting(st) {
 		title = "Printer not answering"
 		msg = st.Err + ". Check that the printer is on and on the network. The deck tries again every 10 seconds."
+		if st.ErrFinal {
+			title = "Printer error"
+			msg = st.Err + "."
+		}
 	}
 	wide, textArea, info := a.plain(c, title)
 	n := len(a.systemKeyList(c))
