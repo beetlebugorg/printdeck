@@ -47,7 +47,7 @@ func TestBambuStartAnswers(t *testing.T) {
 	if m := b.State().Message; !strings.Contains(m, "0500-0300-0002-0010") {
 		t.Errorf("message %q", m)
 	}
-	// The file is on the printer: the panel says the start failed, not the upload.
+	// The file is on the printer: the panel says that the start failed. The upload worked.
 	if u := b.State().Upload; u.Result == "failed" || !strings.Contains(u.StartAnswer, "0500-0300-0002-0010") {
 		t.Errorf("upload %+v", u)
 	}
