@@ -41,7 +41,12 @@ func TestBambuStartAnswers(t *testing.T) {
 	if b.startForm != 1 {
 		t.Errorf("start form %d, want 1 (file:///sdcard/)", b.startForm)
 	}
+	// The printer takes the start, then raises a message with no code text, and stays idle.
+	f.Send(map[string]any{"hms": []any{map[string]any{"attr": 0x05000300, "code": 0x00020010}}})
 	waitFor(t, "the check of the start", func() bool { return strings.Contains(b.State().Message, "did not start") })
+	if m := b.State().Message; !strings.Contains(m, "0500-0300-0002-0010") {
+		t.Errorf("message %q", m)
+	}
 
 	// The next start uses the address that worked first.
 	n := len(f.Requests())

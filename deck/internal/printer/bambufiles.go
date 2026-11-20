@@ -349,15 +349,22 @@ func (b *Bambu) start(s bambu.Start) error {
 			}
 		}
 		b.mu.Unlock()
-		go b.checkStart(s.Name)
+		b.mu.Lock()
+		before := map[string]bool{}
+		for _, h := range b.last.HMS {
+			before[h.String()] = true
+		}
+		b.mu.Unlock()
+		go b.checkStart(s.Name, before)
 		return nil
 	}
 	return fmt.Errorf("the printer refused the print: %s", reason)
 }
 
-// checkStart waits startCheck for the print name to begin, and shows in the panel when it does not:
-// with the message of the printer, if it has one.
-func (b *Bambu) checkStart(name string) {
+// checkStart waits startCheck for the print name to begin, and shows in the panel when it does not,
+// with the reason of the printer: a print error, the messages of the printer that are new since
+// the start (before has the codes at the start), also a code with no text, or else its message.
+func (b *Bambu) checkStart(name string, before map[string]bool) {
 	deadline := time.Now().Add(startCheck)
 	for time.Now().Before(deadline) {
 		if b.State().Busy() {
@@ -370,11 +377,34 @@ func (b *Bambu) checkStart(name string) {
 	if b.st.Busy() {
 		return
 	}
-	why := "the printer gave no reason"
-	if b.st.Message != "" {
-		why = b.st.Message
+	var why []string
+	if e := int64(b.last.Error); e != 0 {
+		t := b.hms().ErrorText(e)
+		if t == "" {
+			t = "print error"
+		}
+		why = append(why, fmt.Sprintf("%s (%08X)", t, e))
+	}
+	for _, h := range b.last.HMS {
+		if before[h.String()] {
+			continue
+		}
+		t, _ := b.hms().Text(h)
+		if b.hms().Silent(h) {
+			t = "a message with no text from Bambu Lab"
+		}
+		why = append(why, t+" ("+h.String()+")")
+	}
+	reason := strings.Join(why, "; ")
+	switch {
+	case reason != "":
+		reason = "the printer raised " + reason
+	case b.st.Message != "":
+		reason = b.st.Message
+	default:
+		reason = "the printer gave no reason"
 	}
 	b.st.Upload.Result, b.st.Upload.Err, b.st.Upload.Ended = "failed", "it did not begin", time.Now()
-	b.st.Message = name + " did not start on the printer: " + why
-	log.Printf("bambu: %s did not start in %v: %s", name, startCheck, why)
+	b.st.Message = name + " did not start on the printer: " + reason
+	log.Printf("bambu: %s did not start in %v: %s", name, startCheck, reason)
 }
