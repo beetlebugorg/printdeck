@@ -106,7 +106,7 @@ func TestStartPrint(t *testing.T) {
 	}
 	m := p["ams_mapping"].([]any)
 	m2 := p["ams_mapping2"].([]any)
-	if len(m) != 4 || m[0] != 0.0 || m[1] != -1.0 || m[2] != 5.0 || m[3] != 255.0 {
+	if len(m) != 4 || m[0] != 0.0 || m[1] != -1.0 || m[2] != 5.0 || m[3] != -1.0 {
 		t.Errorf("mapping %v", m)
 	}
 	if third := m2[2].(map[string]any); third["ams_id"] != 1.0 || third["slot_id"] != 1.0 {
