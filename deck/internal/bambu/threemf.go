@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"io"
 	"strconv"
+	"strings"
 )
 
 // Filament is one filament of a plate of a sliced 3MF of Bambu Studio or OrcaSlicer, from
@@ -20,6 +21,10 @@ type Filament struct {
 	Color  string // "#RRGGBB"
 	Grams  float64
 	Meters float64
+	// Nozzle is the nozzle of the filament on a printer with two (filament_maps of the plate):
+	// 1 the main nozzle (on the X2D, the nozzle of the AMS), 2 the aux nozzle (the external
+	// spool), or 0 when the file does not say.
+	Nozzle int
 }
 
 // sliceInfo is Metadata/slice_info.config.
@@ -111,6 +116,7 @@ func Plates(r io.ReaderAt, size int64) ([]Plate, error) {
 	var out []Plate
 	for _, sp := range si.Plates {
 		var p Plate
+		var maps []string // the nozzle of each filament of the project, by its ID less 1
 		for _, m := range sp.Meta {
 			switch m.Key {
 			case "index":
@@ -119,13 +125,19 @@ func Plates(r io.ReaderAt, size int64) ([]Plate, error) {
 				p.Seconds, _ = strconv.ParseFloat(m.Value, 64)
 			case "weight":
 				p.Grams, _ = strconv.ParseFloat(m.Value, 64)
+			case "filament_maps":
+				maps = strings.Fields(m.Value)
 			}
 		}
 		for _, fl := range sp.Filaments {
 			id, _ := strconv.Atoi(fl.ID)
 			g, _ := strconv.ParseFloat(fl.UsedG, 64)
 			m, _ := strconv.ParseFloat(fl.UsedM, 64)
-			p.Filaments = append(p.Filaments, Filament{ID: id, Type: fl.Type, Color: fl.Color, Grams: g, Meters: m})
+			f := Filament{ID: id, Type: fl.Type, Color: fl.Color, Grams: g, Meters: m}
+			if id >= 1 && id <= len(maps) {
+				f.Nozzle, _ = strconv.Atoi(maps[id-1])
+			}
+			p.Filaments = append(p.Filaments, f)
 		}
 		if p.Index > 0 {
 			out = append(out, p)
