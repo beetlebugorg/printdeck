@@ -18,9 +18,13 @@ type x2dPrinter struct {
 	tool2      []int
 	selected   []int
 	chamberSet []int
+	loads      []int // the trays of LoadTray, and -1 for UnloadTray
 }
 
 func (p *x2dPrinter) AMS() printer.AMS           { return p.ams }
+func (p *x2dPrinter) LoadTray(slot int) error    { p.loads = append(p.loads, slot); return nil }
+func (p *x2dPrinter) UnloadTray() error          { p.loads = append(p.loads, -1); return nil }
+func (p *x2dPrinter) ReadTrayTag(slot int) error { return nil }
 func (p *x2dPrinter) LinkTray(int, string) error { return nil }
 func (p *x2dPrinter) SetTool2Temp(t int) error   { p.tool2 = append(p.tool2, t); return nil }
 func (p *x2dPrinter) SelectTool(n int) error     { p.selected = append(p.selected, n); return nil }
@@ -108,5 +112,56 @@ func TestX2DPrintShots(t *testing.T) {
 			t.Errorf("wide %v: no target", wide)
 		}
 		shot(t, a, fmt.Sprintf("x2d-print-wide%v", wide))
+	}
+}
+
+// The menu of a tray loads its filament into the nozzle, after a question; the menu of the spool
+// that feeds unloads it. During a print, the menu has neither.
+func TestX2DLoadTray(t *testing.T) {
+	a := New()
+	p := newX2D()
+	a.Printer = p
+	a.askTray(p, p.ams.Trays[0], 1)
+	var load func()
+	for _, c := range a.confirm.choices {
+		if c.title == "Load into the nozzle" {
+			load = c.tap
+		}
+	}
+	if load == nil {
+		t.Fatalf("no load: %+v", a.confirm.choices)
+	}
+	load()
+	if a.confirm == nil || a.confirm.yes != "Load" {
+		t.Fatal("the load asks no question")
+	}
+	a.confirm.onYes()
+	deadline := time.After(2 * time.Second)
+	for len(p.loads) == 0 {
+		select {
+		case f := <-a.posted:
+			f()
+		case <-deadline:
+			t.Fatal("no load")
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+	if p.loads[0] != 0 {
+		t.Errorf("loads %v", p.loads)
+	}
+	a.askTray(p, p.ams.Trays[4], 1) // the external spool feeds the aux nozzle
+	found := false
+	for _, c := range a.confirm.choices {
+		found = found || c.title == "Unload the aux nozzle"
+	}
+	if !found {
+		t.Errorf("no unload: %+v", a.confirm.choices)
+	}
+	p.State_.Printing = true
+	a.askTray(p, p.ams.Trays[0], 1)
+	for _, c := range a.confirm.choices {
+		if strings.HasPrefix(c.title, "Load") || strings.HasPrefix(c.title, "Unload") {
+			t.Errorf("%q during a print", c.title)
+		}
 	}
 }

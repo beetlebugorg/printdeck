@@ -44,6 +44,8 @@ type AMSTray struct {
 	// Feeds is the nozzle that the spool is in now: 0 the nozzle (the main nozzle of a printer
 	// with two), 1 the aux nozzle, or -1.
 	Feeds int
+	// Temp is the nozzle temperature of the filament for a load, from the printer, or 0.
+	Temp int
 }
 
 // AMSUnit is one AMS.
@@ -96,7 +98,7 @@ func (b *Bambu) AMS() AMS {
 			slot := ui*4 + ti
 			tr := AMSTray{Slot: slot, Unit: ui, Index: ti, Loaded: r.TrayLoaded(slot), Material: t.Type,
 				Brand: t.Brand, Color: t.ColorHex(), Remain: -1, Active: slot == active, Roll: links[slot],
-				Tag: t.Tag(), Weight: float64(t.Weight), Feeds: feed(slot)}
+				Tag: t.Tag(), Weight: float64(t.Weight), Feeds: feed(slot), Temp: t.TempMax.Int()}
 			if t.Known() {
 				tr.Remain = t.Remain.Int()
 			}
@@ -112,7 +114,7 @@ func (b *Bambu) AMS() AMS {
 		}
 		tr := AMSTray{Slot: id, Unit: -1, Index: 0, Loaded: t.Type != "", Material: t.Type, Brand: t.Brand,
 			Color: t.ColorHex(), Remain: -1, Active: id == active, Roll: links[id], Tag: t.Tag(),
-			Weight: float64(t.Weight), External: true, Feeds: feed(id)}
+			Weight: float64(t.Weight), External: true, Feeds: feed(id), Temp: t.TempMax.Int()}
 		if t.Known() {
 			tr.Remain = t.Remain.Int()
 		}
@@ -552,4 +554,52 @@ func (b *Bambu) AnswerTray(slot int) {
 	b.trayMu.Lock()
 	defer b.trayMu.Unlock()
 	b.pending = slices.DeleteFunc(b.pending, func(s int) bool { return s == slot })
+}
+
+// loadTemp is the nozzle temperature for a load of the filament of t: its temperature from the
+// printer, or 220 °C.
+func loadTemp(t AMSTray) int {
+	if t.Temp > 0 {
+		return t.Temp
+	}
+	return 220
+}
+
+// LoadTray loads the filament of the tray slot into its nozzle: the printer unloads the filament
+// in the nozzle first, at its temperature. It returns an error during a print.
+func (b *Bambu) LoadTray(slot int) error {
+	if b.State().Busy() {
+		return fmt.Errorf("the printer prints: load the filament after the print")
+	}
+	t, ok := b.tray(slot)
+	if !ok || !t.Loaded {
+		return fmt.Errorf("the tray has no spool")
+	}
+	from := loadTemp(t)
+	for _, o := range b.AMS().Trays {
+		if o.Active {
+			from = loadTemp(o)
+		}
+	}
+	return b.command("The load of the filament", func() error { return b.Client.ChangeFilament(slot, from, loadTemp(t)) })
+}
+
+// UnloadTray pulls the filament out of the nozzle in use, back to its tray. It returns an error
+// during a print.
+func (b *Bambu) UnloadTray() error {
+	if b.State().Busy() {
+		return fmt.Errorf("the printer prints: unload the filament after the print")
+	}
+	from := 220
+	for _, o := range b.AMS().Trays {
+		if o.Active {
+			from = loadTemp(o)
+		}
+	}
+	return b.command("The unload of the filament", func() error { return b.Client.UnloadFilament(from) })
+}
+
+// ReadTrayTag asks the AMS to read the RFID tag of the spool in the tray slot again.
+func (b *Bambu) ReadTrayTag(slot int) error {
+	return b.command("The RFID read", func() error { return b.Client.ReadRFID(slot) })
 }

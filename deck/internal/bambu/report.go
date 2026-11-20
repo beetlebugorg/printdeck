@@ -110,6 +110,8 @@ type Tray struct {
 	Remain Num    `json:"remain"`      // the percent left of a spool with an RFID tag of Bambu Lab, or -1
 	TagUID string `json:"tag_uid"`     // the RFID tag, all zeros with no tag
 	Weight Num    `json:"tray_weight"` // the grams of a full spool, from the RFID tag, or 0
+	// TempMax is the highest nozzle temperature of the filament in °C, or 0.
+	TempMax Num `json:"nozzle_temp_max"`
 }
 
 // Tag returns the RFID tag of the spool, or "" with no tag.

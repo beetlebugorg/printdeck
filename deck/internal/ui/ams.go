@@ -136,6 +136,31 @@ func (a *App) askTray(ams amsPrinter, t printer.AMSTray, units int) {
 			}})
 		}
 	}
+	// The filament moves of the printer, away from a print. Each one asks first: the printer
+	// heats the nozzle and moves the filament.
+	if tl, ok := ams.(trayLoader); ok && !a.Printer.State().Busy() {
+		nozzle := "the nozzle"
+		if t.External && a.Printer.State().HasTool2 {
+			nozzle = "the aux nozzle"
+		}
+		if t.Loaded && !t.Active {
+			choices = append(choices, menuItem{"Load into " + nozzle, fmt.Sprintf("The printer heats to %d° and changes the filament", loadTempOf(t)), dim, func() {
+				a.confirm = &confirmBox{question: fmt.Sprintf("Load %s into %s? The printer heats the nozzle to %d° and unloads the filament in it first.", name, nozzle, loadTempOf(t)),
+					yes: "Load", onYes: func() { a.do(func() error { return tl.LoadTray(t.Slot) }) }}
+			}})
+		}
+		if t.Active {
+			choices = append(choices, menuItem{"Unload " + nozzle, "The printer pulls the filament back to " + name, dim, func() {
+				a.confirm = &confirmBox{question: "Unload " + nozzle + "? The printer heats the nozzle and pulls the filament back to " + name + ".",
+					yes: "Unload", onYes: func() { a.do(tl.UnloadTray) }}
+			}})
+		}
+		if t.Loaded && !t.External {
+			choices = append(choices, menuItem{"Read the RFID tag again", "For a spool of Bambu Lab: its material, color and part left", dim, func() {
+				a.do(func() error { return tl.ReadTrayTag(t.Slot) })
+			}})
+		}
+	}
 	if t.Roll != "" {
 		choices = append(choices,
 			menuItem{"Open the roll", "Its color, its weight and its prints", dim, func() {
@@ -147,6 +172,21 @@ func (a *App) askTray(ams amsPrinter, t printer.AMSTray, units int) {
 			}})
 	}
 	a.confirm = &confirmBox{question: name, choices: choices}
+}
+
+// trayLoader is a printer that loads and unloads the filament of its trays (printer.Bambu).
+type trayLoader interface {
+	LoadTray(slot int) error
+	UnloadTray() error
+	ReadTrayTag(slot int) error
+}
+
+// loadTempOf is the nozzle temperature of a load of the filament of t.
+func loadTempOf(t printer.AMSTray) int {
+	if t.Temp > 0 {
+		return t.Temp
+	}
+	return 220
 }
 
 // addTrayRoll adds a roll with grams of filament for the tray t, and opens it so the user can check
