@@ -189,7 +189,7 @@ func TestFling(t *testing.T) {
 	}
 }
 
-// The mouse wheel scrolls the list under the mouse, and does nothing over a key.
+// The mouse wheel scrolls the list under the mouse. Over a key, it presses no key.
 func TestWheel(t *testing.T) {
 	var in Input
 	scrolled, taps := 0, 0
