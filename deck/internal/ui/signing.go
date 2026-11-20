@@ -51,7 +51,7 @@ func (a *App) drawSigning(c *gfx.Canvas) {
 		for _, k := range keys {
 			k := k
 			list.items = append(list.items, menuItem{k.App, "Key " + k.ID + " · paired " + fileDate(k.Added.Local(), a.Now(), a.Clock24), dim, func() {
-				a.confirm = &confirmBox{question: "Stop the trust of " + gfx.Fit(gfx.Face(true, 28), k.App, 300) + " (key " + k.ID + ")?",
+				a.confirm = &confirmBox{question: "Stop the trust of " + k.App + " (key " + k.ID + ")?",
 					yes: "Remove", danger: true, onYes: func() {
 						if err := s.Remove(k.ID); err != nil {
 							a.Toast(err.Error())

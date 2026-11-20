@@ -373,7 +373,7 @@ func (a *App) confirmPrint(path string) {
 		a.confirm = box
 		return
 	}
-	a.confirm = &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 28), name, 300) + "?", yes: "Print", onYes: start}
+	a.confirm = &confirmBox{question: "Print " + name + "?", yes: "Print", onYes: start}
 }
 
 // confirmResinPrint asks before it starts a resin file: Print, in the project of the next print
@@ -391,7 +391,7 @@ func (a *App) confirmResinPrint(path, name string) {
 	if project != "" {
 		where = "Project · " + fitText(project, 260)
 	}
-	a.confirm = &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 28), name, 300) + "?", choices: []menuItem{
+	a.confirm = &confirmBox{question: "Print " + name + "?", choices: []menuItem{
 		{"Print", where, dim, func() {
 			a.Printer.PrintFile(path)
 			a.pages = nil
@@ -441,7 +441,7 @@ func (a *App) sentFileBox(path, name string, start func()) *confirmBox {
 			a.Queue.Add(a.queueItem(path, "slicer"))
 		}})
 	}
-	return &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), name, 340) + "?", choices: choices, camera: true}
+	return &confirmBox{question: "Print " + name + "?", choices: choices, camera: true}
 }
 
 // materialCheck compares the material of a file with the material in the printer: the roll, or the

@@ -347,7 +347,7 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		a.editNumber("Roll on the scale", int(sp.Left()+sp.Reel+0.5), 9999, " g", func(v int) { s.Weigh(id, float64(v)) })
 	})
 	rollKey(c, k[0], "Remove", raised, red, func() {
-		a.confirm = &confirmBox{question: "Remove " + gfx.Fit(gfx.Face(true, 28), sp.Label(), 300) + "?", yes: "Remove", danger: true,
+		a.confirm = &confirmBox{question: "Remove " + sp.Label() + "?", yes: "Remove", danger: true,
 			onYes: func() { s.Remove(id); a.back() }}
 	})
 }

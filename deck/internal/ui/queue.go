@@ -190,7 +190,7 @@ func (a *App) AskSentFile(path string) {
 func (a *App) askSentFile(path string) {
 	it := a.queueItem(path, "slicer")
 	next, _ := a.Queue.Next()
-	a.hub.ask(&confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), it.Name, 340) + "?", choices: []menuItem{
+	a.hub.ask(&confirmBox{question: "Print " + it.Name + "?", choices: []menuItem{
 		{"Print it now", "The queue waits", dim, func() {
 			start := func() { a.Printer.PrintFile(path) }
 			if box := a.filamentChoices(path, it.Name, start); box != nil {

@@ -338,7 +338,7 @@ func (a *App) trayChoices(tm trayMatcher, path, name string, start func()) *conf
 		parts = append(parts, trayName(printer.AMSTray{Unit: m.Slot / 4, Index: m.Slot % 4}, units))
 	}
 	choices := []menuItem{{"Print", "The bed is clear · " + strings.Join(parts, ", "), dim, start}}
-	return &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), name, 340) + "?", choices: choices, camera: true}
+	return &confirmBox{question: "Print " + name + "?", choices: choices, camera: true}
 }
 
 // bambuControls are the controls of a Bambu Lab printer that a Klipper printer does not have

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"golang.org/x/image/font"
 	"image"
 	"image/color"
 	"printdeck/kit"
@@ -82,16 +83,49 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		if gfx.FinePrint() {
 			y1, y2, y3 = 4, 34, 60
 		}
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y1, r.Max.X-12, r.Min.Y+y1+30), name, gfx.Face(true, 19), text, gfx.Left)
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y2, r.Max.X-12, r.Min.Y+y2+24), a.metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
+		tw := r.Dx() - 104
+		date := fileDate(f.Date, a.Now(), a.Clock24)
+		if face, lines := fitLines(name, tw, true, 19, 2); len(lines) == 1 {
+			c.Text(image.Rect(r.Min.X+92, r.Min.Y+y1, r.Max.X-12, r.Min.Y+y1+30), name, face, text, gfx.Left)
+			c.Text(image.Rect(r.Min.X+92, r.Min.Y+y2, r.Max.X-12, r.Min.Y+y2+24), a.metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
+		} else {
+			// A long name: in two lines, in a smaller face. The slicer data goes in the line of
+			// the date.
+			lh := face.Metrics().Height.Ceil() + 2
+			for k, l := range lines {
+				y := r.Min.Y + y1 + 2 + k*lh
+				c.Text(image.Rect(r.Min.X+92, y, r.Max.X-12, y+lh), l, face, text, gfx.Left)
+			}
+			if ml := a.metaLine(m); ml != "" {
+				date = ml + " · " + date
+			}
+		}
 		if i == 0 {
 			a.textRegion("File", image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+60), gfx.Face(true, 19), gfx.Fit(gfx.Face(true, 19), name, r.Dx()-104))
 		}
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y3, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y3, r.Max.X-12, r.Max.Y-6), date, gfx.Face(false, 14), dim, gfx.Left)
 		if i == 0 {
 			a.textRegion("Date", image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), gfx.Face(false, 14), fileDate(f.Date, a.Now(), a.Clock24))
 		}
 	}, open)
+}
+
+// fitLines returns the face and the lines of the text s in the width w: one line in the face of
+// size, else at most maxLines lines in a smaller face, from size-3 down to 13. The text keeps
+// each word: only a word that is wider than w alone is cut.
+func fitLines(s string, w int, bold bool, size, maxLines int) (font.Face, []string) {
+	if f := gfx.Face(bold, size); gfx.Width(f, s) <= w {
+		return f, []string{s}
+	}
+	for sz := size - 3; sz >= 13; sz-- {
+		f := gfx.Face(bold, sz)
+		if lines := wrapText(f, s, w); len(lines) <= maxLines {
+			return f, lines
+		}
+	}
+	f := gfx.Face(bold, 13)
+	lines := wrapText(f, s, w)
+	return f, lines[:min(len(lines), maxLines)]
 }
 
 // fileName is the name of a file for the screens: the title in the file, or else the cleaned file
@@ -357,7 +391,7 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 		return
 	}
 	a.button(c, k[0], "Delete", raised, red, func() {
-		a.confirm = &confirmBox{question: "Delete " + gfx.Fit(gfx.Face(true, 28), f.Name, 300) + "?", yes: "Delete", danger: true, onYes: func() {
+		a.confirm = &confirmBox{question: "Delete " + f.Name + "?", yes: "Delete", danger: true, onYes: func() {
 			a.do(func() error {
 				if err := pr.DeleteFile(path); err != nil {
 					return err
