@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -127,22 +128,24 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // touchKinds are the names of the touch kinds in the requests of the browser.
-var touchKinds = map[string]touch.Kind{"down": touch.Down, "move": touch.Move, "up": touch.Up}
+var touchKinds = map[string]touch.Kind{"down": touch.Down, "move": touch.Move, "up": touch.Up, "wheel": touch.Wheel}
 
-// serveTouch receives one touch for a session: {"kind": "down"|"move"|"up", "x": 0..1, "y": 0..1},
-// where x and y are the position on the screen, and ?s= is the number of the session.
+// serveTouch receives one touch for a session: {"kind": "down"|"move"|"up"|"wheel", "x": 0..1,
+// "y": 0..1}, where x and y are the position on the screen, and ?s= is the number of the session.
+// A wheel has "dy": the movement of the mouse wheel as a part of the height of the screen, -4 to 4.
 func (s *Server) serveTouch(w http.ResponseWriter, r *http.Request) {
 	var t struct {
 		Kind string  `json:"kind"`
 		X    float64 `json:"x"`
 		Y    float64 `json:"y"`
+		DY   float64 `json:"dy"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&t); err != nil {
 		http.Error(w, "bad touch", http.StatusBadRequest)
 		return
 	}
 	kind, ok := touchKinds[t.Kind]
-	if !ok || t.X < 0 || t.X > 1 || t.Y < 0 || t.Y > 1 {
+	if !ok || t.X < 0 || t.X > 1 || t.Y < 0 || t.Y > 1 || t.DY < -4 || t.DY > 4 || math.IsNaN(t.DY) {
 		http.Error(w, "bad touch", http.StatusBadRequest)
 		return
 	}
@@ -156,7 +159,7 @@ func (s *Server) serveTouch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no session", http.StatusGone)
 		return
 	}
-	touchFn(touch.Event{Kind: kind, X: t.X, Y: t.Y})
+	touchFn(touch.Event{Kind: kind, X: t.X, Y: t.Y, DY: t.DY})
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -263,6 +263,19 @@ func (in *Input) Fling(now time.Time) bool {
 	return true
 }
 
+// Wheel scrolls the list at p by dy pixels (positive is down), as a drag of the finger does. It
+// only scrolls: it presses no key and moves no slider. It returns false when no list is at p.
+func (in *Input) Wheel(p image.Point, dy int) bool {
+	for i := len(in.hits) - 1; i >= 0; i-- {
+		h := in.hits[i]
+		if h.Scroll != nil && p.In(h.R) {
+			h.Scroll(dy)
+			return true
+		}
+	}
+	return false
+}
+
 // find returns the area of the current frame with the rectangle r.
 func (in *Input) find(r Rect) *Hit {
 	for i := len(in.hits) - 1; i >= 0; i-- {
