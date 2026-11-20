@@ -66,7 +66,17 @@ func (f *zsFile) open(path string) bool {
 		f.g.Close()
 	}
 	f.path, f.g = "", nil
-	g, err := zsview.OpenGcode(path)
+	src := path
+	if strings.HasSuffix(strings.ToLower(path), ".3mf") {
+		// A sliced 3MF of a Bambu Lab printer: the view reads the G-code of its first plate,
+		// from a copy out of the 3MF.
+		var err error
+		if src, err = plateGcode(path); err != nil {
+			log.Printf("zslice view: %s: %v", path, err)
+			return false
+		}
+	}
+	g, err := zsview.OpenGcode(src)
 	if err != nil {
 		log.Printf("zslice view: %s: %v", path, err)
 		return false

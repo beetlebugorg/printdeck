@@ -7,6 +7,7 @@ import (
 	"image"
 	"log"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -74,6 +75,7 @@ type Bambu struct {
 	endedPath string    // the print that ended last, for its time lapse
 	endedAt   time.Time // its end
 	startForm int       // the index in bambu.StartURLs of the address of the last start that worked
+	viewLayer int       // the layer of the slider of the view of the print, or -1 to follow the print
 }
 
 // bambuRetry is the wait before a new connection after a lost link.
@@ -195,8 +197,14 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		if b.path == "" || r.TaskID != was.TaskID && r.TaskID != "" {
 			b.started = now.Add(-r.Elapsed())
 			b.path = "bambu-" + strconv.FormatInt(now.Unix(), 10)
+			// A print of a file that the deck sent: the file in the store of the deck, so the
+			// screens show its model and its picture.
+			if b.sent.path != "" && (path.Base(r.File) == b.sent.name || r.Subtask+".gcode.3mf" == b.sent.name) {
+				b.path = b.sent.path
+			}
 			b.name, b.system = r.Name(), r.PrintType == "system"
 			b.cur = bambuPrint{}
+			b.viewLayer = -1
 			if b.nextProject != "" && b.Hist != nil {
 				b.Hist.SetNextProject(b.path, b.nextProject)
 				b.nextProject = ""
@@ -466,10 +474,39 @@ func (b *Bambu) command(name string, f func() error) error {
 
 // The files, the pictures and the layers: the deck reads no file of the printer yet.
 
-func (b *Bambu) Preview() image.Image                         { return nil }
-func (b *Bambu) LayerTimes() []float64                        { return nil }
-func (b *Bambu) SetViewLayer(int)                             {}
-func (b *Bambu) ViewLayer() int                               { return -1 }
+func (b *Bambu) LayerTimes() []float64 { return nil }
+
+// Preview returns the picture of the plate of the print: the picture in the 3MF of a print that
+// the deck sent, or nil.
+func (b *Bambu) Preview() image.Image {
+	st := b.State()
+	if !st.Busy() || b.Store == nil || st.FilePath == "" {
+		return nil
+	}
+	return b.FilePicture(File{Path: st.FilePath}, "")
+}
+
+// SetViewLayer shows the layer n (from 1) in the view of the print; -1 follows the print.
+func (b *Bambu) SetViewLayer(n int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.viewLayer = n
+}
+
+// ViewLayer returns the layer of the view of the print: the layer of the slider, or the layer
+// that the printer prints. The printer reports no position in the file, so the view follows the
+// layer.
+func (b *Bambu) ViewLayer() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.viewLayer > 0 {
+		return b.viewLayer
+	}
+	if b.st.Layer > 0 {
+		return b.st.Layer
+	}
+	return -1
+}
 func (b *Bambu) Connect()                                     {}
 func (b *Bambu) RecordPicture(Record) (image.Image, bool)     { return nil, false }
 func (b *Bambu) Boards() ([]board.Info, bool)                 { return nil, false }
