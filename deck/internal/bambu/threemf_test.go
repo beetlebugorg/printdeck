@@ -82,7 +82,7 @@ func TestStartPrint(t *testing.T) {
 	for !c.Connected() {
 		time.Sleep(10 * time.Millisecond)
 	}
-	r, ok, err := c.StartPrint(Start{File: "cube.gcode.3mf", Name: "cube", Plate: "Metadata/plate_1.gcode", Trays: []int{0, -1, 5}, BedLevel: true},
+	r, ok, err := c.StartPrint(Start{File: "cube.gcode.3mf", Name: "cube", Plate: "Metadata/plate_1.gcode", Trays: []int{0, -1, 5, 255}, BedLevel: true},
 		StartURLs("cube.gcode.3mf")[0])
 	if err != nil || !ok || r.Failed() || r.Command != "project_file" {
 		t.Fatalf("answer %+v %v %v", r, ok, err)
@@ -99,16 +99,21 @@ func TestStartPrint(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	if p["param"] != "Metadata/plate_1.gcode" || p["url"] != "ftp:///cube.gcode.3mf" || p["use_ams"] != true || p["bed_levelling"] != true {
+	if p["param"] != "Metadata/plate_1.gcode" || p["url"] != "ftp://cube.gcode.3mf" || p["use_ams"] != true || p["bed_leveling"] != true ||
+		p["auto_bed_leveling"] != 2.0 || p["nozzle_offset_cali"] != 2.0 || p["extrude_cali_flag"] != 0.0 || p["cfg"] != "0" ||
+		p["md5"] != "from_sd_card" {
 		t.Errorf("start %v", p)
 	}
 	m := p["ams_mapping"].([]any)
 	m2 := p["ams_mapping2"].([]any)
-	if len(m) != 3 || m[0] != 0.0 || m[1] != -1.0 || m[2] != 5.0 {
+	if len(m) != 4 || m[0] != 0.0 || m[1] != -1.0 || m[2] != 5.0 || m[3] != 255.0 {
 		t.Errorf("mapping %v", m)
 	}
 	if third := m2[2].(map[string]any); third["ams_id"] != 1.0 || third["slot_id"] != 1.0 {
 		t.Errorf("mapping2 %v", m2)
+	}
+	if ext := m2[3].(map[string]any); ext["ams_id"] != 255.0 || ext["slot_id"] != 0.0 {
+		t.Errorf("the external spool in mapping2: %v", ext)
 	}
 }
 
