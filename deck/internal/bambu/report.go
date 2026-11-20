@@ -323,7 +323,7 @@ func (r Report) Elapsed() time.Duration {
 	if p <= 0 || p >= 100 || left <= 0 {
 		return 0
 	}
-	return time.Duration(left*p/(100-p)*float64(time.Minute)).Round(time.Minute)
+	return time.Duration(left * p / (100 - p) * float64(time.Minute)).Round(time.Minute)
 }
 
 // TimeLeft returns the time left of the print.
