@@ -123,6 +123,7 @@ func (b *Bambu) offline(err error) {
 	st := &b.st
 	st.Reachable, st.Connected, st.Starting = false, false, false
 	st.Text, st.Activity = "Offline", "The printer does not answer"
+	st.ErrDetail = "" // the messages of the printer are from before: the deck has no link now
 	st.ErrFinal = true
 	switch {
 	case errors.Is(err, bambu.ErrRefused):
@@ -261,15 +262,22 @@ func (b *Bambu) hmsLines(h []bambu.HMS) (first, all string) {
 		return "", ""
 	}
 	var lines []string
-	for i, e := range h {
+	shown := 0
+	for _, e := range h {
+		if b.hms().Silent(e) {
+			// Bambu Lab gives no text for the code: the list shows it, the panel does not.
+			lines = append(lines, "No text from Bambu Lab ("+e.String()+")")
+			continue
+		}
 		text, _ := b.hms().Text(e)
 		lines = append(lines, text+" ("+e.String()+")")
-		if i == 0 {
+		if shown == 0 {
 			first = text
 		}
+		shown++
 	}
-	if len(h) > 1 {
-		first += fmt.Sprintf(" · %d more", len(h)-1)
+	if shown > 1 {
+		first += fmt.Sprintf(" · %d more", shown-1)
 	}
 	return first, strings.Join(lines, "\n")
 }

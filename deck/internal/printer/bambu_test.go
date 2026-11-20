@@ -3,6 +3,7 @@ package printer
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"strings"
@@ -79,6 +80,21 @@ func TestBambuHMS(t *testing.T) {
 		t.Errorf("%q", st.Message)
 	}
 	if got := b.HMSMessages(); len(got) != 2 || !strings.HasSuffix(got[0], "(0300-9300-0001-0008)") {
+		t.Errorf("%q", got)
+	}
+	// The list of the X2D has 0500-0600-0002-0070 with no text: the panel shows no message for
+	// it, and the list of the messages names it.
+	path := filepath.Join(t.TempDir(), "hms.json")
+	if err := bambu.SaveHMS(path, &bambu.HMSTexts{HMS: map[string]string{"0500060000020070": ""}}); err != nil {
+		t.Fatal(err)
+	}
+	b.HMS = &bambu.HMSFile{Path: path}
+	b.HMS.Refresh(context.Background(), "S")
+	b.update(bambu.Report{State: "IDLE", HMS: []bambu.HMS{{Attr: 0x05000600, Code: 0x00020070}}}, time.Now())
+	if st := b.State(); st.Message != "" {
+		t.Errorf("a code with no text: message %q", st.Message)
+	}
+	if got := b.HMSMessages(); len(got) != 1 || got[0] != "No text from Bambu Lab (0500-0600-0002-0070)" {
 		t.Errorf("%q", got)
 	}
 }
