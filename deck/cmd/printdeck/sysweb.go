@@ -109,6 +109,8 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		pprof.Lookup("goroutine").WriteTo(w, 2)
 	}))
+	// The output of the last crash of the deck program (crash.go).
+	mux.HandleFunc("GET /system/crash", rs.Auth(serveCrash))
 	mux.HandleFunc("GET /system", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		renderSystem(w, klippyLog, apiKey, "", false)
 	}))

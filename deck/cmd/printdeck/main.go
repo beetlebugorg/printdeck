@@ -76,6 +76,10 @@ func main() {
 		runNextDeck()
 	}
 	cfg := config.Load()
+	if len(os.Args) == 1 {
+		// The deck program itself: a crash leaves its output in the state folder.
+		keepCrashes(cfg.StateDir)
+	}
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
