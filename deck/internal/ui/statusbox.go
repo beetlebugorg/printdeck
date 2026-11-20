@@ -507,6 +507,11 @@ func (a *App) panelLines(st printer.State) panelText {
 			p.msg = or(st.Message, "Tap Resume to go on")
 		case st.Preparing:
 			p.head, p.side, p.short, p.bar = "Starting the print", clock, "", false
+			if st.HasTimeLeft {
+				// The time of the slicer, from the start: the end of the print.
+				end := whenText(now.Add(st.TimeLeft), now, a.Clock24)
+				p.side, p.short = "Ends "+end, end
+			}
 			p.msg, p.detail, p.shortDetail = or(st.Activity, "Preparing"), st.Name(), ""
 		case st.Finishing && st.HasBedCoolLeft && st.BedCoolTo > 0:
 			p.head, p.side, p.short = "Cooling the bed", shortWait(st.BedCoolLeft), ""

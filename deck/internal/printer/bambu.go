@@ -218,6 +218,20 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		st.Completion = float64(r.Percent)
 		st.TimeLeft, st.HasTimeLeft = r.TimeLeft(), r.Remaining > 0
 		st.Layer, st.Layers = r.Layer.Int(), r.Layers.Int()
+		if !st.HasTimeLeft {
+			// The printer reports no time before the first layer (and with a file that has no
+			// M73 R): the time of the slicer of a file that the deck sent, less its done layers.
+			if total, ok := b.predicted(b.path); ok {
+				done := 0.0
+				if st.Layers > 0 {
+					done = float64(max(0, st.Layer-1)) / float64(st.Layers)
+				}
+				st.TimeLeft, st.HasTimeLeft = time.Duration(float64(total)*(1-done)).Round(time.Minute), true
+				if st.Completion == 0 && st.Layer > 1 {
+					st.Completion = done * 100
+				}
+			}
+		}
 		st.Elapsed = now.Sub(b.started)
 		st.PrintDuration = st.Elapsed
 		st.Text = "Printing"
@@ -420,6 +434,19 @@ func (b *Bambu) NextProject() string {
 
 // SpoolStore returns the rolls of the printer, or nil.
 func (b *Bambu) SpoolStore() *Spools { return b.Spools }
+
+// predicted returns the print time that the slicer predicts for the first plate of the 3MF p of
+// the store, or false for a file that the deck does not have (a print of the printer).
+func (b *Bambu) predicted(p string) (time.Duration, bool) {
+	if b.Store == nil || p == "" || strings.HasPrefix(p, "bambu-") {
+		return 0, false
+	}
+	f, err := b.threeMF(p)
+	if err != nil || len(f.plates) == 0 || f.plates[0].Seconds <= 0 {
+		return 0, false
+	}
+	return time.Duration(f.plates[0].Seconds * float64(time.Second)), true
+}
 
 // bambuPrep returns the steps of the start of the print of r (stg), with the step now (stg_cur),
 // for the screens: at most len(State.Prep) steps, with the step now in them. A step that the deck
