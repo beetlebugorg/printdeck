@@ -76,6 +76,7 @@ type Bambu struct {
 	endedAt   time.Time // its end
 	startForm int       // the index in bambu.StartURLs of the address of the last start that worked
 	viewLayer int       // the layer of the slider of the view of the print, or -1 to follow the print
+	prepNow   int       // the step now of the list of the start steps, for a step that is not in the list
 }
 
 // bambuRetry is the wait before a new connection after a lost link.
@@ -213,7 +214,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		b.track(r)
 		st.Printing, st.Paused = true, r.Paused()
 		st.Preparing = r.Preparing()
-		st.Prep, st.PrepN = bambuPrep(r)
+		st.Prep, st.PrepN, b.prepNow = bambuPrep(r, b.prepNow)
 		st.FilePath, st.File, st.Title = b.path, b.name, b.name
 		st.Completion = float64(r.Percent)
 		st.TimeLeft, st.HasTimeLeft = r.TimeLeft(), r.Remaining > 0
@@ -451,13 +452,13 @@ func (b *Bambu) predicted(p string) (time.Duration, bool) {
 // bambuPrep returns the steps of the start of the print of r (stg), with the step now (stg_cur),
 // for the screens: at most len(State.Prep) steps, with the step now in them. A step that the deck
 // does not know is out of the list.
-func bambuPrep(r bambu.Report) (out [8]PrepStep, n int) {
+func bambuPrep(r bambu.Report, prev int) (out [8]PrepStep, n, now int) {
 	if !r.Preparing() {
-		return out, 0
+		return out, 0, -1
 	}
 	cur := r.Stage.Int()
 	var steps []PrepStep
-	now := -1
+	now = -1
 	for _, v := range r.Stages {
 		id := v.Int()
 		name, kind, ok := bambu.StepName(id)
@@ -469,17 +470,25 @@ func bambuPrep(r bambu.Report) (out [8]PrepStep, n int) {
 		}
 		steps = append(steps, PrepStep{Kind: kind, Name: name})
 	}
-	if now < 0 {
-		return out, 0 // the step now is not in the list: no list of steps
+	if len(steps) == 0 {
+		return out, 0, -1
+	}
+	switch {
+	case now >= 0:
+	case prev >= 0 && prev < len(steps):
+		// A step that is not in the list (a wait between two steps): the list stays, with the
+		// step before as the step now.
+		now = prev
+	default:
+		now = 0
 	}
 	for i := range steps {
 		steps[i].Done, steps[i].Now = i < now, i == now
 	}
 	// A window of the steps with the step now in it, and one done step before it.
 	start := max(0, min(now-1, len(steps)-len(out)))
-	steps = steps[start:]
-	n = copy(out[:], steps)
-	return out, n
+	n = copy(out[:], steps[start:])
+	return out, n, now
 }
 
 // Pause, Resume and Cancel send the commands of the printer. An error shows in the panel.

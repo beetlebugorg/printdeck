@@ -457,6 +457,15 @@ var stageText = map[int]string{
 	35: "Paused: the nozzle is clogged",
 }
 
+func init() {
+	// The steps of the start of a print have the text of the step, too.
+	for n, v := range stepNames {
+		if _, ok := stageText[n]; !ok {
+			stageText[n] = v[0]
+		}
+	}
+}
+
 // stepNames are the steps of the start of a print, as the list of the steps names them, with the
 // kind of the step for the screens (printer.PrepStep). A step that is not in the list has no name.
 var stepNames = map[int][2]string{
@@ -479,6 +488,44 @@ var stepNames = map[int][2]string{
 	24: {"Load the filament", ""},
 	25: {"Calibrate the motor noise", ""},
 	29: {"Cool the chamber", "cool"},
+	36: {"Check the accuracy", ""},
+	37: {"Calibrate the accuracy", ""},
+	38: {"Check the accuracy again", ""},
+	39: {"Calibrate the nozzle offset", ""},
+	40: {"Level the bed at temperature", "probe"},
+	41: {"Check the quick release", ""},
+	42: {"Check the door and the cover", ""},
+	43: {"Calibrate the laser", ""},
+	44: {"Check the platform", ""},
+	45: {"Check the top camera", ""},
+	46: {"Calibrate the top camera", ""},
+	47: {"Level the bed, phase 1", "probe"},
+	48: {"Level the bed, phase 2", "probe"},
+	49: {"Heat the chamber", ""},
+	50: {"Cool the bed", "cool-bed"},
+	51: {"Print the calibration lines", ""},
+	52: {"Check the filament", ""},
+	53: {"Calibrate the live camera", ""},
+	54: {"Wait for the bed temperature", "heat-bed"},
+	55: {"Check the filament position", ""},
+	56: {"Calibrate the cutter offset", ""},
+	57: {"Measure the surface", ""},
+	58: {"Warm up the printer", ""},
+	62: {"Test the hotend change", ""},
+	63: {"Settle the chamber temperature", ""},
+	64: {"Prepare the hotend", ""},
+	65: {"Check for nozzle clumps", ""},
+	66: {"Clean the chamber air", ""},
+	68: {"Move to the purge chute", ""},
+	69: {"Cool the nozzle", "cool"},
+	70: {"Move to the bed center", ""},
+	72: {"Identify the hotend", ""},
+	73: {"Check the plate alignment", ""},
+	74: {"Check the bed for objects", ""},
+	75: {"Check under the bed", ""},
+	76: {"Prime the nozzle", ""},
+	77: {"Prepare the AMS", ""},
+	82: {"Let the bed settle", "heat-bed"},
 }
 
 // StepName returns the name and the kind of the step n of the start of a print. ok is false

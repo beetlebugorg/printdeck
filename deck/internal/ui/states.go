@@ -135,23 +135,36 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 	// the name and the information do not fit in one line.
 	under := func(s step, box image.Rectangle) bool {
 		info, _ := stepInfo(s)
-		return gfx.FinePrint() && info != "" &&
-			gfx.Width(gfx.Face(true, 19), s.name)+12+gfx.Width(infoF, info) > box.Dx()-82
+		return info != "" && gfx.Width(gfx.Face(true, 19), s.name)+12+gfx.Width(infoF, info) > box.Dx()-82
 	}
 	maxH := 48
 	for _, s := range steps {
-		if under(s, area) {
+		// The large text needs a taller row for the information under the name. The normal
+		// text puts it in the line of the bar.
+		if gfx.FinePrint() && under(s, area) {
 			maxH = 48 + stepInfoH
 		}
 	}
 	rowH := min(maxH, (area.Dy()-30)/max(1, len(steps)))
+	// One size for the names of all the steps: the largest size at which each name fits on one
+	// line next to its information. A long name makes all the names smaller together.
+	nameF := gfx.Face(true, 19)
+	for _, s := range steps {
+		w := area.Dx() - 82
+		if info, _ := stepInfo(s); info != "" && !under(s, area) {
+			w -= gfx.Width(infoF, info) + 12
+		}
+		if f := gfx.Shrink(nameF, s.name, w); f != nameF {
+			nameF = f
+		}
+	}
 	box := kit.Rows(area, 0, kit.Px(len(steps)*rowH+30))[0]
 	a.region("Steps", box)
 	head := "PRINT START"
 	if end {
 		head = "PRINT END"
 	}
-	panel(c, box, head+"  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.Name(), 300)))
+	panel(c, box, head+"  ·  "+strings.ToUpper(st.Name()))
 	for i, s := range steps {
 		y := box.Min.Y + 22 + i*rowH
 		led(c, box.Min.X+34, y+rowH/2-4, s.now)
@@ -166,15 +179,20 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		// The name gets the space that the information does not use.
 		nameR := image.Rect(box.Min.X+60, y, box.Max.X-22, y+rowH-12)
 		infoR := image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-12)
+		below := under(s, box)
 		switch {
-		case under(s, box):
+		case below && gfx.FinePrint():
 			nameR.Max.Y = y + rowH - 12 - stepInfoH
 			infoR = image.Rect(nameR.Min.X, nameR.Max.Y, nameR.Max.X, y+rowH-12)
+		case below:
+			// The information in the line of the bar, at the left of the bar.
+			nameR.Max.Y = y + rowH - 18
+			infoR = image.Rect(nameR.Min.X, y+rowH-20, nameR.Min.X+gfx.Width(infoF, info), y+rowH)
 		case info != "":
-			nameR.Max.X = min(box.Max.X-160, infoR.Max.X-min(infoR.Dx(), gfx.Width(gfx.Shrink(infoF, info, infoR.Dx()), info))-12)
+			nameR.Max.X = infoR.Max.X - gfx.Width(infoF, info) - 12
 		}
-		c.Text(nameR, s.name, gfx.Face(true, 19), col, gfx.Left)
-		if under(s, box) {
+		c.Text(nameR, s.name, nameF, col, gfx.Left)
+		if below {
 			c.Text(infoR, info, infoF, accentText, gfx.Left)
 		} else {
 			c.Text(infoR, info, infoF, accentText, gfx.Right)
@@ -182,6 +200,10 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		if f > 0 {
 			// A thin bar under the name, with a gap: the segments of a meter crowd the line.
 			bar := image.Rect(box.Min.X+60, y+rowH-8, box.Max.X-22, y+rowH-4)
+			if below && !gfx.FinePrint() {
+				bar.Min.X = infoR.Max.X + 12
+				bar = bar.Add(image.Pt(0, -4))
+			}
 			c.RoundRect(bar, 2, mix(surface, dim, 0.3))
 			c.RoundRect(image.Rect(bar.Min.X, bar.Min.Y, bar.Min.X+int(float64(bar.Dx())*min(1, f)), bar.Max.Y), 2, orange)
 		}

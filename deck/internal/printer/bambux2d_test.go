@@ -198,3 +198,22 @@ func TestBambuTimeFromSlicer(t *testing.T) {
 		t.Errorf("the time of the printer: %v, %v%%", st.TimeLeft, st.Completion)
 	}
 }
+
+// A step that is not in the list of the steps (a wait between two steps) keeps the list, with
+// the step before as the step now.
+func TestBambuPrepStaysThroughUnknownStep(t *testing.T) {
+	r := bambu.Report{State: "PREPARE", Stages: []bambu.Num{2, 13, 11, 4, 8}}
+	r.Stage = 11
+	out, n, now := bambuPrep(r, -1)
+	if n == 0 || now != 2 || !out[2].Now {
+		t.Fatalf("steps %d, now %d", n, now)
+	}
+	r.Stage = 200 // a step that the deck does not know
+	_, n, now = bambuPrep(r, now)
+	if n == 0 || now != 2 {
+		t.Fatalf("the list went away: %d steps, now %d", n, now)
+	}
+	if name, _, ok := bambu.StepName(54); !ok || name == "" {
+		t.Errorf("step 54 has no name")
+	}
+}
