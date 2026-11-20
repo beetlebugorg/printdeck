@@ -357,3 +357,21 @@ func (*listAdmin) List() []PrinterEntry {
 		{ID: "mini", Name: "Mini 2", Label: "MINI", Color: 1, Kind: "Klipper"},
 		{ID: "phenom", Name: "Phenom", Label: "PHEN", Color: 2, Kind: "Resin"}}
 }
+
+// The steps of the start of an X2D print: one size for all the names, and the whole file name in
+// the head.
+func TestStartStepsShot(t *testing.T) {
+	sw, prs := fleetDeck(t)
+	st := printer.State{Reachable: true, Connected: true, Text: "Printing", Printing: true, Preparing: true,
+		File: "part_0.2mm_PLA_Bambu-Lab-X2D_3h14m", Bed: 52, BedTarget: 60, Tool: 37, ToolTarget: 220,
+		TimeLeft: 194 * time.Minute, HasTimeLeft: true}
+	names := []string{"Heat the bed", "Home the toolhead", "Identify the build plate", "Wait for the bed temperature",
+		"Calibrate the extrusion", "Clean the nozzle tip", "Level the bed", "Sweep the XY mechanism"}
+	kinds := []string{"heat-bed", "home", "", "heat-bed", "", "wipe", "probe", ""}
+	for i, n := range names {
+		st.Prep[i] = printer.PrepStep{Name: n, Kind: kinds[i], Done: i < 3, Now: i == 3}
+	}
+	st.PrepN = len(names)
+	prs[0].State_ = st
+	shot(t, sw.Apps()[0], "start-steps")
+}
