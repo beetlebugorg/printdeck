@@ -158,19 +158,15 @@ func (r Report) ActiveSlot() int {
 	return n
 }
 
-// AMSMapping returns the tray (Unit*4+Index) of each filament of the print, from Mapping, or
-// -1 for a filament with no tray. The code of a value is the AMS in the high byte and the tray
-// in the low byte; 0xFE00 and higher is no tray. This code is a guess from the reports of an idle
-// X2D: the first print checks it.
+// AMSMapping returns the tray of each filament of the print, from Mapping: Unit*4+Index for a
+// tray of an AMS, ExternalMain or ExternalDeputy for an external spool, or -1 for a filament with
+// no tray. The code of a value is the AMS in the high byte and the tray in the low byte, as in
+// "snow" (feedSlot). A two-color print of the X2D on 2026-11-19 had [2, 65280]: tray 3 of the AMS,
+// and the external spool 255.
 func (r Report) AMSMapping() []int {
 	out := make([]int, len(r.Mapping))
 	for i, v := range r.Mapping {
-		unit, tray := int(v>>8), int(v&0xff)
-		if unit >= 0xfe || tray > 3 {
-			out[i] = -1
-			continue
-		}
-		out[i] = unit*4 + tray
+		out[i] = feedSlot(v)
 	}
 	return out
 }
