@@ -539,9 +539,18 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	// result and the bed, and Reprint and Done at the bottom.
 	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
 	var box, result, info, end image.Rectangle
+	// The box of a failed print has each line of the reason of the printer: it is as high as the
+	// lines need, and the model gets less room.
+	errH := func(width int) int {
+		if st.Finished != "error" || st.FinishedError == "" {
+			return 102
+		}
+		n := len(wrapText(gfx.Face(false, 16), st.FinishedError, width-36))
+		return max(102, 40+n*26+12)
+	}
 	if W > H {
 		view, keys := a.statePage(c, st, title, actH)
-		v := kit.Rows(view, 8, kit.Fr(1), kit.Px(32), kit.Px(102))
+		v := kit.Rows(view, 8, kit.Fr(1), kit.Px(32), kit.Px(errH(view.Dx())))
 		box, result, info, end = v[0], v[1], v[2], keys
 	} else {
 		a.statusPanel(c, st)
@@ -551,10 +560,7 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		if gfx.FinePrint() {
 			resultH = 60 // two lines
 		}
-		infoH := 102
-		if gfx.FinePrint() && st.Finished == "error" && st.FinishedError != "" {
-			infoH = 128 // three lines of the error
-		}
+		infoH := errH(view.Dx())
 		r := kit.Rows(view, 8, kit.Fr(1), kit.Px(resultH), kit.Px(infoH), kit.Px(keyRowH))
 		box, result, info, end = r[0], r[1], r[2], r[3]
 	}
@@ -579,9 +585,7 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	if st.Finished == "error" && st.FinishedError != "" {
 		c.Text(image.Rect(info.Min.X+18, info.Min.Y+8, info.Max.X-18, info.Min.Y+40), "What happened", gfx.Face(true, 19), text, gfx.Left)
 		for i, l := range wrapText(gfx.Face(false, 16), st.FinishedError, info.Dx()-36) {
-			if i < 2 || i < 3 && info.Dy() >= 128 {
-				c.Text(image.Rect(info.Min.X+18, info.Min.Y+40+i*26, info.Max.X-18, info.Min.Y+66+i*26), l, gfx.Face(false, 16), dim, gfx.Left)
-			}
+			c.Text(image.Rect(info.Min.X+18, info.Min.Y+40+i*26, info.Max.X-18, info.Min.Y+66+i*26), l, gfx.Face(false, 16), dim, gfx.Left)
 		}
 	} else {
 		drawBed(c, info.Min.X+40, info.Min.Y+40, 16, orange)
