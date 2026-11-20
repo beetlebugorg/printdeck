@@ -192,9 +192,9 @@ func (s *Server) serveKey(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// serveImage sends an image of the frames as a PNG, or the JPEG of a picture of a camera. An
-// image number is for one image only, so the browser keeps it. The number can have ".png" at the
-// end.
+// serveImage sends an image of the frames as a PNG, or the JPEG of a picture of a camera. The
+// page keeps the images that it uses: the browser must not keep each image (a camera sends a few
+// pictures a second). The number can have ".png" at the end.
 func (s *Server) serveImage(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(strings.TrimSuffix(r.PathValue("id"), ".png"))
 	img := gfx.ImageByID(id)
@@ -204,14 +204,14 @@ func (s *Server) serveImage(w http.ResponseWriter, r *http.Request) {
 	}
 	if p, ok := img.(gfx.Photo); ok {
 		w.Header().Set("Content-Type", "image/jpeg")
-		w.Header().Set("Cache-Control", "private, max-age=86400, immutable")
+		w.Header().Set("Cache-Control", "no-store")
 		w.Write(p.JPEG())
 		return
 	}
 	var b bytes.Buffer
 	(&png.Encoder{CompressionLevel: png.BestSpeed}).Encode(&b, img)
 	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Cache-Control", "private, max-age=86400, immutable")
+	w.Header().Set("Cache-Control", "no-store")
 	w.Write(b.Bytes())
 }
 

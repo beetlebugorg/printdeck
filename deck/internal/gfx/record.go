@@ -2,6 +2,8 @@ package gfx
 
 import (
 	"encoding/json"
+	"fmt"
+	"hash/maphash"
 	"image"
 	"image/color"
 	"sync"
@@ -113,6 +115,8 @@ var images struct {
 	sync.Mutex
 	ids    map[image.Image]int
 	byID   map[int]image.Image
+	bySum  map[uint64]int // the drawn images by the sum of their pixels
+	sums   map[int]uint64
 	order  []int
 	photos []int
 	next   int
@@ -133,9 +137,24 @@ func imageID(img image.Image) int {
 	if id, ok := images.ids[img]; ok {
 		return id
 	}
+	// A drawn image with the same pixels as an image before has its number: a page that draws
+	// again each second makes a new image of the same view, and the browser must not load it
+	// again.
+	sum, hasSum := pixelSum(img)
+	if hasSum {
+		if images.bySum == nil {
+			images.bySum, images.sums = map[uint64]int{}, map[int]uint64{}
+		}
+		if id, ok := images.bySum[sum]; ok {
+			return id
+		}
+	}
 	images.next++
 	id := images.next
 	images.ids[img], images.byID[id] = id, img
+	if hasSum {
+		images.bySum[sum], images.sums[id] = id, sum
+	}
 	list, keep := &images.order, keepImages
 	if _, ok := img.(Photo); ok {
 		list, keep = &images.photos, keepPhotos
@@ -146,6 +165,10 @@ func imageID(img image.Image) int {
 		*list = (*list)[1:]
 		delete(images.ids, images.byID[old])
 		delete(images.byID, old)
+		if sum, ok := images.sums[old]; ok {
+			delete(images.bySum, sum)
+			delete(images.sums, old)
+		}
 	}
 	return id
 }
@@ -317,4 +340,24 @@ func scaleNearest(im image.Image, w, h int) *image.RGBA {
 		}
 	}
 	return out
+}
+
+var sumSeed = maphash.MakeSeed()
+
+// pixelSum returns a sum of the size and the pixels of a drawn image (*image.RGBA), or false for
+// another image. The image must not change after it is drawn.
+func pixelSum(img image.Image) (uint64, bool) {
+	m, ok := img.(*image.RGBA)
+	if !ok {
+		return 0, false
+	}
+	var h maphash.Hash
+	h.SetSeed(sumSeed)
+	r := m.Rect
+	fmt.Fprintf(&h, "%d %d %d %d ", r.Min.X, r.Min.Y, r.Max.X, r.Max.Y)
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		i := m.PixOffset(r.Min.X, y)
+		h.Write(m.Pix[i : i+4*r.Dx()])
+	}
+	return h.Sum64(), true
 }

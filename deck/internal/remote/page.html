@@ -113,7 +113,12 @@ function image(id) {
     img.onload = () => { drawn = null; requestAnimationFrame(paint); };
     img.src = "/ui/img/" + id;
     images.set(id, img);
-    if (images.size > 64) images.delete(images.keys().next().value);
+    if (images.size > 64) {
+      // The oldest image goes, and frees its pixels, unless a rectangle still shows it.
+      const [oldID, old] = images.entries().next().value;
+      images.delete(oldID);
+      if (![...shown.values()].includes(old)) old.src = "";
+    }
   }
   return img.complete && img.naturalWidth ? img : null;
 }
@@ -124,7 +129,11 @@ const shown = new Map();
 function imageAt(op) {
   const key = op.slice(1, 5).join(",");
   const img = image(op[5]);
-  if (img) { shown.set(key, img); return img; }
+  if (img) {
+    shown.set(key, img);
+    if (shown.size > 256) shown.delete(shown.keys().next().value);
+    return img;
+  }
   return shown.get(key) || null;
 }
 
