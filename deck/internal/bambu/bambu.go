@@ -665,7 +665,11 @@ func (c *Client) StartPrint(s Start, url string) (Reply, bool, error) {
 		case t < 0:
 			mapping2[i] = map[string]int{"ams_id": 255, "slot_id": 255}
 		case t == ExternalMain || t == ExternalDeputy:
-			mapping2[i] = map[string]int{"ams_id": t, "slot_id": 0} // the external spool
+			// The external spool: -1 in the flat ams_mapping and the spool in ams_mapping2, as
+			// Bambu Studio sends it. A raw 254 or 255 in the flat list makes the firmware of the
+			// H2D fail (bambuddy, bambu_mqtt.py), and the X2D failed with 05004047.
+			mapping[i] = -1
+			mapping2[i] = map[string]int{"ams_id": t, "slot_id": 0}
 		default:
 			mapping2[i] = map[string]int{"ams_id": t / 4, "slot_id": t % 4}
 		}
