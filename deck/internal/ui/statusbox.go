@@ -491,12 +491,15 @@ func (a *App) panelLines(st printer.State) panelText {
 	}
 	if st.Busy() {
 		p := panelText{side: clock, bar: true, progress: st.Completion / 100}
-		ends := ""
+		// The clock time of the end in the first line, as on the display of a LulzBot: it stays
+		// there when the printer has a message. The time left is in the second line.
+		left := ""
 		if st.HasTimeLeft {
-			p.side, p.short = hm(st.TimeLeft)+" left", hm(st.TimeLeft)
-			ends = "Ends " + whenText(now.Add(st.TimeLeft), now, a.Clock24) + " · "
+			end := whenText(now.Add(st.TimeLeft), now, a.Clock24)
+			p.side, p.short = "Ends "+end, end
+			left = hm(st.TimeLeft) + " left · "
 		}
-		p.msg = or(st.Message, ends+hm(st.Elapsed)+" so far")
+		p.msg = or(st.Message, left+hm(st.Elapsed)+" so far")
 		p.detail, p.shortDetail = a.layerDetail(st)
 		switch {
 		case st.Paused:
