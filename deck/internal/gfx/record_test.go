@@ -73,3 +73,17 @@ func TestReplay(t *testing.T) {
 		t.Errorf("%d bytes differ", diff)
 	}
 }
+
+// A new drawn image with the same pixels has the number of the image before: the browser does
+// not load it again. An image with other pixels has a new number.
+func TestImageIDBySum(t *testing.T) {
+	a := image.NewRGBA(image.Rect(0, 0, 40, 10))
+	b := image.NewRGBA(image.Rect(0, 0, 40, 10))
+	if imageID(a) != imageID(b) {
+		t.Error("the same pixels have two numbers")
+	}
+	b.Pix[5] = 200
+	if imageID(a) == imageID(b) {
+		t.Error("other pixels have the same number")
+	}
+}
