@@ -602,6 +602,12 @@ func (a *App) handle(ev touch.Event) {
 		a.Redraw()
 		return
 	}
+	if ev.Kind == touch.Wheel {
+		if a.in.Wheel(p, int(ev.DY*float64(H))) {
+			a.Redraw()
+		}
+		return
+	}
 	kind := map[touch.Kind]kit.Kind{touch.Down: kit.Down, touch.Move: kit.Move, touch.Up: kit.Up}[ev.Kind]
 	a.in.Handle(kit.Event{Kind: kind, P: p, At: a.Now()})
 	a.Redraw()

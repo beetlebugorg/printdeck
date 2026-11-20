@@ -14,14 +14,18 @@ const (
 	Down Kind = iota
 	Move
 	Up
+	// Wheel is the wheel of a mouse on a remote screen: it scrolls the list at X, Y by DY.
+	Wheel
 )
 
 // Event has coordinates in the range 0..1 of the panel. Finger is 0 for the first finger on the
-// panel, and above 0 for each other finger of a multi-touch panel (a pinch).
+// panel, and above 0 for each other finger of a multi-touch panel (a pinch). DY is the movement
+// of a Wheel event, as a part of the height of the panel (positive is down).
 type Event struct {
 	Kind   Kind
 	X, Y   float64
 	Finger int
+	DY     float64
 }
 
 type Options struct {

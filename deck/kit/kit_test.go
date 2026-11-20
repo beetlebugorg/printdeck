@@ -188,3 +188,17 @@ func TestFling(t *testing.T) {
 		t.Error("a slow drag flings")
 	}
 }
+
+// The mouse wheel scrolls the list under the mouse, and does nothing over a key.
+func TestWheel(t *testing.T) {
+	var in Input
+	scrolled, taps := 0, 0
+	in.Add(Hit{R: image.Rect(0, 0, 100, 400), Scroll: func(dy int) { scrolled += dy }})
+	in.Add(Hit{R: image.Rect(0, 400, 100, 450), Tap: func() { taps++ }})
+	if !in.Wheel(image.Pt(50, 100), 40) || scrolled != 40 {
+		t.Errorf("scrolled %d", scrolled)
+	}
+	if in.Wheel(image.Pt(50, 420), 40) || taps != 0 || scrolled != 40 {
+		t.Errorf("a wheel over a key: taps %d, scrolled %d", taps, scrolled)
+	}
+}

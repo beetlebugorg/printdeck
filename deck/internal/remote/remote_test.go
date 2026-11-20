@@ -135,7 +135,18 @@ func TestSession(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("the touch did not reach the session")
 	}
-	for _, bad := range []string{`{"kind":"down","x":2,"y":0.5}`, `{"kind":"tap","x":0,"y":0}`} {
+	// The mouse wheel: a wheel event with its movement.
+	wr, _ := c.Post(ts.URL+"/ui/touch?s="+id, "application/json", strings.NewReader(`{"kind":"wheel","x":0.5,"y":0.5,"dy":0.1}`))
+	wr.Body.Close()
+	select {
+	case e := <-ui.touches:
+		if e.Kind != touch.Wheel || e.DY != 0.1 {
+			t.Errorf("wheel %+v", e)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("the wheel did not reach the session")
+	}
+	for _, bad := range []string{`{"kind":"down","x":2,"y":0.5}`, `{"kind":"tap","x":0,"y":0}`, `{"kind":"wheel","x":0,"y":0,"dy":9}`} {
 		br, _ := c.Post(ts.URL+"/ui/touch?s="+id, "application/json", strings.NewReader(bad))
 		br.Body.Close()
 		if br.StatusCode != http.StatusBadRequest {
