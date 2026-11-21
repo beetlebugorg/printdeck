@@ -162,6 +162,7 @@ func TestBambuCountUse(t *testing.T) {
 	b.Spools = &Spools{Path: filepath.Join(dir, "spools.json")}
 	b.TrayPath = filepath.Join(dir, "ams-trays.json")
 	t.Cleanup(b.trayWG.Wait)
+	t.Cleanup(b.useWG.Wait)
 	b.update(amsReport("IDLE", "255"), time.Now())
 	gray, _ := b.AddTrayRoll(0, 1000, "")
 	old := fetch3MF
@@ -192,6 +193,66 @@ func TestBambuCountUse(t *testing.T) {
 	b.countUse(p, false)
 	if sp, _ := b.Spools.Get(gray.ID); sp.Left() != 986 {
 		t.Errorf("left after a stop %v", sp.Left())
+	}
+}
+
+func TestBambuLiveUse(t *testing.T) {
+	dir := t.TempDir()
+	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
+	b.Spools = &Spools{Path: filepath.Join(dir, "spools.json")}
+	b.TrayPath = filepath.Join(dir, "ams-trays.json")
+	t.Cleanup(b.trayWG.Wait)
+	t.Cleanup(b.useWG.Wait)
+	b.update(amsReport("IDLE", "255"), time.Now())
+	gray, _ := b.AddTrayRoll(0, 1000, "")
+	old := fetch3MF
+	t.Cleanup(func() { fetch3MF = old })
+	// 10 g of filament 1 in 10 mm of E: 2 mm purge before T0, 3 mm in layer 1, 5 mm in layer 2.
+	fetch3MF = func(_ *bambu.Client, file string) ([]byte, error) {
+		var buf bytes.Buffer
+		z := zip.NewWriter(&buf)
+		w, _ := z.Create("Metadata/slice_info.config")
+		w.Write([]byte(`<config><plate><metadata key="index" value="1"/>` +
+			`<filament id="1" type="PLA" color="#898989" used_m="0.01" used_g="10"/></plate></config>`))
+		w, _ = z.Create("Metadata/plate_1.gcode")
+		w.Write([]byte("M83\nG1 E2\nT0\nM73 P0\nM73 L1\nG1 E3\nM73 P50\nM73 L2\nG1 E5\nM73 P100\n"))
+		z.Close()
+		return buf.Bytes(), nil
+	}
+	report := func(state string, layer, percent int) {
+		r := amsReport(state, "0")
+		r.Layer, r.Percent = bambu.Num(layer), bambu.Num(percent)
+		b.update(r, time.Now())
+		b.refreshLive()
+	}
+	left := func() float64 {
+		sp, _ := b.Spools.Get(gray.ID)
+		return sp.Left()
+	}
+	report("RUNNING", 0, 0)
+	waitFor(t, "the count of the plate", func() bool { return left() == 998 })
+	report("RUNNING", 1, 49)
+	if l := left(); l != 998 {
+		t.Errorf("layer 1 at 49 %%: left %v, want 998", l)
+	}
+	report("RUNNING", 1, 50)
+	if l := left(); l != 995 {
+		t.Errorf("layer 1 at 50 %%: left %v, want 995", l)
+	}
+	// The user weighs the roll during the print: 900 g. The end subtracts only the 5 g after.
+	b.Spools.Weigh(gray.ID, 900)
+	if l := left(); l != 900 {
+		t.Errorf("after the scale: left %v, want 900", l)
+	}
+	report("FINISH", 2, 100)
+	waitFor(t, "the end count", func() bool {
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		return !b.counting
+	})
+	sp, _ := b.Spools.Get(gray.ID)
+	if sp.Left() != 895 || sp.Live != 0 {
+		t.Errorf("after the print: left %v, live %v, want 895 and 0", sp.Left(), sp.Live)
 	}
 }
 

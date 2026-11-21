@@ -53,9 +53,11 @@ type Bambu struct {
 	nextProject string
 	camera      string // the RTSPS address of the camera
 	cur         bambuPrint
-	savedPin    string        // the pin of printer.json
-	homed       string        // the axes that the deck homed, or "xyz" during a print
-	console     []ConsoleLine // the lines of the Console page
+	counting    bool           // countUse runs for the print that ended: the rolls keep their live grams
+	useWG       sync.WaitGroup // the loadUse of the prints, for the tests
+	savedPin    string         // the pin of printer.json
+	homed       string         // the axes that the deck homed, or "xyz" during a print
+	console     []ConsoleLine  // the lines of the Console page
 
 	sent   bambuSent // the last file that the deck started, under mu
 	notify func()    // the notify of Run, for the progress of an upload
@@ -107,6 +109,7 @@ func (b *Bambu) Run(ctx context.Context, notify func()) {
 	for {
 		err := b.Client.Run(ctx, func(r bambu.Report) {
 			b.update(r, time.Now())
+			b.refreshLive()
 			if notify != nil {
 				notify()
 			}
@@ -275,6 +278,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 			b.Hist.add(*st, now, nil, 0, 0, nil)
 		}
 		if !b.system {
+			b.counting = true
 			go b.countUse(b.cur, result == "complete")
 			b.endedPath, b.endedAt = b.path, now
 		}

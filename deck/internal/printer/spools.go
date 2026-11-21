@@ -2,6 +2,7 @@ package printer
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -31,6 +32,9 @@ type Spool struct {
 	Color        string `json:"color,omitempty"`
 	// Tag is the RFID tag of a spool of Bambu Lab, or "": the AMS finds the roll again by its tag.
 	Tag string `json:"tag,omitempty"`
+	// Live is the grams that a print now has used from the roll, and that the deck subtracts
+	// (Used) only at the end of the print. The deck keeps it in memory only (Spools.SetLive).
+	Live float64 `json:"-"`
 }
 
 // SlicerMaterial is a material of the slicer (a material of Cura, not a profile of print
@@ -48,7 +52,7 @@ type SlicerMaterial struct {
 }
 
 // Left is the grams of filament that the roll has now.
-func (s Spool) Left() float64 { return max(0, s.Net-s.Used) }
+func (s Spool) Left() float64 { return max(0, s.Net-s.Used-s.Live) }
 
 // DefaultSize is the filament of a full roll when the roll does not say: most rolls are 1 kg.
 const DefaultSize = 1000.0
@@ -101,6 +105,7 @@ type Spools struct {
 		// The materials of the slicer, from the Cura plugin.
 		SlicerMaterials []SlicerMaterial `json:"slicer_materials,omitempty"`
 	}
+	live map[string]float64 // Spool.Live of each roll, by ID
 }
 
 func (s *Spools) load() {
@@ -138,6 +143,25 @@ func (s *Spools) find(id string) int {
 	return -1
 }
 
+// at returns the roll at the index i, with its Live grams. The caller holds s.mu.
+func (s *Spools) at(i int) Spool {
+	sp := s.data.Spools[i]
+	sp.Live = s.live[sp.ID]
+	return sp
+}
+
+// SetLive sets the grams that a print now has used from each roll (Spool.Live), by the ID of the
+// roll. A roll with no entry has 0 live grams. At the end of a print, the deck calls UseOn first
+// and SetLive(nil) after it, so Left does not go up between the two calls.
+//
+// Weigh and SetLeft during a print set Used to the negative of the live grams of that time. The
+// end of the print then subtracts only the filament after the weighing.
+func (s *Spools) SetLive(grams map[string]float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.live = maps.Clone(grams)
+}
+
 // List returns the rolls, the newest first.
 func (s *Spools) List() []Spool {
 	s.mu.Lock()
@@ -145,7 +169,7 @@ func (s *Spools) List() []Spool {
 	s.load()
 	out := make([]Spool, 0, len(s.data.Spools))
 	for i := len(s.data.Spools) - 1; i >= 0; i-- {
-		out = append(out, s.data.Spools[i])
+		out = append(out, s.at(i))
 	}
 	return out
 }
@@ -156,7 +180,7 @@ func (s *Spools) Get(id string) (Spool, bool) {
 	defer s.mu.Unlock()
 	s.load()
 	if i := s.find(id); i >= 0 {
-		return s.data.Spools[i], true
+		return s.at(i), true
 	}
 	return Spool{}, false
 }
@@ -167,7 +191,7 @@ func (s *Spools) In() (Spool, bool) {
 	defer s.mu.Unlock()
 	s.load()
 	if i := s.find(s.data.In); i >= 0 {
-		return s.data.Spools[i], true
+		return s.at(i), true
 	}
 	return Spool{}, false
 }
@@ -301,7 +325,7 @@ func (s *Spools) Weigh(id string, scale float64) {
 	s.load()
 	if i := s.find(id); i >= 0 {
 		sp := &s.data.Spools[i]
-		sp.Net, sp.Used = max(0, scale-sp.Reel), 0
+		sp.Net, sp.Used = max(0, scale-sp.Reel), -s.live[id]
 		s.save()
 	}
 }
@@ -354,9 +378,9 @@ func (s *Spools) ByTag(tag string) (Spool, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.load()
-	for _, sp := range s.data.Spools {
+	for i, sp := range s.data.Spools {
 		if tag != "" && sp.Tag == tag {
-			return sp, true
+			return s.at(i), true
 		}
 	}
 	return Spool{}, false
@@ -368,7 +392,7 @@ func (s *Spools) SetLeft(id string, grams float64) {
 	defer s.mu.Unlock()
 	s.load()
 	if i := s.find(id); i >= 0 {
-		s.data.Spools[i].Net, s.data.Spools[i].Used = max(0, grams), 0
+		s.data.Spools[i].Net, s.data.Spools[i].Used = max(0, grams), -s.live[id]
 		s.save()
 	}
 }

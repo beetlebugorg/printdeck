@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path"
@@ -278,6 +277,12 @@ type bambuPrint struct {
 	mapping []int        // the tray of each filament (Report.AMSMapping)
 	used    map[int]bool // the trays that fed the nozzle during the print
 	percent float64      // the last progress
+	layer   int          // the last layer
+	// fils and use are the filaments of the plate and the count of its G-code (bambulive.go),
+	// after loadUse. use is nil before, or for a file with no G-code count.
+	fils    []bambu.Filament
+	use     *bambu.PlateUse
+	loading bool // loadUse runs or ran for this print
 }
 
 // track keeps the trays of the print now. The caller holds mu.
@@ -299,6 +304,15 @@ func (b *Bambu) track(r bambu.Report) {
 		p.used[s] = true
 	}
 	p.percent = float64(r.Percent)
+	p.layer = r.Layer.Int()
+	if p.file != "" && !p.loading && b.Spools != nil && !b.system {
+		p.loading = true
+		b.useWG.Add(1)
+		go func(key string, p bambuPrint) {
+			defer b.useWG.Done()
+			b.loadUse(key, p)
+		}(b.path, *p)
+	}
 }
 
 // max3MF is the largest 3MF that the deck reads from the card of the printer, in memory.
@@ -320,67 +334,48 @@ var fetch3MF = func(c *bambu.Client, file string) ([]byte, error) {
 }
 
 // countUse subtracts the filament of the finished print p from the rolls of its trays: all the
-// filament of a complete print, or the share of its progress for a print that stopped. It
-// returns the grams for each roll.
+// filament of a complete print, or the part that a print that stopped used (bambuPrint.share). It
+// returns the grams for each roll. At its end, the rolls have no live grams.
 func (b *Bambu) countUse(p bambuPrint, complete bool) map[string]float64 {
+	defer b.endCount()
 	if b.Spools == nil || p.file == "" {
 		return nil
 	}
-	b.mu.Lock()
-	sent := b.sent
-	b.mu.Unlock()
-	var fils []bambu.Filament
-	var err error
-	if sent.path != "" && b.Store != nil && path.Base(p.file) == sent.name {
-		// The deck sent this file: its copy in the store.
-		var ra io.ReaderAt
-		var size int64
-		var closeFile func()
-		if ra, size, closeFile, err = b.openFile(sent.path); err == nil {
-			fils, err = bambu.PlateFilaments(ra, size, p.plate)
-			closeFile()
+	if p.fils == nil {
+		var err error
+		if p.fils, p.use, err = b.readPlate(p); err != nil {
+			log.Printf("bambu: no filament count: %s: %v", p.file, err)
+			return nil
 		}
-	} else {
-		var data []byte
-		if data, err = fetch3MF(b.Client, p.file); err == nil {
-			fils, err = bambu.PlateFilaments(bytes.NewReader(data), int64(len(data)), p.plate)
-		}
-	}
-	if err != nil {
-		log.Printf("bambu: no filament count: %s: %v", p.file, err)
-		return nil
-	}
-	share := 1.0
-	if !complete {
-		share = max(0, min(1, p.percent/100))
 	}
 	links := b.trayLinks()
 	used := map[string]float64{}
-	for _, f := range fils {
-		slot := -1
-		if i := f.ID - 1; i >= 0 && i < len(p.mapping) {
-			slot = p.mapping[i]
-		}
-		if slot < 0 && len(fils) == 1 && len(p.used) == 1 {
-			for s := range p.used {
-				slot = s
-			}
-		}
-		roll := ""
-		if slot >= 0 {
-			roll = links[slot]
-		}
+	for _, f := range p.fils {
+		slot := p.slotOf(f, len(p.fils))
+		roll := links[slot]
 		if roll == "" {
 			log.Printf("bambu: filament %d (%.1f g): no roll in tray %d", f.ID, f.Grams, slot+1)
 			continue
 		}
-		g := f.Grams * share
+		g := f.Grams
+		if !complete {
+			g *= p.share(f)
+		}
 		if _, _, ok := b.Spools.UseOn(roll, g); ok {
 			used[roll] += g
 		}
 	}
 	log.Printf("bambu: filament of %s: %v (mapping %v, trays %v)", p.file, used, p.mapping, p.used)
 	return used
+}
+
+// endCount ends the count of a print: the rolls have the grams of the print in Used now, so their
+// live grams go.
+func (b *Bambu) endCount() {
+	b.mu.Lock()
+	b.counting = false
+	b.mu.Unlock()
+	b.refreshLive()
 }
 
 // The change of a spool: the AMS reports a spool in a tray, or no spool. The deck follows each
