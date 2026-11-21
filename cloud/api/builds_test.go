@@ -202,7 +202,8 @@ func TestPlanFlow(t *testing.T) {
 	h := sha256.Sum256(gcode)
 	files := cloud.BuildFiles{Plates: []cloud.BuildPlate{
 		{File: "plate-1.gcode", Size: int64(len(gcode)), SHA256: hex.EncodeToString(h[:]), Preview: "plate-1.path.bin", Seconds: 3600, Grams: 30,
-			Profile: "taz-workhorse-se/pla-0.10-fine@44606b4e58b6"},
+			Profile:  "taz-workhorse-se/pla-0.10-fine@44606b4e58b6",
+			Settings: map[string]string{"infill": "20 %", "walls": "3", "secret": "x", "speed": strings.Repeat("9", 41)}},
 		{File: "plate-2.cbddlp", Size: int64(len(gcode)), SHA256: hex.EncodeToString(h[:])},
 	}}
 	if st := call(t, base, "POST", "/api/v1/builds/"+pb.ID+"/files", token, cloud.BuildFiles{Plates: files.Plates[:1]}, nil); st != 400 {
@@ -220,6 +221,10 @@ func TestPlanFlow(t *testing.T) {
 	if st := call(t, base, "POST", "/api/v1/builds/"+pb.ID+"/done", token, nil, &pb); st != 200 || pb.State != cloud.BuildReady ||
 		pb.Plates[0].State != cloud.PartWaiting || pb.Plates[0].PreviewURL == "" || pb.Plates[0].Profile != "taz-workhorse-se/pla-0.10-fine@44606b4e58b6" {
 		t.Fatalf("done: %+v", pb)
+	}
+	// The settings of the slice: only the known names, with a short value.
+	if st := pb.Plates[0].Settings; len(st) != 2 || st["infill"] != "20 %" || st["walls"] != "3" {
+		t.Errorf("settings %v", st)
 	}
 
 	// The owner approves the first plate and rejects the second, with a reason.

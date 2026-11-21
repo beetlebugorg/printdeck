@@ -87,6 +87,23 @@ type PlanRecord struct {
 	Diffs []planDiff `json:"diffs,omitempty"`
 }
 
+// sliceSettings keeps the settings with a name of cloud.SliceSettings and a value of at most 40
+// characters with no control characters.
+func sliceSettings(in map[string]string) map[string]string {
+	var out map[string]string
+	for _, s := range cloud.SliceSettings {
+		v := strings.TrimSpace(in[s.Name])
+		if v == "" || len(v) > 40 || strings.ContainsFunc(v, func(r rune) bool { return r < 0x20 || r == 0x7f }) {
+			continue
+		}
+		if out == nil {
+			out = map[string]string{}
+		}
+		out[s.Name] = v
+	}
+	return out
+}
+
 // BuildRecord is x/<project>/builds/<id>.json.
 type BuildRecord struct {
 	ID       string        `json:"id"`
@@ -922,6 +939,7 @@ func (s *Server) buildFiles(ctx context.Context, p *Project, c *GitHubClaims, id
 		pl := &b.Plates[slice[i]]
 		pl.File, pl.Size, pl.SHA256, pl.Preview, pl.Picture = f.File, f.Size, f.SHA256, f.Preview, f.Picture
 		pl.Seconds, pl.Grams, pl.ML, pl.Layers, pl.LayerHeight, pl.Slicer = f.Seconds, f.Grams, f.ML, f.Layers, f.LayerHeight, clip(f.Slicer, 80)
+		pl.Settings = sliceSettings(f.Settings)
 		if f.Profile != "" && strings.HasPrefix(f.Profile, strings.SplitN(pl.Profile, "@", 2)[0]) {
 			pl.Profile = clip(f.Profile, 200) // the profile with its version
 		}

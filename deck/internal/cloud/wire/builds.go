@@ -265,10 +265,23 @@ type BuildPlate struct {
 	Layers        int            `json:"layers,omitempty"`
 	LayerHeight   float64        `json:"layer_height,omitempty"`
 	Slicer        string         `json:"slicer,omitempty"`
+	// Settings are the main settings of the slice, as text with the unit, by the names of
+	// SliceSettings, for example "infill": "20 %".
+	Settings map[string]string `json:"settings,omitempty"`
 	// Number is the number of the plate in the build, from 1, in a BuildJob. Reused is true for a
 	// plate with the file of the plan (see PlanPart.SliceFile): the slice run does not slice it.
 	Number int  `json:"number,omitempty"`
 	Reused bool `json:"reused,omitempty"`
+}
+
+// SliceSettings are the names of the main settings of a slice (BuildPlate.Settings) with their
+// labels, in the order of the pages. The Action sends them.
+var SliceSettings = []struct{ Name, Label string }{
+	{"layer_height", "Layer height"}, {"first_layer_height", "First layer"}, {"nozzle", "Nozzle"},
+	{"line_width", "Line width"}, {"walls", "Walls"}, {"top_layers", "Top layers"},
+	{"bottom_layers", "Bottom layers"}, {"infill", "Infill"}, {"infill_pattern", "Infill pattern"},
+	{"supports", "Supports"}, {"support_placement", "Support placement"}, {"adhesion", "Adhesion"},
+	{"nozzle_temp", "Nozzle temperature"}, {"bed_temp", "Bed temperature"}, {"speed", "Print speed"},
 }
 
 // BuildJob is the reply to GET /api/v1/builds/<id> for the slice run: the commit of the plan, and

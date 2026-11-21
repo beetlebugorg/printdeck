@@ -1132,6 +1132,32 @@ func (a *app) plateView(b wire.ProjectBuild, n int) js.Value {
 	return box
 }
 
+// settingsEl returns the main settings of the slice of a plate (BuildPlate.Settings) as a list
+// with a heading, in the order of wire.SliceSettings, or null when the plate has none. The layer
+// height is in the facts of the plate.
+func settingsEl(set map[string]string) js.Value {
+	dl := el("dl", "facts settings", "")
+	n := 0
+	for _, s := range wire.SliceSettings {
+		v := set[s.Name]
+		if v == "" || s.Name == "layer_height" {
+			continue
+		}
+		d := el("div", "", "")
+		d.Call("appendChild", el("dt", "", s.Label))
+		d.Call("appendChild", el("dd", "", v))
+		dl.Call("appendChild", d)
+		n++
+	}
+	if n == 0 {
+		return js.Null()
+	}
+	box := el("div", "slice-settings", "")
+	box.Call("appendChild", el("h3", "", "Slice settings"))
+	box.Call("appendChild", dl)
+	return box
+}
+
 // sliceAgain makes a new build of the plan with the plates of the build that failed.
 func (a *app) sliceAgain() {
 	b := a.lastBuild
@@ -1353,6 +1379,9 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 		fact("File", pl.File)
 		fact("Slicer", pl.Slicer)
 		card.Call("appendChild", facts)
+		if set := settingsEl(pl.Settings); !set.IsNull() {
+			card.Call("appendChild", set)
+		}
 		if pl.FileURL != "" && pl.Process == "fdm" {
 			card.Call("appendChild", a.plateView(b, n))
 			card.Call("appendChild", el("p", "small dim", "Drag to turn the plate, also under the bed. Pinch or scroll to zoom. Click the view, then the arrow keys move the layer."))
