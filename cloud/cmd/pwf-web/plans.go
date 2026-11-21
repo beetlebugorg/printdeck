@@ -133,10 +133,11 @@ func drawBuildList(list js.Value, slug string, plans []wire.ProjectPlan) int {
 		li := el("li", "", "")
 		link := el("a", "", "")
 		link.Set("href", buildPath(slug, r.b.ID))
-		link.Call("appendChild", el("strong", "", planName(r.p)+" · "+count(len(r.b.Plates), "plate", "plates")))
+		title := el("strong", "", planName(r.p)+" · "+buildTitle(nil, r.b)+" ")
 		text, class := buildSummary(r.b)
-		link.Call("appendChild", el("span", "sub", shortSHA(r.b.Commit)+" · "+localWhen(r.b.Created)))
-		link.Call("appendChild", el("span", "tag "+class, text))
+		title.Call("appendChild", el("span", "tag "+class, text))
+		link.Call("appendChild", title)
+		link.Call("appendChild", el("span", "sub", count(len(r.b.Plates), "plate", "plates")+" · "+shortSHA(r.b.Commit)+" · "+localWhen(r.b.Created)))
 		li.Call("appendChild", link)
 		list.Call("appendChild", li)
 	}
@@ -249,8 +250,8 @@ func (a *app) showPlanPage(projectID, id string) {
 	}
 	a.keepProcess()
 	doc.Set("title", planName(p)+" · "+v.Name+" · Printdeck")
-	byID("plBack").Set("href", projectPath(v.Slug, 0))
-	setText("plBack", v.Name)
+	byID("plBack").Set("href", "/projects/"+v.Slug+"/plans")
+	setText("plBack", "All builds")
 	setText("plTitle", planName(p)+" · "+shortSHA(p.Commit))
 	sub := fmt.Sprintf("github.com/%s · %s", p.Repo, localWhen(p.Created))
 	if p.Fork != "" {

@@ -613,15 +613,15 @@ func (a *app) drawFeed(v *wire.ProjectView) {
 		if p.Author != "" {
 			who = " of @" + p.Author
 		}
-		// A plan of a pull request with no changed part has no line in the feed. The Builds tab
-		// lists it.
-		if changed := partsChanged(p); p.Kind != wire.BuildTest || changed > 0 {
+		// A plan with no changed part is a change to the code or the docs: it has no line in the
+		// feed. A release has a line. The Builds tab lists the plans of pull requests.
+		if changed := partsChanged(p); changed > 0 || p.Kind == wire.BuildRelease {
 			evs = append(evs, event{p.Created, "git", "New plan" + who + " · " + planName(p),
 				shortSHA(p.Commit) + " · " + count(changed, "part", "parts") + " changed", planPath(v.Slug, p.ID)})
 		}
 		for _, b := range p.Builds {
-			evs = append(evs, event{b.Created, "slice", "Slice of " + count(len(b.Plates), "plate", "plates") + " · " + planName(p),
-				strings.ToLower(buildStateText(b.State)), buildPath(v.Slug, b.ID)})
+			evs = append(evs, event{b.Created, "slice", "Build · " + planName(p) + " · " + buildTitle(nil, b),
+				count(len(b.Plates), "plate", "plates") + " · " + strings.ToLower(buildStateText(b.State)), buildPath(v.Slug, b.ID)})
 			for i, pl := range b.Plates {
 				switch pl.State {
 				case wire.PartApproved:
