@@ -497,14 +497,8 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		if w.deck != nil {
 			return nil, fail(http.StatusUnauthorized, "only a person sees the plans")
 		}
-		all, _, _ := s.plansView(ctx, p, 0)
-		plans := []cloud.ProjectPlan{}
-		for _, pv := range all {
-			if pv.Kind == cloud.BuildTest || pv.Kind == cloud.BuildRelease {
-				plans = append(plans, pv)
-			}
-		}
-		return plans, nil
+		all, _, _, _ := s.plansView(ctx, p, 0)
+		return buildsTabPlans(all), nil
 	case part == "plans" && sub != "" && !strings.Contains(sub, "/") && r.Method == http.MethodGet:
 		if w.deck != nil {
 			return nil, fail(http.StatusUnauthorized, "only a person sees a plan")
@@ -844,7 +838,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			v.Plans, v.PlansTotal, v.Docs = s.plansView(ctx, p, PlansShown)
+			v.Plans, v.PlansTotal, v.BuildsTotal, v.Docs = s.plansView(ctx, p, PlansShown)
 		}()
 	}
 	wg.Add(1)

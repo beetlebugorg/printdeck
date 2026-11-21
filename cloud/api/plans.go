@@ -1209,9 +1209,9 @@ func (s *Server) projectDocs(ctx context.Context, p *Project, plans []*PlanRecor
 }
 
 // plansView returns the newest plans of the project (at most limit, or all for 0, and at least
-// listedShown listed plans), each with its builds, the count of the listed plans (listedPlan), and
-// the PDFs of the project (projectDocs).
-func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.ProjectPlan, int, []cloud.ProjectDoc) {
+// listedShown listed plans), each with its builds, the count of the listed plans (listedPlan), the
+// count of the builds, and the PDFs of the project (projectDocs).
+func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.ProjectPlan, int, int, []cloud.ProjectDoc) {
 	// The plans and the builds at the same time.
 	var builds []*BuildRecord
 	var wg sync.WaitGroup
@@ -1223,7 +1223,7 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 	plans, err := s.loadPlans(ctx, p.ID)
 	wg.Wait()
 	if err != nil {
-		return nil, 0, nil
+		return nil, 0, 0, nil
 	}
 	// The newest plans, and the newest plans that the Builds tab lists (listedPlan), so that many
 	// merges to main do not push them out.
@@ -1327,7 +1327,19 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 		}
 		out = append(out, pv)
 	}
-	return out, total, s.projectDocs(ctx, p, plans)
+	return out, total, len(builds), s.projectDocs(ctx, p, plans)
+}
+
+// buildsTabPlans returns the plans of the Builds tab: the plans of pull requests and releases,
+// and each other plan with a build.
+func buildsTabPlans(all []cloud.ProjectPlan) []cloud.ProjectPlan {
+	plans := []cloud.ProjectPlan{}
+	for _, pv := range all {
+		if pv.Kind == cloud.BuildTest || pv.Kind == cloud.BuildRelease || len(pv.Builds) > 0 {
+			plans = append(plans, pv)
+		}
+	}
+	return plans
 }
 
 // listedPlan reports that the Builds tab lists the plan: a plan of a pull request or of a release

@@ -32,7 +32,7 @@ func TestPlansViewListed(t *testing.T) {
 	put(14, cloud.BuildRelease)
 	put(15, cloud.BuildTest)
 	put(16, cloud.BuildTest)
-	plans, total, _ := s.plansView(ctx, p, PlansShown)
+	plans, total, _, _ := s.plansView(ctx, p, PlansShown)
 	if total != 4 {
 		t.Errorf("total %d, not 4", total)
 	}
@@ -66,7 +66,7 @@ func TestPlansViewOldBuild(t *testing.T) {
 	if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
 		t.Fatal(err)
 	}
-	plans, _, _ := s.plansView(ctx, p, PlansShown)
+	plans, _, _, _ := s.plansView(ctx, p, PlansShown)
 	if len(plans) != PlansShown+1 {
 		t.Fatalf("%d plans, not %d", len(plans), PlansShown+1)
 	}
@@ -93,5 +93,23 @@ func TestStaleBuild(t *testing.T) {
 		if b.State != cloud.BuildSlicing {
 			t.Errorf("the record changed: %q", b.State)
 		}
+	}
+}
+
+// The Builds tab has the plans of pull requests and releases, and a plan of main with a build.
+func TestBuildsTabPlans(t *testing.T) {
+	all := []cloud.ProjectPlan{
+		{ID: "a", Kind: cloud.BuildMain},
+		{ID: "b", Kind: cloud.BuildMain, Builds: []cloud.ProjectBuild{{ID: "x"}}},
+		{ID: "c", Kind: cloud.BuildTest},
+		{ID: "d", Kind: cloud.BuildBranch},
+		{ID: "e", Kind: cloud.BuildRelease},
+	}
+	var ids string
+	for _, p := range buildsTabPlans(all) {
+		ids += p.ID
+	}
+	if ids != "bce" {
+		t.Errorf("plans %q, not bce", ids)
 	}
 }
