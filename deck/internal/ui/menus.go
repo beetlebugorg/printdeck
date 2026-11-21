@@ -446,6 +446,9 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	if a.Queue != nil {
 		keys = append(keys, menuItem{"Queue", a.queueSummary(), dim, func() { a.open(pageQueue) }})
 	}
+	if ht, ok := pr.(heatTimer); ok && !a.resin() {
+		keys = append(keys, menuItem{"About", aboutLine(ht.HeatTimes()), dim, func() { a.open(pageAbout) }})
+	}
 	if !a.resin() && !mach.OwnControls {
 		// A resin printer has no maintenance of a FDM printer, no macros and no G-code console. A
 		// printer with its own controls (a Bambu Lab printer) has them on its own screen.
