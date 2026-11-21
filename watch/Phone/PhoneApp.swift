@@ -17,7 +17,7 @@ struct PhoneApp: App {
     }
 }
 
-/// The two tabs of the app: Prints, with a card for each deck and the deck screen of a card, and
+/// The two tabs of the app: Prints, with a card for each printer and the screen of a printer, and
 /// Projects, with the projects of the service. The app reads all decks every 5 seconds while it
 /// is active.
 struct RootView: View {
@@ -43,7 +43,7 @@ struct RootView: View {
                     HomeView(link: link) { path.append($0) }
                         .navigationDestination(for: String.self) { id in
                             if let m = fleet.model(id) {
-                                DeckView(link: link) { path.removeAll() }
+                                PrinterScreen(link: link) { path.removeAll() }
                                     .environment(m)
                             }
                         }
@@ -87,12 +87,10 @@ struct RootView: View {
                 projectPath = [ProjectRoute(id: "pj1")]
             default: break
             }
-            let screens = ["deck", "files", "setup", "camera", "timelapse"]
-            if let s = ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"], screens.contains(s),
-               let m = fleet.models.first {
-                path = [m.id]
-            }
+            openDebugScreen()
         }
+        // The printers of PRINTDECK_DECK_KEY come after the first appearance.
+        .onChange(of: fleet.models.count) { openDebugScreen() }
         #endif
         .onAppear {
             fleet.onRound = { [fleet] in PrintLiveActivity.update(fleet) }
@@ -123,266 +121,24 @@ struct RootView: View {
         }
     }
 
+    #if DEBUG
+    /// For screenshots in the simulator: a PRINTDECK_SCREEN of the screen of a printer opens the
+    /// printer of PRINTDECK_PRINTER (its place in the list, from 0), or the first printer.
+    private func openDebugScreen() {
+        let env = ProcessInfo.processInfo.environment
+        let screens = ["deck", "files", "setup", "camera", "timelapse", "nozzle", "move"]
+        guard path.isEmpty, let s = env["PRINTDECK_SCREEN"], screens.contains(s) else { return }
+        let i = Int(env["PRINTDECK_PRINTER"] ?? "") ?? 0
+        guard fleet.models.indices.contains(i) else { return }
+        path = [fleet.models[i].id]
+    }
+    #endif
+
     private var loadingLines: [String] {
         switch fleet.models.count {
         case 0: ["Setting up"]
         case 1: ["Connecting", fleet.models[0].settings.address]
         case let n: ["Connecting", "\(n) decks"]
-        }
-    }
-}
-
-/// The deck screen in the look of the touch screen of the deck (its tall layout): the display of
-/// the printer at the top, then the keys and the plates of the print, or of a printer with no
-/// print. A resin deck has no Print a file and no Resume: only its touch screen turns on the UV
-/// light.
-struct DeckView: View {
-    @Environment(Fleet.self) private var fleet
-    @Environment(DeckModel.self) private var model
-    @Environment(\.colorScheme) private var scheme
-    let link: WatchLink
-    /// Goes back to the home screen.
-    let close: () -> Void
-
-    enum Sheet: Identifiable {
-        case setup, files, camera, timelapse
-        var id: Self { self }
-    }
-
-    @State private var sheet: Sheet?
-    @State private var confirm: DeckModel.Command?
-
-    var body: some View {
-        let p = Palette.of(scheme)
-        deck
-            .toolbar(.hidden, for: .navigationBar)
-            #if DEBUG
-            .onAppear {
-                // For screenshots in the simulator: PRINTDECK_SCREEN opens a page.
-                switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
-                case "files": sheet = .files
-                case "setup": sheet = .setup
-                case "camera": sheet = .camera
-                case "timelapse": sheet = .timelapse
-                default: break
-                }
-            }
-            #endif
-            .fullScreenCover(item: $sheet) { s in
-                Group {
-                    switch s {
-                    case .setup: SetupView(link: link, model: model) { sheet = nil } removed: {
-                        sheet = nil
-                        close()
-                    }
-                    case .files: FilesView { sheet = nil }
-                    case .camera: CameraView { sheet = nil }
-                    case .timelapse: TimelapseView { sheet = nil }
-                    }
-                }
-                .environment(model)
-                .environment(fleet)
-                .environment(\.palette, p)
-            }
-    }
-
-    private var deck: some View {
-        let p = Palette.of(scheme)
-        let st = model.status
-        return ScrollView {
-            VStack(spacing: 12) {
-                Heading(title: model.deck.title) {
-                    Button("Decks", action: close)
-                        .buttonStyle(KeyStyle())
-                        .frame(width: 100)
-                        .environment(\.panelScale, 0.75)
-                }
-                LCDView(screen: .status(LCDModel.status(st, connected: true, error: model.error, now: Date(), hint: "",
-                                                              live: model.live, notice: model.noticeNow)))
-                // The camera comes first when the deck has one on. A tap opens it larger.
-                if model.camera?.on == true {
-                    CameraFeed()
-                        .contentShape(Rectangle())
-                        .onTapGesture { sheet = .camera }
-                }
-                if let st, st.busy {
-                    if st.paused { paused(st) } else { printing(st) }
-                } else {
-                    idle(st)
-                }
-                QueuePlate()
-                if let e = model.error ?? model.noticeNow {
-                    Text(e.uppercased())
-                        .font(Theme.plex(12))
-                        .foregroundStyle(p.red)
-                }
-            }
-            .padding(16)
-        }
-        .background(p.bg.ignoresSafeArea())
-        .overlay {
-            if let c = confirm {
-                ConfirmPanel(question: question(c), yes: yesText(c), danger: c == .cancel,
-                             onYes: {
-                                 confirm = nil
-                                 Task { await model.send(c) }
-                             },
-                             onNo: { confirm = nil })
-            }
-        }
-    }
-
-    // A print: Pause, Cancel and Menu, the layer and the roll, and the place in the print.
-    private func printing(_ st: Status) -> some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 10) {
-                Button("Pause") { confirm = .pause }.buttonStyle(KeyStyle(cap: .orange))
-                Button("Cancel") { confirm = .cancel }.buttonStyle(KeyStyle(cap: .danger))
-                Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
-            }
-            .disabled(model.sending)
-            layerPlate(st, title: layerText(st))
-            progressWindow(st)
-        }
-    }
-
-    // A paused print: what paused, Resume, Cancel and Menu.
-    private func paused(_ st: Status) -> some View {
-        VStack(spacing: 12) {
-            layerPlate(st, title: "Paused" + (st.layer.map { " at layer \($0) of \(st.layers ?? 0)" } ?? ""))
-            if model.resumes {
-                Button("Resume") { confirm = .resume }
-                    .buttonStyle(KeyStyle(cap: .orange, height: 88))
-                    .disabled(model.sending)
-            } else {
-                Plate(label: "Resume") {
-                    Text("Resume on the touch screen of the deck, with the build plate and the vat in place.")
-                        .font(Theme.plex(13, bold: false))
-                        .foregroundStyle(Palette.of(scheme).dim)
-                        .padding(.horizontal, 4)
-                }
-            }
-            HStack(spacing: 10) {
-                Button("Cancel") { confirm = .cancel }.buttonStyle(KeyStyle(cap: .danger))
-                Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
-            }
-            .disabled(model.sending)
-            progressWindow(st)
-        }
-    }
-
-    // No print: Print a file, the roll, the time lapse videos, and Menu. A resin deck, and a deck
-    // before its first status, have no Print a file.
-    private func idle(_ st: Status?) -> some View {
-        VStack(spacing: 12) {
-            if model.deck.printsFromApp {
-                Button("Print a file") { sheet = .files }
-                    .buttonStyle(KeyStyle(cap: .orange, height: 88))
-            }
-            if let roll = st?.roll, model.deck.process != .resin {
-                Plate(label: "Roll") { rollRow(roll) }
-            }
-            HStack(spacing: 10) {
-                Button("Time lapse") { sheet = .timelapse }.buttonStyle(KeyStyle())
-                Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
-            }
-        }
-    }
-
-    private func layerText(_ st: Status) -> String {
-        if let l = st.layer, let n = st.layers { return "Layer \(l) of \(n)" }
-        return "Printing"
-    }
-
-    /// The plate under the keys: the layer or the pause at the top, and the roll.
-    private func layerPlate(_ st: Status, title: String) -> some View {
-        let p = Palette.of(scheme)
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title.uppercased())
-                    .font(Theme.plex(17))
-                    .foregroundStyle(p.text)
-                Spacer()
-                if let end = st.end {
-                    Text("END " + LCDModel.clock(end))
-                        .font(Theme.plex(13))
-                        .foregroundStyle(p.dim)
-                }
-            }
-            if let roll = st.roll, model.deck.process != .resin { rollRow(roll) }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 5).fill(p.surface))
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(p.edge, lineWidth: 1))
-    }
-
-    /// The roll as the deck shows it: its color, a meter of what is left, the name and the grams.
-    private func rollRow(_ roll: Roll) -> some View {
-        let p = Palette.of(scheme)
-        return HStack(spacing: 12) {
-            Circle()
-                .fill(roll.color.flatMap(Color.init(hex:)) ?? p.dim)
-                .overlay(Circle().stroke(p.lcdDim, lineWidth: 3))
-                .frame(width: 22, height: 22)
-            SegmentMeter(value: roll.full > 0 ? roll.left / roll.full : 0)
-            Text("\(roll.name) · \(Int(roll.left.rounded())) g".uppercased())
-                .font(Theme.plex(13))
-                .foregroundStyle(p.dim)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-    }
-
-    /// The dark window under the plate: the file and the place in the print. The deck shows the
-    /// model there; the API has no model, so the window has the file and the playhead.
-    private func progressWindow(_ st: Status) -> some View {
-        let p = Palette.of(scheme)
-        return VStack(alignment: .leading, spacing: 14) {
-            // The model as the deck draws it in its window, when the deck has the picture.
-            if let img = model.modelImage {
-                Image(decorative: img, scale: 3)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: .infinity, maxHeight: 220)
-            }
-            Text(st.file ?? "")
-                .font(Theme.plex(17))
-                .foregroundStyle(p.lcdInk)
-                .lineLimit(1)
-            HStack(alignment: .firstTextBaseline) {
-                Text(Format.percent(st.progress ?? 0))
-                    .font(Theme.plex(54, bold: false))
-                    .foregroundStyle(p.lcdInk)
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(st.left.map { Format.duration($0) + " left" } ?? "")
-                    Text(st.elapsed.map { Format.duration($0) + " in" } ?? "")
-                }
-                .font(Theme.plex(15, bold: false))
-                .foregroundStyle(p.lcdDim)
-            }
-            Playhead(value: st.progress ?? 0)
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 4).fill(p.lcd))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 2))
-    }
-
-    private func question(_ c: DeckModel.Command) -> String {
-        switch c {
-        case .pause: "Pause the print?"
-        case .resume: "Resume the print?"
-        case .cancel: "Cancel the print?"
-        }
-    }
-
-    private func yesText(_ c: DeckModel.Command) -> String {
-        switch c {
-        case .pause: "Pause"
-        case .resume: "Resume"
-        case .cancel: "Cancel print"
         }
     }
 }

@@ -74,8 +74,8 @@ struct CameraView: View {
             if model.cameras.count > 1 {
                 switcher
             } else {
-                Text((model.camera?.name ?? "Camera").uppercased())
-                    .font(Theme.plex(13))
+                Text(model.camera?.name ?? "Camera")
+                    .font(.footnote.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Capsule().fill(.black.opacity(0.5)))
@@ -95,8 +95,8 @@ struct CameraView: View {
                 Button {
                     show(c.id)
                 } label: {
-                    Text(c.name.uppercased())
-                        .font(Theme.plex(13))
+                    Text(c.name)
+                        .font(.footnote.weight(.semibold))
                         .lineLimit(1)
                         .foregroundStyle(on ? .black : .white)
                         .padding(.horizontal, 12)
@@ -136,8 +136,8 @@ struct CameraView: View {
         let now = chosen ?? model.cameraView
         Group {
             if cam?.calibrated == false {
-                Text("CALIBRATE THE CAMERA ON THE DECK TO FOLLOW THE PRINT")
-                    .font(Theme.plex(12))
+                Text("Calibrate the camera on the deck to follow the print.")
+                    .font(.caption.weight(.semibold))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -150,8 +150,8 @@ struct CameraView: View {
                             withAnimation(.easeOut(duration: 0.2)) { reset() }
                             chosen = v.id
                         } label: {
-                            Text(v.name.uppercased())
-                                .font(Theme.plex(12))
+                            Text(v.name)
+                                .font(.caption.weight(.semibold))
                                 .foregroundStyle(on ? .black : .white)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
@@ -219,11 +219,11 @@ struct CameraFeed: View {
                         .opacity(failed ? 0.4 : 1)
                 }
                 if let text {
-                    Text(text.uppercased())
-                        .font(Theme.plex(13))
-                        .foregroundStyle(p.lcdInk)
+                    Text(text)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
                         .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 3).fill(p.lcd.opacity(0.8)))
+                        .background(Capsule().fill(.black.opacity(0.6)))
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: framed ? 4 : 0))
