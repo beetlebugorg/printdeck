@@ -149,8 +149,13 @@ A deck with one printer has no `printers` in the file, and the app adds one prin
 deck from before sends no `scope`, and its key works for one printer.
 
 While the app is open, it reads the list of each deck with a deck key every 5 minutes, and adds a
-new printer of the deck. A printer that the deck no longer lists stays until Remove. Connect
-again on the Menu of a printer asks the root of its deck for a new key.
+new printer of the deck. A printer that the deck no longer lists, or that answers 404, shows "Not
+on this deck now" on its card, and stays until Remove. Connect again on the Menu of a printer asks
+the root of its deck for a new key.
+
+When the owner removes the deck key on the deck, each printer of the deck answers 403. The home
+screen then shows one Connect again for the deck, and the cards of its printers wait for a new
+key. The new deck key goes to each printer of the deck.
 
 ## Network
 

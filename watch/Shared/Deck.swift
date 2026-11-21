@@ -81,7 +81,15 @@ struct DeckPrinterList: Decodable, Equatable {
             d.deckAddress = root
             d.deckName = name
             d.deckKey = true
+            d.gone = nil
             return [d]
+        }
+        let listed = list.map { root + $0.url }
+        // A printer of this deck that the list no longer has.
+        let gone = existing.filter { $0.deckRoot == root && $0.onSharedDeck && !listed.contains($0.address) }.map {
+            var d = $0
+            d.gone = true
+            return d
         }
         return list.map { p in
             let a = root + p.url
@@ -97,8 +105,9 @@ struct DeckPrinterList: Decodable, Equatable {
             d.model = p.model?.isEmpty == false ? p.model : nil
             d.process = DeckProcess(rawValue: p.kind) ?? d.process
             d.deckKey = true
+            d.gone = nil
             return d
-        }
+        } + gone
     }
 }
 
@@ -136,6 +145,8 @@ struct SavedDeck: Codable, Equatable, Identifiable {
     var model: String?
     /// The key is a deck key: it works for each printer of the deck (KeyGrant.deck).
     var deckKey: Bool?
+    /// The deck no longer lists the printer, from the last read of its list.
+    var gone: Bool?
 
     init(id: String = UUID().uuidString, name: String = "", settings: DeckSettings = DeckSettings(),
          process: DeckProcess? = nil, camera: String? = nil) {
@@ -163,6 +174,7 @@ struct SavedDeck: Codable, Equatable, Identifiable {
         color = try c.decodeIfPresent(String.self, forKey: .color)
         model = try c.decodeIfPresent(String.self, forKey: .model)
         deckKey = try c.decodeIfPresent(Bool.self, forKey: .deckKey)
+        gone = try c.decodeIfPresent(Bool.self, forKey: .gone)
     }
 
     /// The address of the deck of a printer address: the address with no /printers/<id>.
@@ -178,6 +190,28 @@ struct SavedDeck: Codable, Equatable, Identifiable {
 
     /// The entry is a printer of a deck with many printers.
     var onSharedDeck: Bool { printer != nil }
+
+    /// The entries of the list with the new deck key of the deck at root: each entry of that deck
+    /// with a deck key. A removed deck key fails for all of them at once, so a new one replaces it
+    /// in all of them.
+    static func rekeyed(_ list: [SavedDeck], root: String, key: String) -> [SavedDeck] {
+        let r = Self.root(root)
+        return list.filter { $0.deckKey == true && $0.deckRoot == r }.map {
+            var d = $0
+            d.key = key
+            return d
+        }
+    }
+
+    /// The decks with a deck key that the deck refused, once each, in the order of the list. The
+    /// app shows one Connect again for each.
+    static func refusedDecks(_ list: [SavedDeck], refused: (SavedDeck) -> Bool) -> [String] {
+        var out: [String] = []
+        for d in list where d.deckKey == true && refused(d) && !out.contains(d.deckRoot) {
+            out.append(d.deckRoot)
+        }
+        return out
+    }
 
     var settings: DeckSettings {
         get { DeckSettings(address: address, key: key) }
@@ -519,6 +553,24 @@ enum DeckError: LocalizedError {
     }
 }
 
+/// Why the deck does not answer for a printer, when it is a known reason.
+enum DeckProblem: Equatable {
+    /// The deck does not have the key: for example, the owner removed the deck key.
+    case key
+    /// The deck no longer has the printer.
+    case gone
+
+    /// The reason of an error of a read, or nil. A printer of a deck with many printers that the
+    /// deck removed answers 404.
+    static func of(_ error: Error, sharedDeck: Bool) -> DeckProblem? {
+        switch error as? DeckError {
+        case .badKey: .key
+        case .http(404) where sharedDeck: .gone
+        default: nil
+        }
+    }
+}
+
 /// A short message for an error of a request.
 func errorText(_ error: Error) -> String {
     if let e = error as? URLError {
@@ -571,16 +623,23 @@ struct DeckClient {
         }
         let (data, resp) = try await Self.session.data(for: req)
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if let e = Self.error(code: code, data: data) { throw e }
+        return data
+    }
+
+    /// The error of a reply, or nil for a success. A 403 is a key that the deck does not have: a
+    /// removed deck key gives it for each printer of the deck.
+    static func error(code: Int, data: Data) -> DeckError? {
         switch code {
         case 200..<300:
-            return data
+            return nil
         case 403:
-            throw DeckError.badKey
+            return .badKey
         case 400, 409:
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
-            throw DeckError.refused(msg ?? "The printer refused the command.")
+            return .refused(msg ?? "The printer refused the command.")
         default:
-            throw DeckError.http(code)
+            return .http(code)
         }
     }
 

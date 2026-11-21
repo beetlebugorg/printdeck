@@ -28,6 +28,12 @@ final class DeckModel: Identifiable {
     var camera: DeckCamera? { DeckCamera.pick(status?.cameras ?? [], id: cameraID, main: status?.camera) }
     /// The cameras of the deck that are on, in the order of the deck.
     var cameras: [DeckCamera] { (status?.cameras ?? []).filter { $0.on && $0.id != nil } }
+    /// The reason of the last failed read, or nil.
+    private(set) var problem: DeckProblem?
+
+    /// The problem of the printer now: the deck list or a read says that the printer is gone.
+    var problemNow: DeckProblem? { deck.gone == true ? .gone : problem }
+
     /// A command is on its way to the deck.
     private(set) var sending = false
     /// The result of the last command, for a few seconds: "Pausing" or the error of the deck.
@@ -109,6 +115,7 @@ final class DeckModel: Identifiable {
         deck.color = new.color
         deck.model = new.model
         deck.deckKey = new.deckKey
+        deck.gone = new.gone
     }
 
     /// Uses a new address or key: from the iPhone on the watch, from the setup on the iPhone.
@@ -120,6 +127,7 @@ final class DeckModel: Identifiable {
         status = nil
         live = false
         error = nil
+        problem = nil
         model = nil
         modelImage = nil
         modelLayer = nil
@@ -152,6 +160,7 @@ final class DeckModel: Identifiable {
             status = new
             live = true
             error = nil
+            problem = nil
             if let p = new.process, p != deck.process {
                 deck.process = p
                 Store.save(deck)
@@ -167,6 +176,7 @@ final class DeckModel: Identifiable {
             guard gen == generation, !isCancel(error) else { return }
             live = false
             self.error = errorText(error)
+            problem = DeckProblem.of(error, sharedDeck: deck.onSharedDeck)
         }
     }
 
