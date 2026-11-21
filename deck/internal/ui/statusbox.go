@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/image/font"
+
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/kit"
@@ -175,7 +177,7 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	sw := gfx.Width(side, p.side)
 	c.Text(l1, gfx.Fit(head, p.head, l1.Dx()-sw-12), head, lcdInk, gfx.Left)
 	c.Text(l1, p.side, side, lcdInk, gfx.Right)
-	c.Text(l2, gfx.Fit(small, p.msg, l2.Dx()), small, lcdInk, gfx.Left)
+	shrinkText(c, l2, p.msg, small, lcdInk)
 	// The messages of a Bambu Lab printer: a tap shows each message whole, with its code.
 	if hr, ok := a.Printer.(hmsReporter); ok && st.Message != "" {
 		if msgs := hr.HMSMessages(); len(msgs) > 0 {
@@ -197,14 +199,14 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 			col = lcdDim
 		}
 		aw := gfx.Width(small, "›")
-		c.Text(image.Rect(pr.Min.X, pr.Min.Y, pr.Max.X-aw-8, pr.Max.Y), gfx.Fit(small, label, pr.Dx()-aw-8), small, col, gfx.Left)
+		shrinkText(c, image.Rect(pr.Min.X, pr.Min.Y, pr.Max.X-aw-8, pr.Max.Y), label, small, col)
 		c.Text(pr, "›", small, lcdDim, gfx.Right)
 		hit := image.Rect(r.Min.X, rows[4].Min.Y-4, r.Max.X, rows[4].Max.Y+4)
 		a.addHit(kit.Hit{R: hit, Tap: a.pickNextProject})
 		a.addFocus(label, hit, a.pickNextProject)
 	} else {
 		dr := line(rows[4])
-		c.Text(dr, gfx.Fit(small, p.detail, dr.Dx()), small, lcdDim, gfx.Left)
+		shrinkText(c, dr, p.detail, small, lcdDim)
 	}
 	if rollsRow {
 		a.drawLoaded(c, line(rows[5]))
@@ -543,7 +545,13 @@ func (a *App) panelLines(st printer.State) panelText {
 	case "cancelled":
 		return panelText{head: "Cancelled", side: clock, msg: st.FinishedName()}
 	case "error":
-		return panelText{head: "Print failed", side: clock, msg: st.FinishedName(), detail: st.FinishedError}
+		// A long reason gives way to its code in the panel: the What happened box of the page
+		// shows the whole reason.
+		short := ""
+		if i := strings.LastIndex(st.FinishedError, " ("); i > 0 && strings.HasSuffix(st.FinishedError, ")") {
+			short = "Error " + strings.Trim(st.FinishedError[i+1:], "()")
+		}
+		return panelText{head: "Print failed", side: clock, msg: st.FinishedName(), detail: st.FinishedError, shortDetail: short}
 	}
 	p := panelText{head: "Ready", side: clock}
 	homed := "Not homed"
@@ -706,4 +714,11 @@ func receivePanel(r printer.Receive, now time.Time) (panelText, bool) {
 	}
 	p.shortDetail = p.detail
 	return p, true
+}
+
+// shrinkText draws s at the left of r in face, or in a smaller size of face when s is too wide: a
+// file name or a message stays whole. Only a text that is too wide in the smallest size is cut.
+func shrinkText(c *gfx.Canvas, r image.Rectangle, s string, face font.Face, col color.Color) {
+	f := gfx.Shrink(face, s, r.Dx())
+	c.Text(r, gfx.Fit(f, s, r.Dx()), f, col, gfx.Left)
 }

@@ -245,12 +245,12 @@ func TestFailedReasonWhole(t *testing.T) {
 		a := New()
 		p := newX2D()
 		reason := "The print has stopped because the available hotend quantity or model does not match the sliced file. Please verify the hotend model and quantity before restarting the print job. (05004047)"
-		p.State_ = printer.State{Reachable: true, Connected: true, Text: "Ready", Finished: "error", FinishedFile: "part.gcode.3mf",
+		p.State_ = printer.State{Reachable: true, Connected: true, Text: "Ready", Finished: "error", FinishedFile: "cover-screw-fine_0.1mm_PLA_Bambu-Lab-X2D_2h60m.gcode.3mf",
 			FinishedError: reason}
 		a.Printer = p
 		a.Wide = wide
 		f := frameText(a)
-		for _, w := range []string{"restarting the print", "(05004047)"} {
+		for _, w := range []string{"restarting the print", "(05004047)", "Cover screw fine 0.1mm PLA Bambu Lab X2D 2h60m", "Error 05004047"} {
 			if !strings.Contains(f, w) {
 				t.Errorf("wide %v: no %q", wide, w)
 			}
