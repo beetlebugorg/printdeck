@@ -165,6 +165,9 @@ footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(
 .rename { display: grid; gap: var(--s2); }
 .rename[hidden] { display: none; }
 .row-keys { display: flex; flex-wrap: wrap; gap: var(--s2); }
+/* The keys over the parts of a plan: smaller than the keys of a form. */
+.pick-keys { margin: var(--s2) 0; }
+.pick-keys button { padding: 6px 12px; font-size: 14px; }
 .source { overflow-wrap: anywhere; }
 .source a { font-family: "IBM Plex Mono", monospace; font-size: 14px; }
 .delivered { display: inline-block; margin: 0; padding: 2px 8px; border-radius: 999px; background: #1f7a3d; color: #fff; font-weight: 700; font-size: 12px; }
