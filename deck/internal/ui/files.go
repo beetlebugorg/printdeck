@@ -92,6 +92,10 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 			// A long name: in two lines, in a smaller face. The slicer data goes in the line of
 			// the date.
 			lh := face.Metrics().Height.Ceil() + 2
+			if len(lines) > 2 {
+				// The row has room for two lines only.
+				lines = []string{lines[0], gfx.Fit(face, strings.Join(lines[1:], ""), tw)}
+			}
 			for k, l := range lines {
 				y := r.Min.Y + y1 + 2 + k*lh
 				c.Text(image.Rect(r.Min.X+92, y, r.Max.X-12, y+lh), l, face, text, gfx.Left)
@@ -119,13 +123,40 @@ func fitLines(s string, w int, bold bool, size, maxLines int) (font.Face, []stri
 	}
 	for sz := size - 3; sz >= 13; sz-- {
 		f := gfx.Face(bold, sz)
-		if lines := wrapText(f, s, w); len(lines) <= maxLines {
+		if lines := wrapName(f, s, w); len(lines) <= maxLines {
 			return f, lines
 		}
 	}
+	// The smallest face, in as many lines as the name needs: the name stays whole.
 	f := gfx.Face(bold, 13)
-	lines := wrapText(f, s, w)
-	return f, lines[:min(len(lines), maxLines)]
+	return f, wrapName(f, s, w)
+}
+
+// wrapName wraps s in lines of width w, as wrapText does. A word that is wider than w, for
+// example a file name with no spaces, breaks after a "_" or "-" in it, then after a ".", or else
+// at the last letter that fits. A break stays in the second half of the line.
+func wrapName(face font.Face, s string, w int) []string {
+	var out []string
+	for _, line := range wrapText(face, s, w) {
+		for gfx.Width(face, line) > w {
+			rs := []rune(line)
+			n := 1 // the count of letters that fit
+			for n < len(rs) && gfx.Width(face, string(rs[:n+1])) <= w {
+				n++
+			}
+			cut := n
+			for _, marks := range []string{"_-", "."} {
+				if i := breakAfter(rs[:n], marks); i > n/2 {
+					cut = i
+					break
+				}
+			}
+			out = append(out, string(rs[:cut]))
+			line = strings.TrimLeft(string(rs[cut:]), " ")
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 // fileName is the name of a file for the screens: the title in the file, or else the cleaned file
@@ -401,4 +432,14 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 			})
 		}}
 	})
+}
+
+// breakAfter returns the index after the last rune of rs that is in marks, or 0.
+func breakAfter(rs []rune, marks string) int {
+	for i := len(rs); i > 0; i-- {
+		if strings.ContainsRune(marks, rs[i-1]) {
+			return i
+		}
+	}
+	return 0
 }
