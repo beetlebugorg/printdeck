@@ -412,6 +412,11 @@
         <h2>Parts</h2>
         <div class="chips process" id="plProcess" role="group" aria-label="The kind of print" hidden></div>
         <p class="small dim" id="plHint">The parts that changed are checked. Check the parts to print, and set the copies.</p>
+        <div class="row-keys pick-keys" id="plPick" role="group" aria-label="Check the parts" hidden>
+          <button type="button" id="plNone">Uncheck all</button>
+          <button type="button" id="plChanged">Changed parts</button>
+          <button type="button" id="plAll">Check all</button>
+        </div>
         <ul class="plan-parts" id="plParts"></ul>
       </section>
       <section class="card plan-view" aria-label="The model">

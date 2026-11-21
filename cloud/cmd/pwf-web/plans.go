@@ -242,6 +242,9 @@ func (a *app) bindBuilds() {
 		}()
 	})
 	on("plSlice", "click", func() { go a.slicePlan() })
+	on("plNone", "click", func() { a.checkParts(func(wire.ProjectPlanPart) bool { return false }) })
+	on("plChanged", "click", func() { a.checkParts(func(pp wire.ProjectPlanPart) bool { return pp.Changed }) })
+	on("plAll", "click", func() { a.checkParts(func(wire.ProjectPlanPart) bool { return true }) })
 	on("plSuggest", "click", func() {
 		a.planPlates = nil
 		a.drawPlates()
@@ -332,6 +335,22 @@ func (a *app) showPlanPage(projectID, id string) {
 		}
 		_ = pp
 	}
+}
+
+// checkParts checks each part of the plan for which want is true, of the kind of print that the
+// page shows, and unchecks the others. It keeps one variant of each part (firstChoice), and
+// suggests the plates again.
+func (a *app) checkParts(want func(wire.ProjectPlanPart) bool) {
+	if a.plan == nil {
+		return
+	}
+	for i, pp := range a.plan.Parts {
+		a.planChoices[i].on = want(pp) && (a.planProcess == "" || pp.Process == a.planProcess)
+	}
+	a.firstChoice()
+	a.planPlates = nil
+	a.drawPlanParts()
+	a.drawPlates()
 }
 
 // keepProcess turns off the parts of the other kind of print: a plate prints on one printer.
@@ -431,6 +450,7 @@ func (a *app) drawPlanParts() {
 	list := byID("plParts")
 	list.Set("textContent", "")
 	owner := a.view.CanSlice && p.Ready
+	setHidden("plPick", !owner || len(p.Parts) < 2)
 	changedPlates := func() {
 		a.planPlates = nil // the suggestion again, with the new parts
 		a.drawPlanParts()
