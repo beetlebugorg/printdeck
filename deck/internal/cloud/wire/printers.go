@@ -1,6 +1,9 @@
 package wire
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // The printers at the service: each deck registers the printers that it drives or watches, and the
 // prints and the live tiles of the projects have the ID of their printer. One project has the
@@ -28,6 +31,14 @@ type Printer struct {
 	Added   time.Time `json:"added,omitzero"`
 	// Live is what the printer does now, in GET /api/v1/printers for the owner, or nil.
 	Live *PrinterLive `json:"live,omitempty"`
+}
+
+// TakesPlate reports that the printer can queue a plate for the printer name and the process of
+// printdeck.yml. A plate of a build is plain G-code. A Bambu Lab printer prints a sliced 3MF, and
+// G-code for an X2D must not go to another printer, so neither goes through a queue.
+func (p Printer) TakesPlate(printer, process string) bool {
+	return p.Process == process && !strings.EqualFold(printer, "x2d") &&
+		!strings.HasPrefix(strings.ToLower(p.Model), "bambu")
 }
 
 // PrinterLive is what a printer does now, with a project or not: the body of POST
