@@ -163,6 +163,9 @@ type ProjectView struct {
 	// Docs are the PDFs of the newest ready plan of the default branch, else of the newest ready
 	// plan of a tag.
 	Docs []ProjectDoc `json:"docs,omitempty"`
+	// Builds are the newest ready builds of a public repository, on the public page only. The
+	// view of the members has the builds in Plans.
+	Builds []ProjectBuild `json:"builds,omitempty"`
 	// Cover is the path of the cover picture on a public page, or "".
 	Cover string `json:"cover,omitempty"`
 	// RepoOnly marks a public page of a public repository only: the owner's public page is off.

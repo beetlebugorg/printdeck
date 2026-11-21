@@ -295,8 +295,8 @@ func (s *Server) publishOwner(ctx context.Context, p *Project, dst string, view 
 }
 
 // publishRepo adds the content of the public repository to the view of the page at dst: the
-// link, and the parts, the assemblies, the docs and the cover of the newest ready plan of the
-// default branch. A plan of a fork, of another branch, or of an earlier repository stays out.
+// link, the newest ready builds (publishBuilds), and the parts, the assemblies, the docs and the
+// cover of the newest ready plan of the default branch. A plan of a fork, of another branch, or of an earlier repository stays out.
 // want gets the copies, and types their types.
 func (s *Server) publishRepo(ctx context.Context, p *Project, dst string, view *cloud.ProjectView,
 	want, types map[string]string) error {
@@ -311,6 +311,9 @@ func (s *Server) publishRepo(ctx context.Context, p *Project, dst string, view *
 			rec = r
 			break
 		}
+	}
+	if err := s.publishBuilds(ctx, p, dst, view, plans, want, types); err != nil {
+		return err
 	}
 	if rec == nil {
 		return nil
@@ -362,6 +365,62 @@ func (s *Server) publishRepo(ctx context.Context, p *Project, dst string, view *
 		view.Changed = rec.Created
 	}
 	return nil
+}
+
+// PublicBuilds is the count of the newest ready builds on the public page of a repository.
+const PublicBuilds = 10
+
+// publishBuilds adds the newest ready builds of the public repository to the view of the page at
+// dst, with copies of the G-code of their plates for the 3D view. A build of a plan of a fork or
+// of an earlier repository stays out. The page has no names of people, no reasons of rejections
+// and no printers of the owner, and the plates have no state.
+func (s *Server) publishBuilds(ctx context.Context, p *Project, dst string, view *cloud.ProjectView,
+	plans []*PlanRecord, want, types map[string]string) error {
+	builds, err := s.loadBuilds(ctx, p.ID)
+	if err != nil {
+		return err
+	}
+	byID := map[string]*PlanRecord{}
+	for _, r := range plans {
+		byID[r.ID] = r
+	}
+	for _, b := range builds {
+		if len(view.Builds) == PublicBuilds {
+			break
+		}
+		rec := byID[b.Plan]
+		if b.State != cloud.BuildReady || rec == nil || rec.Fork != "" || !strings.EqualFold(rec.Repo, p.Repo) {
+			continue
+		}
+		src, rel := buildDir(p.ID, b.ID), "builds/"+b.ID+"/"
+		pb := cloud.ProjectBuild{ID: b.ID, Plan: b.Plan, PlanName: planLabel(rec), Commit: b.Commit, Created: b.Created,
+			State: cloud.BuildReady, Plates: []cloud.ProjectBuildPlate{}}
+		for _, pl := range b.Plates {
+			pp := cloud.ProjectBuildPlate{BuildPlate: pl.BuildPlate}
+			if pl.Process == "fdm" && strings.HasSuffix(strings.ToLower(pl.File), ".gcode") && fileName.MatchString(pl.File) {
+				pp.FileURL = rel + pl.File
+				want[dst+pp.FileURL], types[dst+pp.FileURL] = src+pl.File, "text/plain; charset=utf-8"
+			}
+			if pl.Picture != "" && fileName.MatchString(pl.Picture) {
+				pp.PictureURL = rel + pl.Picture
+				want[dst+pp.PictureURL] = src + pl.Picture
+			}
+			pb.Plates = append(pb.Plates, pp)
+		}
+		view.Builds = append(view.Builds, pb)
+	}
+	return nil
+}
+
+// planLabel is the short name of the plan rec: "PR #7", "v1.2", or the branch.
+func planLabel(rec *PlanRecord) string {
+	switch rec.Kind {
+	case cloud.BuildTest:
+		return "PR #" + strconv.Itoa(rec.PR)
+	case cloud.BuildRelease:
+		return rec.Tag
+	}
+	return rec.Branch
 }
 
 // Publish writes the public page of the project p in the store st, for the service at base, as

@@ -104,6 +104,9 @@ func (a *app) showPlansPage(id string) {
 	doc.Set("title", "Plans · "+v.Name+" · Printdeck")
 	byID("psBack").Set("href", projectPath(v.Slug, 0))
 	setText("psBack", v.Name)
+	setHidden("psPlansHead", false)
+	setHidden("psPlansSub", false)
+	setHidden("psList", false)
 	n := drawBuildList(byID("psBuilds"), v.Slug, plans)
 	setText("psSub", "github.com/"+v.Repo+" · "+count(n, "build", "builds")+", the newest first")
 	setText("psPlansSub", count(len(plans), "plan", "plans")+", the newest first. Open a plan to choose its parts and slice them.")
@@ -145,6 +148,42 @@ func drawBuildList(list js.Value, slug string, plans []wire.ProjectPlan) int {
 		list.Call("appendChild", el("li", "dim small", "No builds yet. Open a plan, choose its parts, and tap Slice."))
 	}
 	return len(rows)
+}
+
+// showPublicBuilds shows the Builds tab of a public page: the newest ready builds of the public
+// repository, from the copy of the page. The page has no plans.
+func (a *app) showPublicBuilds(v *wire.ProjectView) {
+	a.view = v
+	doc.Set("title", "Builds · "+v.Name+" · Printdeck")
+	list := byID("psBuilds")
+	list.Set("textContent", "")
+	for _, b := range v.Builds {
+		li := el("li", "", "")
+		link := el("a", "", "")
+		link.Set("href", buildPath(v.Slug, b.ID))
+		link.Call("appendChild", el("strong", "", b.PlanName+" · "+buildTitle(nil, b)))
+		link.Call("appendChild", el("span", "sub", buildFacts(b)+" · "+shortSHA(b.Commit)+" · "+localWhen(b.Created)))
+		li.Call("appendChild", link)
+		list.Call("appendChild", li)
+	}
+	setText("psSub", "github.com/"+v.Repo+" · "+count(len(v.Builds), "build", "builds")+", the newest first. Open a build for its settings and its 3D view.")
+	setHidden("psPlansHead", true)
+	setHidden("psPlansSub", true)
+	setHidden("psList", true)
+	show("vPlans")
+}
+
+// showPublicBuild shows a build of a public page, from the copy of the page: its plates, their
+// settings and their 3D views.
+func (a *app) showPublicBuild(v *wire.ProjectView, b wire.ProjectBuild) {
+	a.view = v
+	doc.Set("title", b.PlanName+" · "+buildTitle(nil, b)+" · "+v.Name+" · Printdeck")
+	byID("bdBack").Set("href", "/projects/"+v.Slug+"/plans")
+	setText("bdBack", "All builds")
+	show("vBuild")
+	a.drawBuild(b)
+	setText("bdTitle", b.PlanName+" · "+buildTitle(nil, b))
+	setText("bdSub", buildFacts(b)+" · commit "+shortSHA(b.Commit)+" · "+localWhen(b.Created))
 }
 
 // drawPlanList adds a row for each plan to list: its name and commit, the parts that changed,

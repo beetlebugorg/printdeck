@@ -1572,7 +1572,14 @@ func publicView(slug string) (*wire.ProjectView, string, bool) {
 	if v.Slug == "" {
 		v.Slug = slug
 	}
-	v.IsOwner, v.CanSlice, v.You, v.PlansTotal, v.BuildsTotal, v.Members = false, false, "", 0, 0, nil
+	// The builds of a public repository, with the addresses of their copies.
+	for i := range v.Builds {
+		for j := range v.Builds[i].Plates {
+			pl := &v.Builds[i].Plates[j]
+			pl.FileURL, pl.PictureURL, pl.PreviewURL = at(pl.FileURL), at(pl.PictureURL), ""
+		}
+	}
+	v.IsOwner, v.CanSlice, v.You, v.PlansTotal, v.BuildsTotal, v.Members = false, false, "", 0, len(v.Builds), nil
 	return &v, base, true
 }
 
@@ -1595,6 +1602,19 @@ func (a *app) showPublicView(v *wire.ProjectView, base, n string) {
 	a.public = base
 	doc.Get("body").Get("classList").Call("add", "public")
 	a.tab = "overview"
+	// The Builds tab and the page of a build, from the copy of the page.
+	if n == "plans" && len(v.Builds) > 0 {
+		a.showPublicBuilds(v)
+		return
+	}
+	if id, ok := strings.CutPrefix(n, "builds/"); ok {
+		for _, b := range v.Builds {
+			if b.ID == id {
+				a.showPublicBuild(v, b)
+				return
+			}
+		}
+	}
 	if n == "prints" || n == "photos" || n == "parts" {
 		a.tab, n = n, ""
 	}

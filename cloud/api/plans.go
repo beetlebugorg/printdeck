@@ -990,6 +990,13 @@ func (s *Server) buildDone(ctx context.Context, p *Project, c *GitHubClaims, id 
 		return nil, err
 	}
 	s.commentBuild(ctx, p, b)
+	// The public page of a public repository lists the newest ready builds. An error goes to the
+	// log. The build stays ready.
+	if repoShown(p) && p.Public != "" {
+		if err := s.publish(ctx, p); err != nil {
+			log.Printf("the public page of %s after the build %s: %v", p.ID, b.ID, err)
+		}
+	}
 	return s.projectBuild(ctx, p, b), nil
 }
 

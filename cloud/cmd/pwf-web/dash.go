@@ -152,7 +152,8 @@ func (a *app) drawHead(v *wire.ProjectView) {
 		setText("tbPartsN", countText(len(pl.Parts)))
 	}
 	setText("tbBuildsN", countText(v.BuildsTotal))
-	setHidden("tbBuilds", v.Repo == "")
+	// A public page has its Builds tab when it has builds (ProjectView.Builds).
+	setHidden("tbBuilds", v.Repo == "" || a.public != "" && len(v.Builds) == 0)
 	drawFaces(v)
 	setHidden("pRepoChip", v.Repo == "")
 	byID("pRepoChip").Set("href", "https://github.com/"+v.Repo)
