@@ -36,6 +36,8 @@ type Bambu struct {
 	TrayPath string
 	// HMS keeps the texts of the messages of the printer, or is nil for the texts of the program.
 	HMS *bambu.HMSFile
+	// HeatLog records the heat-ups and the cool-downs from the reports, or is nil.
+	HeatLog *HeatLog
 	// Store is the folder of the 3MF files of the printer, or nil.
 	Store Store
 	// OnTrayQuestion runs when a tray has a new spool with no RFID tag: the screens ask which roll
@@ -185,6 +187,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	st.Fan, st.HasFan = r.FanPercent(), true
 	st.HasChamber = r.HasChamber()
 	st.Chamber, st.ChamberTarget = r.ChamberHeat()
+	b.HeatLog.Observe(*st, now)
 	st.SpeedPct = r.SpeedPct.Int()
 	st.Message, st.ErrDetail = b.hmsLines(r.HMS)
 	st.NoPosition = true
@@ -254,10 +257,16 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		if n := r.Stage.Int(); !st.Preparing && n > 0 && st.Message == "" && r.StageText() != "" {
 			st.Message = r.StageText()
 		}
+		st.ReleaseLeft, st.HasReleaseLeft = 0, false
+		if c, ok := b.HeatLog.Report().CoolOf(HeatBed); ok && st.HasTimeLeft {
+			st.ReleaseLeft, st.HasReleaseLeft = st.TimeLeft+time.Duration(c.Median*float64(time.Second)), true
+		}
 		st.Finished = ""
 		return
 	}
+	st.ReleaseLeft, st.HasReleaseLeft = 0, false
 	if b.path != "" {
+		b.HeatLog.PrintEnded(now)
 		result := "complete"
 		switch {
 		case r.State == "FAILED" && int(r.Error) == bambuCancelled:
@@ -377,6 +386,9 @@ func (b *Bambu) Machine() Machine {
 }
 
 // History and projects, as the ChiTu backend.
+
+// HeatTimes returns the heat-ups and the cool-downs of the printer.
+func (b *Bambu) HeatTimes() HeatReport { return b.HeatLog.Report() }
 
 func (b *Bambu) History() []Record {
 	if b.Hist == nil {

@@ -65,6 +65,13 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 	// a slicer needs only the key of its printer. A deck key stays at the root.
 	var routes []keyRoute
 	var otherAPIs []*octoapi.Server
+	// The mux, the backend and the API of each other printer, for the files that need the login.
+	type otherMux struct {
+		mux *http.ServeMux
+		pr  printerBackend
+		api *octoapi.Server
+	}
+	var otherMuxes []otherMux
 	keyList := []printerKeys{{id: "", name: printerName(app), api: api}}
 	for _, o := range others {
 		pm := http.NewServeMux()
@@ -75,6 +82,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 			routes = append(routes, keyRoute{valid: oa.OwnKey, h: pm})
 			otherAPIs = append(otherAPIs, oa)
 			keyList = append(keyList, printerKeys{id: o.id, name: printerName(o.app), api: oa})
+			otherMuxes = append(otherMuxes, otherMux{pm, o.pr, oa})
 		}
 	}
 	ka := &keyAdmin{deck: deckKeys, printers: keyList}
@@ -100,6 +108,12 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		registerSystemPage(mux, rs, pr, up, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
 		registerRollPages(mux, rs, pr, app)
 		registerSlicer(mux, rs, slicerDir, listKey(deckKeys, append([]*octoapi.Server{api}, otherAPIs...)))
+		// The heat-up and cool-down times of each printer, for the slicers: with the login, a key
+		// of the printer, or a deck key.
+		registerHeat(mux, rs, pr, listKey(deckKeys, []*octoapi.Server{api}))
+		for _, o := range otherMuxes {
+			registerHeat(o.mux, rs, o.pr, listKey(deckKeys, []*octoapi.Server{o.api}))
+		}
 		// The 3D window of the desktop app shows the simulated printer of the deck, with an API key.
 		if k, ok := pr.(*printer.Klippy); ok && api != nil {
 			registerSim(mux, k, api.ValidKey)

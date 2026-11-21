@@ -41,6 +41,8 @@ type Klippy struct {
 	ConfigPath string
 	// Hist records the finished prints.
 	Hist *History
+	// HeatLog records the heat-ups and the cool-downs from the reports, or is nil.
+	HeatLog *HeatLog
 	// Spools are the rolls of filament. Each finished print uses filament of the roll in the
 	// printer.
 	Spools *Spools
@@ -440,10 +442,13 @@ func (k *Klippy) NextProject() string {
 // Rates returns the timings of this printer, from its history.
 func (k *Klippy) Rates() Rates {
 	if k.Hist == nil {
-		return ComputeRates(nil)
+		return k.HeatLog.Report().Apply(ComputeRates(nil))
 	}
-	return k.Hist.Rates()
+	return k.HeatLog.Report().Apply(k.Hist.Rates())
 }
+
+// HeatTimes returns the heat-ups and the cool-downs of the printer.
+func (k *Klippy) HeatTimes() HeatReport { return k.HeatLog.Report() }
 
 // SpoolStore returns the rolls of filament, or nil.
 func (k *Klippy) SpoolStore() *Spools { return k.Spools }
@@ -811,10 +816,8 @@ func (k *Klippy) refresh(notify func()) {
 		}
 	}
 	k.mu.Unlock()
-	rates := ComputeRates(nil)
-	if k.Hist != nil {
-		rates = k.Hist.Rates()
-	}
+	k.HeatLog.Observe(st, now)
+	rates := k.Rates()
 	k.mu.Lock()
 	prepLeft := rates.prepLeft(st, &k.timer, now)
 	if to := coolTarget(st); to > 0 {
@@ -855,6 +858,7 @@ func (k *Klippy) refresh(notify func()) {
 		if skip {
 			// A print that was cancelled or failed before the end of its start macro: no record.
 		} else if key := k.Hist.add(st, now, phases, planned, pos, material); key != "" {
+			k.HeatLog.PrintEnded(now)
 			k.useSpool(key, st.FinishedFilament)
 			k.mu.Lock()
 			k.timer.coolStart, k.timer.coolKey, k.timer.coolFrom = now, key, st.Bed
