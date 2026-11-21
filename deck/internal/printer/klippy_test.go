@@ -167,6 +167,7 @@ func (emptyStore) Delete(string) error                { return fs.ErrNotExist }
 func TestKlippyBackend(t *testing.T) {
 	f := &fakeKlippy{}
 	k := NewKlippy(f.serve(t), emptyStore{})
+	k.HeatLog = &HeatLog{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ready := make(chan struct{}, 1)
@@ -186,6 +187,13 @@ func TestKlippyBackend(t *testing.T) {
 	// The update after the subscription is in the state.
 	if st := k.State(); st.Text != "Operational" || st.Tool != 30 {
 		t.Errorf("state %+v", st)
+	}
+	// The update feeds the heat log.
+	k.HeatLog.mu.Lock()
+	nozzle := k.HeatLog.last[HeatNozzle]
+	k.HeatLog.mu.Unlock()
+	if nozzle.temp != 30 {
+		t.Errorf("heat log nozzle %+v, want 30 °C", nozzle)
 	}
 	if files := k.Files(); len(files) != 1 {
 		t.Errorf("files %+v", files)

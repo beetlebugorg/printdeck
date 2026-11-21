@@ -42,6 +42,7 @@ func newPrinter(cfg config.Config, id string) printerBackend {
 	if s.Kind == printer.KindBambu {
 		b := printer.NewBambu(s.Addr, s.Serial, s.Code, s.Pin, s.Name, hist)
 		b.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
+		b.HeatLog = &printer.HeatLog{Path: filepath.Join(cfg.StateDir, "heat-times.json")}
 		b.TrayPath = filepath.Join(cfg.StateDir, "ams-trays.json")
 		b.HMS = &bambu.HMSFile{Path: filepath.Join(cfg.StateDir, "hms-texts.json")}
 		// The 3MF files that slicers send to the deck for this printer.
@@ -58,6 +59,8 @@ func newPrinter(cfg config.Config, id string) printerBackend {
 	k.ModelDir = cfg.ModelDir
 	k.ConfigPath = cfg.KlipperConfig
 	k.Hist = hist
+	// The cool-downs of the bed end at the release temperature of the Klipper estimates.
+	k.HeatLog = &printer.HeatLog{Path: filepath.Join(cfg.StateDir, "heat-times.json"), Release: printer.ReleaseBed}
 	hist.Stamp = k.View.Stamp
 	k.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
 	k.View.Rolls = k.Spools

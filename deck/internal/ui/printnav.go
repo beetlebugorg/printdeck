@@ -64,6 +64,7 @@ const (
 	pageSigning     // "Signed prints only" and the trusted slicers (signing.go)
 	pagePrinters    // the printers of the deck (printerspage.go)
 	pageAppKeys     // the app keys of the deck (appkeys.go)
+	pageAbout       // the heat-up and cool-down times of the printer (heattimes.go)
 )
 
 // open shows a page over the current one.
