@@ -49,7 +49,7 @@ struct Palette {
         bg: Color(rgb: 0x121211), surface: Color(rgb: 0x1c1c1a), raised: Color(rgb: 0x292825),
         edge: Color(rgb: 0x060606), shine: Color(rgb: 0x34332f), text: Color(rgb: 0xeee9df),
         dim: Color(rgb: 0xc2bcb0), orange: Color(rgb: 0xff7a3a), onAcc: Color(rgb: 0x0e0e0d),
-        lcd: Color(rgb: 0x080808), lcdInk: Color(rgb: 0xff8c4a), lcdDim: Color(rgb: 0xd98a55),
+        lcd: Color(rgb: 0x080808), lcdInk: Color(rgb: 0xff8c4a), lcdDim: Color(rgb: 0xe8a070),
         ledOff: Color(rgb: 0x3a3834), redCap: Color(rgb: 0x9c2216), onRed: Color(rgb: 0xf3efe8),
         red: Color(rgb: 0xff7a6a))
 

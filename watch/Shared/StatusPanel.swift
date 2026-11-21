@@ -12,11 +12,27 @@ struct PanelReadout: Equatable {
     var power = 0.0
 }
 
+/// A spool that the printer has loaded, as a little roll of the panel: its color, the part left,
+/// and its material.
+struct PanelRoll: Equatable {
+    /// #rrggbb, or nil.
+    var color: String?
+    /// 0 to 1, or nil when it is not known: a full roll.
+    var remain: Double?
+    var material: String
+    /// The roll feeds the nozzle now.
+    var active = false
+    /// The external spool, after a line.
+    var external = false
+}
+
 /// The text of the status panel of the deck (panelLines in deck/internal/ui/statusbox.go): the
 /// readouts, the state and the time at the right in the first line, the message in the second,
 /// the details in the third, and the progress bar.
 struct PanelText: Equatable {
     var readouts: [PanelReadout] = []
+    /// The loaded spools, as the deck shows them in the middle of the panel.
+    var rolls: [PanelRoll] = []
     var head = ""
     var side = ""
     /// A shorter side for a narrow panel, or "": the end with no "Ends".
@@ -35,13 +51,14 @@ enum StatusPanel {
                      notice: String? = nil, resin: Bool = false) -> PanelText {
         var p = text(st, connected: connected, error: error, now: now, live: live, resin: resin)
         p.readouts = readouts(st, live: live, resin: resin, now: now)
+        if !resin, live { p.rolls = rolls(st?.filaments ?? []) }
         if let notice, connected, st != nil { p.msg = notice }
         return p
     }
 
     private static func text(_ st: Status?, connected: Bool, error: String?, now: Date, live: Bool,
                              resin: Bool) -> PanelText {
-        let clock = Format.clock(now)
+        let clock = time(now)
         guard connected else {
             return PanelText(head: "Not connected", side: clock, msg: "Set up on the iPhone")
         }
@@ -67,7 +84,7 @@ enum StatusPanel {
         var p = PanelText(side: clock, bar: true, progress: progress)
         var left = ""
         if let l = st.left(at: now) {
-            p.short = Format.clock(now.addingTimeInterval(l))
+            p.short = when(now.addingTimeInterval(l), now: now)
             p.side = "Ends " + p.short
             left = hm(l) + " left · "
         }
@@ -119,9 +136,43 @@ enum StatusPanel {
                                 power: target > 0 ? min(1, max(0, power ?? 0)) : 0)
         }
         let fan = lcd?.fan ?? 0
-        return [heater("NOZZLE", lcd?.tool ?? st.tool?.actual, lcd?.tool_target ?? st.tool?.target, lcd?.tool_power),
-                heater("BED", lcd?.bed ?? st.bed?.actual, lcd?.bed_target ?? st.bed?.target, lcd?.bed_power),
-                PanelReadout(name: "FAN", value: fan > 0 ? String(format: "%.0f%%", fan * 100) : "off")]
+        // A printer with two nozzles has the aux nozzle after the nozzle, and a printer with a
+        // chamber has it between the bed and the fan, as the panel of the deck.
+        var out = [heater("NOZZLE", lcd?.tool ?? st.tool?.actual, lcd?.tool_target ?? st.tool?.target, lcd?.tool_power)]
+        if let t = st.tool1 {
+            out.append(heater("AUX", t.actual, t.target, nil))
+        } else if st.nozzles?.contains(where: { $0.role == "aux" }) == true {
+            out.append(PanelReadout(name: "AUX", value: "--"))
+        }
+        out.append(heater("BED", lcd?.bed ?? st.bed?.actual, lcd?.bed_target ?? st.bed?.target, lcd?.bed_power))
+        if let c = st.chamber {
+            out.append(PanelReadout(name: "CHAMBER", value: String(format: "%.0f°", c.actual),
+                                    target: c.target > 0 ? String(format: "→%.0f", c.target) : ""))
+        }
+        out.append(PanelReadout(name: "FAN", value: fan > 0 ? String(format: "%.0f%%", fan * 100) : "off"))
+        return out
+    }
+
+    /// The loaded spools as rolls: the trays in their order, then the external spools.
+    static func rolls(_ list: [Filament]) -> [PanelRoll] {
+        list.map { PanelRoll(color: $0.color, remain: $0.remain, material: $0.material, active: $0.active == true,
+                             external: $0.slot == "Ext") }
+    }
+
+    /// The clock time, as the deck writes it: "3:47 PM", or "15:47" on a 24-hour clock.
+    static func time(_ t: Date) -> String {
+        t.formatted(date: .omitted, time: .shortened)
+    }
+
+    /// The clock time of t, with its day when t is not today: "3:47 PM", "Tomorrow 3:47 PM", or
+    /// "Sat 3:47 PM" (whenText in deck/internal/ui/app.go).
+    static func when(_ t: Date, now: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDate(t, inSameDayAs: now) { return time(t) }
+        if let tomorrow = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(t, inSameDayAs: tomorrow) {
+            return "Tomorrow " + time(t)
+        }
+        return t.formatted(.dateTime.weekday(.abbreviated)) + " " + time(t)
     }
 
     /// Hours and minutes: "1:23".

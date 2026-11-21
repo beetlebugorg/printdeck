@@ -19,8 +19,8 @@ final class StatusPanelTests: XCTestCase {
     func testPrinting() {
         let p = StatusPanel.make(printing(), connected: true, error: nil, now: now)
         XCTAssertEqual(p.head, "Printing · 42%")
-        XCTAssertEqual(p.side, "Ends " + Format.clock(now.addingTimeInterval(4980)))
-        XCTAssertEqual(p.short, Format.clock(now.addingTimeInterval(4980)))
+        XCTAssertEqual(p.side, "Ends " + StatusPanel.when(now.addingTimeInterval(4980), now: now))
+        XCTAssertEqual(p.short, StatusPanel.when(now.addingTimeInterval(4980), now: now))
         XCTAssertEqual(p.msg, "1:23 left · 0:45 so far")
         XCTAssertEqual(p.detail, "Layer 12 of 27 · next in 1:32 · Z 3.20")
         XCTAssertTrue(p.bar)
@@ -55,7 +55,7 @@ final class StatusPanelTests: XCTestCase {
                          fan: 0, position: "X110 Y110 Z5.00")
         let p = StatusPanel.make(st, connected: true, error: nil, now: now)
         XCTAssertEqual(p.head, "Ready")
-        XCTAssertEqual(p.side, Format.clock(now))
+        XCTAssertEqual(p.side, StatusPanel.time(now))
         XCTAssertEqual(p.msg, "XYZ homed")
         XCTAssertEqual(p.detail, "X110 Y110 Z5.00")
         XCTAssertFalse(p.bar)
@@ -99,5 +99,40 @@ final class StatusPanelTests: XCTestCase {
         XCTAssertEqual(p.side, "4 min")
         XCTAssertEqual(p.msg, "The part comes off at 40°")
         XCTAssertEqual(p.progress, 0.5)
+    }
+
+    /// An X2D: the nozzle, the aux nozzle, the bed, the chamber and the fan, and its spools.
+    func testX2D() {
+        var st = printing()
+        st.tool1 = Temp(actual: 24, target: 0)
+        st.chamber = Temp(actual: 38, target: 0)
+        st.filaments = [Filament(slot: "A1", index: 0, tray: 0, material: "PLA", color: "#f2f2f2", remain: 0.8),
+                        Filament(slot: "Ext", index: 1, tray: 255, nozzle: "aux", material: "TPU")]
+        st.filaments?[0].active = true
+        let p = StatusPanel.make(st, connected: true, error: nil, now: now)
+        XCTAssertEqual(p.readouts.map(\.name), ["NOZZLE", "AUX", "BED", "CHAMBER", "FAN"])
+        XCTAssertEqual(p.readouts.map(\.value), ["210°", "24°", "60°", "38°", "100%"])
+        XCTAssertEqual(p.readouts.map(\.target), ["→210", "off", "→60", "", ""])
+        XCTAssertEqual(p.rolls, [PanelRoll(color: "#f2f2f2", remain: 0.8, material: "PLA", active: true),
+                                 PanelRoll(color: nil, remain: nil, material: "TPU", external: true)])
+        // A deck before the aux nozzle in its reply: the readout is there with no value.
+        st.tool1 = nil
+        st.nozzles = [DeckNozzle(id: 0, role: "main", diameter: 0.4, type: ""), DeckNozzle(id: 1, role: "aux", diameter: 0.4, type: "")]
+        XCTAssertEqual(StatusPanel.make(st, connected: true, error: nil, now: now).readouts[1], PanelReadout(name: "AUX", value: "--"))
+        // A resin printer and an old status show no rolls.
+        XCTAssertEqual(StatusPanel.make(st, connected: true, error: nil, now: now, resin: true).rolls, [])
+        XCTAssertEqual(StatusPanel.make(st, connected: true, error: "x", now: now, live: false).rolls, [])
+    }
+
+    /// The end of a print has its day when it is not today, as the deck writes it.
+    func testWhen() {
+        let cal = Calendar.current
+        let noon = cal.date(bySettingHour: 12, minute: 0, second: 0, of: now)!
+        XCTAssertEqual(StatusPanel.when(noon.addingTimeInterval(3600), now: noon), StatusPanel.time(noon.addingTimeInterval(3600)))
+        let tomorrow = noon.addingTimeInterval(86400)
+        XCTAssertEqual(StatusPanel.when(tomorrow, now: noon), "Tomorrow " + StatusPanel.time(tomorrow))
+        let later = noon.addingTimeInterval(3 * 86400)
+        XCTAssertTrue(StatusPanel.when(later, now: noon).hasSuffix(" " + StatusPanel.time(later)))
+        XCTAssertFalse(StatusPanel.when(later, now: noon).hasPrefix("Tomorrow"))
     }
 }
