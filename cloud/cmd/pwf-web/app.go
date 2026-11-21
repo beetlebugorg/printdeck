@@ -1572,7 +1572,7 @@ func publicView(slug string) (*wire.ProjectView, string, bool) {
 	if v.Slug == "" {
 		v.Slug = slug
 	}
-	v.IsOwner, v.CanSlice, v.You, v.PlansTotal, v.Members = false, false, "", 0, nil
+	v.IsOwner, v.CanSlice, v.You, v.PlansTotal, v.BuildsTotal, v.Members = false, false, "", 0, 0, nil
 	return &v, base, true
 }
 

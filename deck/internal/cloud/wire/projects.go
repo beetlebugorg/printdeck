@@ -150,6 +150,8 @@ type ProjectView struct {
 	Plans []ProjectPlan `json:"plans,omitempty"`
 	// PlansTotal is the count of all the plans of the project. Plans has the newest of them.
 	PlansTotal int `json:"plans_total,omitempty"`
+	// BuildsTotal is the count of all the builds of the project.
+	BuildsTotal int `json:"builds_total,omitempty"`
 	// Public is the public address of the project, or "" when it has none.
 	Public string `json:"public,omitempty"`
 	// Live are the prints of the project that print now, or that ended and are not up yet.

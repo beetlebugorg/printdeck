@@ -151,7 +151,7 @@ func (a *app) drawHead(v *wire.ProjectView) {
 	if pl != nil {
 		setText("tbPartsN", countText(len(pl.Parts)))
 	}
-	setText("tbBuildsN", countText(v.PlansTotal))
+	setText("tbBuildsN", countText(v.BuildsTotal))
 	setHidden("tbBuilds", v.Repo == "")
 	drawFaces(v)
 	setHidden("pRepoChip", v.Repo == "")
