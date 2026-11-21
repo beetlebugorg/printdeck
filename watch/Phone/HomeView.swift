@@ -122,9 +122,6 @@ struct PrinterCard: View {
         let away = !model.live && model.error != nil && model.problemNow == nil ? account.live(of: model.deck) : nil
         VStack(alignment: .leading, spacing: 12) {
             CardPicture(away: away)
-                .overlay(alignment: .topLeading) {
-                    LabelChip(deck: model.deck, size: 13).padding(10)
-                }
                 .overlay(alignment: .topTrailing) {
                     if StateText.needsYou(model.status) && away == nil {
                         Label("Needs you", systemImage: "exclamationmark.circle.fill")
@@ -240,9 +237,10 @@ struct PrinterCard: View {
     }
 }
 
-/// The picture of a card: the camera of the printer when it has one on, else the model of the
-/// print, else a glyph of the printer. The camera picture is a snapshot, read again every 10
-/// seconds while the app is active. Away, the picture is the model from the service.
+/// The picture of a card: a still of the camera of the printer, else the model of the print,
+/// else the color and the name of the printer (PrinterArt). The first still of a network camera
+/// can be slow or fail: the card reads it again with a growing wait, and keeps the picture under
+/// it until a still comes. Away, the picture is the model from the service.
 private struct CardPicture: View {
     @Environment(DeckModel.self) private var model
     @Environment(\.displayScale) private var scale
@@ -250,45 +248,55 @@ private struct CardPicture: View {
     let away: LivePrint?
 
     @State private var photo: CGImage?
+    /// The card is on the screen: the stills run only then.
+    @State private var visible = false
 
     var body: some View {
         let cam = model.camera
         Color.black.opacity(0.9)
             .aspectRatio(16 / 10, contentMode: .fit)
-            .overlay { content(cam) }
+            .overlay { content }
+            .overlay(alignment: .topLeading) {
+                // PrinterArt has the label large.
+                if !showsArt { LabelChip(deck: model.deck, size: 13).padding(10) }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .task(id: Snap(active: phase == .active && cam?.on == true && away == nil, settings: model.settings,
-                           camera: cam?.id, view: model.cameraView)) {
+            .onAppear { visible = true }
+            .onDisappear { visible = false }
+            .task(id: Snap(active: phase == .active && visible && model.hasCameraPicture && away == nil,
+                           settings: model.settings, camera: cam?.id, view: model.cameraView)) {
                 await load()
             }
             .onChange(of: model.settings) { photo = nil }
             .onChange(of: cam?.id) { photo = nil }
     }
 
-    @ViewBuilder private func content(_ cam: DeckCamera?) -> some View {
-        ZStack {
-            if let away {
-                if let url = away.model { ServiceImage(url: url).padding(16) }
-            } else if cam?.on == true, let photo {
-                Image(decorative: photo, scale: scale)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else if let img = model.modelImage, model.status?.busy == true {
-                Image(decorative: img, scale: 3)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .padding(16)
-            } else {
-                VStack(spacing: 8) {
-                    KindIcon(process: model.deck.process).font(.system(size: 40))
-                    if let text = cam?.problem { Text(text).font(.caption) }
-                }
-                .foregroundStyle(.white.opacity(0.5))
-            }
+    @ViewBuilder private var content: some View {
+        if let away {
+            if let url = away.model { ServiceImage(url: url).padding(16) } else { PrinterArt() }
+        } else if model.hasCameraPicture, let photo {
+            Image(decorative: photo, scale: scale)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else if let img = model.modelImage, model.status?.busy == true {
+            Image(decorative: img, scale: 3)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .padding(16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            PrinterArt()
         }
     }
 
-    /// The snapshots of this camera run while this is active, from the deck of these settings.
+    /// The card shows PrinterArt: no still, no model, and no picture from the service.
+    private var showsArt: Bool {
+        if let away { return away.model == nil }
+        if model.hasCameraPicture, photo != nil { return false }
+        return !(model.modelImage != nil && model.status?.busy == true)
+    }
+
+    /// The stills of this camera run while this is active, from the deck of these settings.
     private struct Snap: Equatable {
         let active: Bool
         let settings: DeckSettings
@@ -296,14 +304,26 @@ private struct CardPicture: View {
         let view: String
     }
 
+    /// Reads a still every 15 seconds while the card is on the screen, at the width of the card.
+    /// The last still stays on the card while the next one loads. After a failure it waits 2, 4, 8
+    /// up to 60 seconds. A printer with no such camera (404) stops the reads.
     private func load() async {
-        guard phase == .active, model.camera?.on == true, away == nil else { return }
+        guard phase == .active, visible, model.hasCameraPicture, away == nil else { return }
         let client = DeckClient(settings: model.settings)
+        var failures = 0
         while !Task.isCancelled {
-            if let img = await client.snapshot(width: 720, view: model.cameraView, camera: model.camera?.id) {
-                photo = img
+            do {
+                photo = try await client.still(path: model.deck.stillPath ?? "/webcam/snapshot", width: 960,
+                                               view: model.cameraView, camera: model.camera?.id)
+                failures = 0
+                try? await Task.sleep(for: .seconds(15))
+            } catch DeckError.http(404) {
+                return
+            } catch {
+                if Task.isCancelled { return }
+                failures += 1
+                try? await Task.sleep(for: .seconds(DeckClient.retryDelay(failures)))
             }
-            try? await Task.sleep(for: .seconds(10))
         }
     }
 }

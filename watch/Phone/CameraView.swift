@@ -202,6 +202,8 @@ struct CameraFeed: View {
     var framed = true
     /// The view of the camera, or nil for the view that follows the print.
     var view: String?
+    /// The picture under the stream until its first frame, or nil for black.
+    var placeholder: AnyView?
 
     @State private var photo: CGImage?
     @State private var failed = false
@@ -212,6 +214,7 @@ struct CameraFeed: View {
         GeometryReader { r in
             ZStack {
                 RoundedRectangle(cornerRadius: 4).fill(framed ? p.lcd : .black)
+                if photo == nil, let placeholder { placeholder }
                 if let photo {
                     Image(decorative: photo, scale: scale)
                         .resizable()
@@ -260,20 +263,24 @@ struct CameraFeed: View {
         return model.camera?.aspect ?? 16 / 9
     }
 
-    /// Reads the stream until the task ends. After a failure it waits 2 seconds and connects again.
+    /// Reads the stream until the task ends. After a failure it connects again after 2, 4, 8 up to
+    /// 60 seconds: the stream of a network camera can be slow to start.
     private func load(width: Int, view: String, camera: String?) async {
         let client = DeckClient(settings: model.settings)
+        var failures = 0
         while !Task.isCancelled {
             do {
                 for try await img in client.stream(width: max(320, width), fps: fps, view: view, camera: camera) {
                     photo = img
                     failed = false
+                    failures = 0
                 }
             } catch {
                 if Task.isCancelled { return }
                 failed = true
             }
-            try? await Task.sleep(for: .seconds(2))
+            failures += 1
+            try? await Task.sleep(for: .seconds(DeckClient.retryDelay(failures)))
         }
     }
 }

@@ -60,6 +60,9 @@ struct DeckPrinter: Decodable, Equatable {
     var files: String?
     /// The model that the printer reports, for example "Bambu Lab X2D", or nil.
     var model: String?
+    /// The path of the stream of the camera of the printer, for example
+    /// "/printers/x2d/webcam/stream", or nil for a printer with no camera of its own.
+    var camera: String?
 }
 
 /// /slicer/printer.json of a deck: the name of the deck, and its printers when it has more than
@@ -67,6 +70,8 @@ struct DeckPrinter: Decodable, Equatable {
 struct DeckPrinterList: Decodable, Equatable {
     var name: String?
     var printers: [DeckPrinter]?
+    /// The camera of the first printer: the path of its stream, or nil.
+    var camera: String?
 
     /// The list entries of the printers of the deck at the address, with the deck key. A deck
     /// with one printer has no list, and gives one entry with the name. A printer keeps the ID of
@@ -82,6 +87,7 @@ struct DeckPrinterList: Decodable, Equatable {
             d.deckName = name
             d.deckKey = true
             d.gone = nil
+            d.cameraPath = camera.flatMap { $0.isEmpty ? nil : $0 }
             return [d]
         }
         let listed = list.map { root + $0.url }
@@ -106,6 +112,7 @@ struct DeckPrinterList: Decodable, Equatable {
             d.process = DeckProcess(rawValue: p.kind) ?? d.process
             d.deckKey = true
             d.gone = nil
+            d.cameraPath = p.camera.flatMap { $0.isEmpty ? nil : $0 }
             return d
         } + gone
     }
@@ -147,6 +154,9 @@ struct SavedDeck: Codable, Equatable, Identifiable {
     var deckKey: Bool?
     /// The deck no longer lists the printer, from the last read of its list.
     var gone: Bool?
+    /// The path of the camera stream of the printer in the list of its deck, or nil for a printer
+    /// with no camera of its own, or before a read of the list.
+    var cameraPath: String?
 
     init(id: String = UUID().uuidString, name: String = "", settings: DeckSettings = DeckSettings(),
          process: DeckProcess? = nil, camera: String? = nil) {
@@ -175,6 +185,14 @@ struct SavedDeck: Codable, Equatable, Identifiable {
         model = try c.decodeIfPresent(String.self, forKey: .model)
         deckKey = try c.decodeIfPresent(Bool.self, forKey: .deckKey)
         gone = try c.decodeIfPresent(Bool.self, forKey: .gone)
+        cameraPath = try c.decodeIfPresent(String.self, forKey: .cameraPath)
+    }
+
+    /// The path of the still of the camera of the printer: the stream path of the list with
+    /// "snapshot" for "stream", or nil.
+    var stillPath: String? {
+        guard let p = cameraPath, p.hasSuffix("/stream") else { return nil }
+        return String(p.dropLast("stream".count)) + "snapshot"
     }
 
     /// The address of the deck of a printer address: the address with no /printers/<id>.
@@ -900,6 +918,42 @@ struct DeckClient {
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
         return "&camera=" + (camera.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")
+    }
+
+    /// The configuration of the stills of a camera: the first still of a network camera (the RTSP
+    /// stream of a Bambu Lab printer) starts its stream, and can take longer than the 8 seconds of
+    /// the other requests.
+    private static let stillSession: URLSession = {
+        let c = URLSessionConfiguration.ephemeral
+        c.timeoutIntervalForRequest = 25
+        c.timeoutIntervalForResource = 30
+        c.waitsForConnectivity = false
+        return URLSession(configuration: c)
+    }()
+
+    /// A still of the camera at path (stillPath, or /webcam/snapshot), w pixels wide. The camera is
+    /// an ID, a role ("main"), or nil for the main camera. With a camera named, the deck answers
+    /// 503 for a camera that is off or has no picture yet, and 404 for no such camera: it sends no
+    /// picture of its screen.
+    func still(path: String = "/webcam/snapshot", width w: Int, view: String = "full", camera: String?) async throws -> CGImage {
+        let req = try request(path + "?w=\(w)&view=\(view)" + Self.cameraQuery(camera ?? "main"))
+        let (data, resp) = try await Self.stillSession.data(for: req)
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if let e = Self.error(code: code, data: data) { throw e }
+        // A Bambu Lab printer sends its stills at 1920 x 1080: the picture is decoded at w pixels,
+        // so the memory has only the small picture.
+        let opts: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                     kCGImageSourceThumbnailMaxPixelSize: w,
+                                     kCGImageSourceCreateThumbnailWithTransform: true,
+                                     kCGImageSourceShouldCacheImmediately: true]
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let img = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { throw DeckError.badReply }
+        return img
+    }
+
+    /// The seconds to wait before the next read after failures in a row: 2, 4, 8, 16, 32, then 60.
+    static func retryDelay(_ failures: Int) -> Double {
+        min(60, pow(2, Double(max(1, min(failures, 6)))))
     }
 
     /// A picture of a camera of the deck as a JPEG, w pixels wide, or nil. The camera is an ID, a

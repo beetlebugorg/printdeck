@@ -26,6 +26,13 @@ final class DeckModel: Identifiable {
     private(set) var cameraID: String?
     /// The camera to show: the chosen camera when the deck has it on, or the main camera.
     var camera: DeckCamera? { DeckCamera.pick(status?.cameras ?? [], id: cameraID, main: status?.camera) }
+    /// The printer has a camera for a picture: the status reports a camera that is on, or, before
+    /// the first status, the list of the deck names a camera of the printer.
+    var hasCameraPicture: Bool {
+        if status != nil { return camera?.on == true }
+        return deck.cameraPath != nil
+    }
+
     /// The cameras of the deck that are on, in the order of the deck.
     var cameras: [DeckCamera] { (status?.cameras ?? []).filter { $0.on && $0.id != nil } }
     /// The reason of the last failed read, or nil.
@@ -115,6 +122,7 @@ final class DeckModel: Identifiable {
         deck.color = new.color
         deck.model = new.model
         deck.deckKey = new.deckKey
+        deck.cameraPath = new.cameraPath
         deck.gone = new.gone
     }
 

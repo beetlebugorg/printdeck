@@ -133,7 +133,7 @@ struct PrinterScreen: View {
         if model.camera?.on == true {
             Color.black
                 .aspectRatio(4 / 3, contentMode: .fit)
-                .overlay { CameraFeed(fps: 5, framed: false) }
+                .overlay { CameraFeed(fps: 5, framed: false, placeholder: AnyView(PrinterArt(large: true))) }
                 .clipped()
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
@@ -156,10 +156,9 @@ struct PrinterScreen: View {
                 .padding(16)
                 .background(Color.black.opacity(0.9))
         } else {
-            KindIcon(process: model.deck.process)
-                .font(.system(size: 44))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 120)
+            Color.clear
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .overlay { PrinterArt(large: true) }
         }
     }
 

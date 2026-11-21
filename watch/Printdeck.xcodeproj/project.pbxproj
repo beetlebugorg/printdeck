@@ -85,6 +85,7 @@
 		803DFE0F9037F2AB771472F2 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		80E4866E8E9381BD84E4FD22 /* StatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2DE727763130438837F9CC /* StatusView.swift */; };
 		816B466063128047E3ABA18B /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		8228A02B9CDDDF85F3AC211D /* PrinterArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A14A4D74AD076B327102CD /* PrinterArt.swift */; };
 		831CFB86B1414D428C9497B4 /* StatusPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701976177FD732EDC6721302 /* StatusPanel.swift */; };
 		841EA80AD73B8CBA41F63990 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
 		84703D7207E291BD66B77C57 /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E1FEB4FB0B10A9C90AD479 /* PushCrypto.swift */; };
@@ -271,6 +272,7 @@
 		B18B3A83A2D98FA589A08D3E /* FilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesView.swift; sourceTree = "<group>"; };
 		B4F781BC71F396D5118DBEC1 /* WatchLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLink.swift; sourceTree = "<group>"; };
 		B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deck.swift; sourceTree = "<group>"; };
+		B5A14A4D74AD076B327102CD /* PrinterArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrinterArt.swift; sourceTree = "<group>"; };
 		B670D0E6DB98D7E7C7FE51A7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C024260E6470548F3C91FC1F /* PhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneApp.swift; sourceTree = "<group>"; };
 		C595D4EDCD3FE00FAA471B48 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
@@ -349,6 +351,7 @@
 				A3F141F7CE39B1948949216E /* Phone.entitlements */,
 				C024260E6470548F3C91FC1F /* PhoneApp.swift */,
 				2B372C697262CCE1C86FF360 /* PhotoCamera.swift */,
+				B5A14A4D74AD076B327102CD /* PrinterArt.swift */,
 				DC7BAB19625FE346D63EA142 /* PrinterName.swift */,
 				82688FF03D9F4D591BD7020B /* PrinterScreen.swift */,
 				24B8B0418A255DCC47FD7AD8 /* ProjectsView.swift */,
@@ -774,6 +777,7 @@
 				F43A110534B2B219678D0EEA /* PhoneApp.swift in Sources */,
 				980C857043DD825D0A2DA3D1 /* PhotoCamera.swift in Sources */,
 				DE2272E2877EC52A6F5DDD07 /* PrintActivity.swift in Sources */,
+				8228A02B9CDDDF85F3AC211D /* PrinterArt.swift in Sources */,
 				1F7E19C020C7A322405C2E7E /* PrinterName.swift in Sources */,
 				C7A9605BE5E375820CF55015 /* PrinterScreen.swift in Sources */,
 				8D02CE6572F0B6A16324B09F /* Projects.swift in Sources */,
