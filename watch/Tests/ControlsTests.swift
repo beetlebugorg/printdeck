@@ -305,4 +305,20 @@ final class ControlsTests: XCTestCase {
         XCTAssertEqual(DryPreset.all.first, DryPreset(material: "PLA", temp: 55, hours: 8))
         XCTAssertEqual(Preset.chamber.map(\.value), [0, 35, 50, 60])
     }
+
+    /// The deck refuses the load, the unload and the drying of an AMS during a print, also a
+    /// paused one. It stops a drying at any time.
+    func testAMSBetweenPrints() {
+        let list = ["filament", "ams_dry"]
+        let idle = Controls(process: .fdm, bambu: true, list: list)
+        XCTAssertTrue(idle.loadsTray && idle.dries && idle.stopsDrying)
+        for c in [Controls(process: .fdm, busy: true, bambu: true, list: list),
+                  Controls(process: .fdm, busy: true, paused: true, bambu: true, list: list)] {
+            XCTAssertFalse(c.loadsTray)
+            XCTAssertFalse(c.dries)
+            XCTAssertTrue(c.stopsDrying)
+        }
+        // A Klipper printer loads during a pause.
+        XCTAssertTrue(Controls(process: .fdm, busy: true, paused: true, list: list).loads)
+    }
 }
