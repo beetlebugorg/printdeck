@@ -50,6 +50,9 @@ func (s *Server) sendPlate(ctx context.Context, p *Project, w *who, id string, n
 	if pr.Process != pl.Process {
 		return nil, fail(http.StatusBadRequest, "the printer is not for "+pl.Process)
 	}
+	if !pr.TakesPlate(pl.Printer, pl.Process) {
+		return nil, fail(http.StatusBadRequest, "this plate does not go to the "+pr.Name+": a Bambu Lab print needs its .gcode.3mf file")
+	}
 	if pl.Sent != "" && pl.Sent != pr.ID {
 		s.Store.Delete(ctx, sentKey(pl.Sent, p.ID, id, n))
 	}

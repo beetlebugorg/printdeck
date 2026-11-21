@@ -592,6 +592,8 @@ func printerName(p string) string {
 	switch strings.ToLower(p) {
 	case "taz":
 		return "TAZ Workhorse"
+	case "x2d":
+		return "Bambu Lab X2D"
 	case "phenom":
 		return "Peopoly Phenom"
 	}
@@ -1035,6 +1037,8 @@ func bedOf(printer string) (float64, float64) {
 	switch strings.ToLower(printer) {
 	case "phenom":
 		return 276, 155
+	case "x2d":
+		return 256, 256
 	}
 	return 280, 280
 }
@@ -1375,7 +1379,7 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 				keys := el("div", "row-keys", "")
 				msg := el("p", "msg", "")
 				for _, pr := range ownerPrinters {
-					if pr.Process != pl.Process {
+					if !pr.TakesPlate(pl.Printer, pl.Process) {
 						continue
 					}
 					label := "Send to the " + pr.Name

@@ -42,6 +42,13 @@ func TestSendPlate(t *testing.T) {
 	if _, err := s.sendPlate(ctx, p, &who{name: "Sam"}, b.ID, 0, cloud.PlateSend{Printer: taz.ID}); err == nil {
 		t.Error("a member sent a plate")
 	}
+	x2d, _ := c.RegisterPrinter(ctx, id, cloud.PrinterRequest{Key: "x2d", Name: "X2D", Process: "fdm", Model: "Bambu Lab X2D"})
+	if _, err := s.sendPlate(ctx, p, owner, b.ID, 0, cloud.PlateSend{Printer: x2d.ID}); err == nil {
+		t.Error("a TAZ plate went to a Bambu Lab printer")
+	}
+	if (cloud.Printer{Process: "fdm"}).TakesPlate("x2d", "fdm") {
+		t.Error("an X2D plate goes to another printer")
+	}
 	v, err := s.sendPlate(ctx, p, owner, b.ID, 0, cloud.PlateSend{Printer: taz.ID})
 	if err != nil {
 		t.Fatal(err)
