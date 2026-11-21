@@ -27,9 +27,10 @@ network. Each printer of a deck with many printers is a printer of its own in th
   and on a Klipper printer Load, Unload, Extrude and Retract. A Klipper printer heats the nozzle
   first, for the material that the user picks, and the control waits until the nozzle is 3 °C
   under its target, as the swap of the deck. The jog and the filament wait for a pause during a
-  print, and the home for the end of a print. The screen shows the messages of the printer, the
-  action of the deck that runs, the start step of a print, the axes that are homed, and the
-  nozzle that prints now (`tool_now`) on a printer with two.
+  print, and the home, the spools of an AMS and the drying for the end of a print. The screen
+  shows the messages of the printer, the action of the deck that runs, the start step of a
+  print, the axes that are homed, and the nozzle that prints now (`tool_now`) on a printer with
+  two.
 - **The effect of a control**: after the deck accepts a control, the app reads the status about
   once a second until it shows the change, and shows the change: "Bed target 60 °C", "Homed X Y Z",
   the new position, "Z offset +0.025 mm", "Speed Sport", "Loaded A2", "Drying AMS A at 55 °C",

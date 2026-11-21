@@ -291,9 +291,9 @@ struct FilamentSection: View {
                 } else if units.isEmpty {
                     ForEach(list.filter { !$0.inAMS && $0.slot != "Ext" }) { FilamentRow(filament: $0) }
                 }
-                if trays && c.loads {
+                if trays && c.loadsTray {
                     Button { unloading = true } label: { RowLabel("Unload", symbol: "arrow.uturn.backward") }
-                } else if c.loads || c.extrudes {
+                } else if !trays && (c.loads || c.extrudes) {
                     Button { klipper = true } label: { RowLabel("Load, unload and extrude", symbol: "arrow.up.and.down.circle", chevron: true) }
                 }
             } header: {
@@ -339,10 +339,10 @@ struct FilamentSection: View {
     }
 
     private func footer(_ c: Controls, trays: Bool) -> String {
-        if c.loads || c.extrudes {
-            return trays ? "Tap a spool to load it. The filament waits for a pause during a print."
-                : "The nozzle heats first. The filament waits for a pause during a print."
+        if trays {
+            return c.loadsTray ? "Tap a spool to load it." : "Load and unload the spools between prints."
         }
+        if c.loads || c.extrudes { return "The nozzle heats first. The filament waits for a pause during a print." }
         if c.busy && !c.paused && (c.has("filament") || c.has("extrude")) { return "Pause the print to load or unload." }
         return "Load and unload the filament on the touch screen of the deck."
     }
@@ -352,7 +352,7 @@ struct FilamentSection: View {
             FilamentRow(filament: f, feeding: active == f.tray && f.tray >= 0)
         }
         .foregroundStyle(Color.primary)
-        .disabled(!c.loads || f.tray < 0)
+        .disabled(!c.loadsTray || f.tray < 0)
     }
 
     @ViewBuilder private func dryRow(_ a: ControlState.AMSUnit, _ c: Controls) -> some View {
@@ -364,7 +364,7 @@ struct FilamentSection: View {
                     Text(Format.duration(Double(d.left)) + " left").font(.subheadline.monospacedDigit()).foregroundStyle(Color.secondary)
                 }
             }
-            .disabled(!c.dries)
+            .disabled(!c.stopsDrying)
         } else if c.dries {
             Button { drying = a } label: { RowLabel("Dry the filament", symbol: "sun.max", chevron: true) }
         }

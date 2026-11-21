@@ -75,7 +75,12 @@ struct Controls: Equatable {
     /// Extrude and retract, and the load and the unload: between prints and during a pause.
     var extrudes: Bool { has("extrude") && connected && !running }
     var loads: Bool { has("filament") && connected && !running }
-    var dries: Bool { has("ams_dry") && connected }
+    /// The load and the unload of an AMS tray, and the drying of an AMS: between prints. The deck
+    /// refuses them during a print, also a paused one (Bambu.LoadTray, UnloadTray and DryAMS).
+    var loadsTray: Bool { has("filament") && connected && !busy }
+    var dries: Bool { has("ams_dry") && connected && !busy }
+    /// Stop drying: the deck stops a drying at any time.
+    var stopsDrying: Bool { has("ams_dry") && connected }
     var chamber: Bool { has("chamber") && connected }
     var aux: Bool { has("tool1") && connected }
 }
