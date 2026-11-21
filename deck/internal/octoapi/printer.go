@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"printdeck/internal/camera"
+	"printdeck/internal/printer"
 )
 
 func (s *Server) serveVersion(w http.ResponseWriter, r *http.Request) {
@@ -130,9 +131,22 @@ func (s *Server) servePrinter(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"state":       map[string]any{"text": text, "flags": flags, "error": st.Err},
-		"temperature": map[string]any{"tool0": temp(st.Tool, st.ToolTarget), "bed": temp(st.Bed, st.BedTarget)},
+		"temperature": s.temperatures(st, temp),
 		"sd":          map[string]bool{"ready": false},
 	})
+}
+
+// temperatures are the heaters of /api/printer: tool0 and the bed, with tool1 (the aux nozzle)
+// and the chamber of a printer that has them.
+func (s *Server) temperatures(st printer.State, temp func(actual, target float64) map[string]float64) map[string]any {
+	out := map[string]any{"tool0": temp(st.Tool, st.ToolTarget), "bed": temp(st.Bed, st.BedTarget)}
+	if st.HasTool2 {
+		out["tool1"] = temp(st.Tool2, st.Tool2Target)
+	}
+	if st.HasChamber {
+		out["chamber"] = temp(st.Chamber, st.ChamberTarget)
+	}
+	return out
 }
 
 // operational refuses a command when the printer is not connected, as OctoPrint does.
@@ -189,14 +203,26 @@ func (s *Server) servePrinthead(w http.ResponseWriter, r *http.Request) {
 		Axes    []string `json:"axes"`
 		X, Y, Z float64
 		Speed   int `json:"speed"`
+		// Factor and Level are the speed of "feedrate" (controls.go).
+		Factor *int   `json:"factor"`
+		Level  string `json:"level"`
 	}
 	if !decode(w, r, &req) || !s.operational(w) {
 		return
 	}
 	switch req.Command {
+	case "feedrate":
+		s.feedrate(w, req.Factor, req.Level)
 	case "home":
+		// A home during a print, also a paused one, loses the position of the print.
+		if s.printing(w, true) {
+			return
+		}
 		commandResult(w, s.Printer.Home(req.Axes...))
 	case "jog":
+		if s.printing(w, false) {
+			return
+		}
 		speed := req.Speed
 		if speed <= 0 {
 			speed = 6000
@@ -211,16 +237,33 @@ func (s *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Command string         `json:"command"`
 		Targets map[string]int `json:"targets"`
+		Factor  *int           `json:"factor"` // of "flowrate" (controls.go)
 	}
 	if !decode(w, r, &req) || !s.operational(w) {
 		return
 	}
-	t, ok := req.Targets["tool0"]
-	if req.Command != "target" || !ok {
-		apiError(w, http.StatusBadRequest, "Only the target of tool0 is supported")
+	if req.Command == "flowrate" {
+		s.flowrate(w, req.Factor)
 		return
 	}
-	commandResult(w, s.Printer.SetToolTemp(t))
+	t0, ok0 := req.Targets["tool0"]
+	t1, ok1 := req.Targets["tool1"]
+	if req.Command != "target" || !ok0 && !ok1 || len(req.Targets) > 2 || len(req.Targets) == 2 && !(ok0 && ok1) {
+		apiError(w, http.StatusBadRequest, "Only the targets of tool0 and tool1 are supported")
+		return
+	}
+	// tool1 is the aux nozzle of a printer with two (ControlTool1).
+	if ok1 && !s.has(w, ControlTool1) {
+		return
+	}
+	var err error
+	if ok0 {
+		err = s.Printer.SetToolTemp(t0)
+	}
+	if ok1 && err == nil {
+		err = s.Printer.(tool2Setter).SetTool2Temp(t1)
+	}
+	commandResult(w, err)
 }
 
 func (s *Server) serveBed(w http.ResponseWriter, r *http.Request) {

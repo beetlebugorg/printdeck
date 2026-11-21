@@ -130,6 +130,44 @@ Deck (Go), done:
 Away from home, the queue of a project comes from the service (`ProjectView.Queue`). A project
 sees only its own files.
 
+## Phase 5: the controls of the touch screen
+
+The app has the controls of the touch screen that are not free G-code: the filament, the AMS,
+the aux nozzle, the chamber, the part fan, the speed and the flow of a print, and the Z offset.
+Each route calls the method of the backend that the touch screen calls. "Signed prints only"
+does not refuse them: they are fixed commands with checked values, as a jog or a temperature
+target. It refuses only `POST /api/printer/command`.
+
+Deck (Go), done (`deck/internal/octoapi/controls.go`):
+
+- `GET /api/plugin/printdeck` has `controls`, from `jog`, `home`, `fan`, `speed`, `flow`,
+  `zoffset`, `extrude`, `filament`, `ams_dry`, `chamber` and `tool1`. The app shows only these.
+  The reply also has the state that shows their effect: `homed` ("xyz"), `position` (`x`, `y`,
+  `z`, or null), `speed` and `flow` in percent, `speed_levels` and `speed_level` of a Bambu Lab
+  printer, `z_offset`, `tool1` and `chamber` (`actual`, `target`, or null), `fan` in percent,
+  `action` (a deck action that runs), `preparing` (the start step of a print), `ams` (each unit
+  with `unit` "A", `temp`, `humidity`, `humidity_pct` and `drying`), `messages` (one line each,
+  with the HMS code in the text), and `active` on the spool that feeds the nozzle.
+- `/api/printer` has `tool1` and `chamber` in `temperature` when the printer has them.
+- Speed: `POST /api/printer/printhead` `{"command": "feedrate", "factor": 10-300}`. A Bambu Lab
+  printer takes the nearest level, or `"level": "Sport"` by its name.
+- Flow: `POST /api/printer/tool` `{"command": "flowrate", "factor": 10-300}`.
+- Aux nozzle: `POST /api/printer/tool` with `"targets": {"tool1": n}`.
+- Chamber: `POST /api/printer/chamber` `{"command": "target", "target": 0-80}`.
+- Fan: `POST /api/plugin/printdeck/fan` `{"percent": 0-100}`.
+- Z offset: `POST /api/plugin/printdeck/zoffset` `{"adjust": mm}`, up to 0.5 mm each time.
+- Filament: `POST /api/plugin/printdeck/filament` with `{"action": "extrude", "mm": n}` (-150 to
+  150; a negative length retracts), `{"action": "load"}` and `{"action": "unload"}` (on a
+  Klipper printer, the G-code and the lengths of the swap of the touch screen; the nozzle must be
+  hot), `{"action": "load", "slot": "A1"}` or `"tray": n` (on a Bambu Lab printer, at the
+  temperature of the material of the spool) and `{"action": "unload"}`.
+- AMS: `POST /api/plugin/printdeck/ams/<unit>/dry` `{"temp": n, "hours": n, "filament":
+  "PLA"}`, and `DELETE` on the same path to stop. The unit is its letter or its number.
+- Jog waits for the end of a print or for a pause. Home waits for the end of a print. The
+  filament waits for a pause.
+- Each route answers 204, 400 for a bad value, 404 when the printer has no such control or no
+  such slot, and 409 with the reason of the printer: for example a cold nozzle.
+
 ## Order of the work
 
 1. The deck: the app API on the resin deck, and the Bonjour TXT records (phase 1).
@@ -138,3 +176,4 @@ sees only its own files.
    (phase 2).
 4. The app: projects (phase 3).
 5. The deck: the queue routes and the push message. The app: the queue (phase 4).
+6. The deck: the control routes. The app: the controls (phase 5).
