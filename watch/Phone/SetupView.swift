@@ -101,7 +101,7 @@ struct SetupView: View {
                     .padding(.horizontal, 4)
             }
             ForEach(finder.decks) { deck in
-                let known = fleet.models.contains { $0.deck.name == deck.name }
+                let known = fleet.models.contains { $0.deck.name == deck.name || $0.deck.deckName == deck.name }
                 Button(known ? "Connect \(deck.name) again" : "Connect \(deck.name)") {
                     Task { await connect(deck) }
                 }
@@ -132,7 +132,7 @@ struct SetupView: View {
             Button("Save the name") { model.rename(name) }
                 .buttonStyle(KeyStyle())
                 .disabled(name.trimmingCharacters(in: .whitespaces) == model.deck.name)
-            Button("Connect again") { Task { await connect(address: model.settings.address, name: model.deck.name) } }
+            Button("Connect again") { Task { await connect(address: model.deck.deckRoot, name: model.deck.deckName ?? model.deck.name) } }
                 .buttonStyle(KeyStyle())
                 .disabled(busy)
             Text("Connect again asks the deck for a new key. Tap Allow on the touch screen of the deck.")
@@ -254,9 +254,11 @@ struct SetupView: View {
         defer { busy = false }
         step = "Tap Allow on the deck"
         do {
-            let k = try await DeckClient.requestKey(base: base, app: "Printdeck on iPhone")
+            let g = try await DeckClient.requestKey(base: base, app: "Printdeck on iPhone")
+            step = "Reading the printers"
+            let m = await fleet.connect(address: a, grant: g, name: name)
             step = nil
-            await save(DeckSettings(address: a, key: k), name: name)
+            if let m { await read(m) }
         } catch {
             step = errorText(error)
         }
@@ -273,8 +275,13 @@ struct SetupView: View {
         } else {
             m = fleet.add(SavedDeck(name: name, settings: s))
         }
-        address = s.address
-        key = s.key
+        await read(m)
+    }
+
+    /// Reads the deck after a new key, and opens the deck screen of a new deck.
+    private func read(_ m: DeckModel) async {
+        address = m.settings.address
+        key = m.settings.key
         manual = false
         step = nil
         result = "READING THE DECK"

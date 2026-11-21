@@ -39,6 +39,14 @@ final class Fleet {
         }
         #endif
         models = list.map { DeckModel(deck: $0) }
+        #if DEBUG && os(iOS)
+        // PRINTDECK_DECK_KEY connects to a deck with a deck key, as "address|key", and adds its
+        // printers.
+        if let d = env["PRINTDECK_DECK_KEY"], case let f = d.split(separator: "|").map(String.init), f.count == 2 {
+            models = []
+            Task { await connect(address: f[0], grant: KeyGrant(key: f[1], deck: true), name: "") }
+        }
+        #endif
         #if os(watchOS)
         link = PhoneLink { [weak self] decks in
             Task { @MainActor in self?.set(decks) }
@@ -74,6 +82,66 @@ final class Fleet {
         Task { await m.refresh() }
         return m
     }
+
+    /// Adds the printers of a deck, or uses the new entries for the printers that the list has (by
+    /// address). It returns the model of the first printer.
+    @discardableResult
+    func add(_ entries: [SavedDeck]) -> DeckModel? {
+        var first: DeckModel?
+        var added = false
+        for d in entries {
+            let m: DeckModel
+            if let old = models.first(where: { $0.id == d.id || $0.settings.address == d.address }) {
+                old.merge(d)
+                m = old
+            } else {
+                m = DeckModel(deck: d)
+                models.append(m)
+                added = true
+                Task { await m.refresh() }
+            }
+            if first == nil { first = m }
+        }
+        if added {
+            Store.decks = decks
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        return first
+    }
+
+    #if os(iOS)
+    /// Adds the printers of the deck at the address with a new key. A deck key gives each printer
+    /// of the deck an entry of its own. It returns the model of the first printer.
+    @discardableResult
+    func connect(address: String, grant: KeyGrant, name: String) async -> DeckModel? {
+        if grant.deck {
+            let root = SavedDeck.root(address)
+            let client = DeckClient(settings: DeckSettings(address: root, key: grant.key))
+            if let list = try? await client.printers() {
+                return add(list.entries(address: root, key: grant.key, name: name, existing: decks))
+            }
+        }
+        var d = SavedDeck(name: name, settings: DeckSettings(address: address, key: grant.key))
+        if let old = models.first(where: { $0.settings.address == address }) { d = old.deck; d.key = grant.key }
+        return add([d])
+    }
+
+    private var lastSync = Date.distantPast
+
+    /// Reads the printers of each deck with a deck key, at most every 5 minutes, and adds the
+    /// printers that are new. A printer that the deck no longer lists stays until the user removes
+    /// it.
+    func syncPrinters() async {
+        guard Date().timeIntervalSince(lastSync) > 300 else { return }
+        lastSync = Date()
+        var seen = Set<String>()
+        for d in decks where d.deckKey == true && seen.insert(d.deckRoot).inserted {
+            let client = DeckClient(settings: DeckSettings(address: d.deckRoot, key: d.key))
+            guard let list = try? await client.printers() else { continue }
+            add(list.entries(address: d.deckRoot, key: d.key, name: d.deckName ?? "", existing: decks))
+        }
+    }
+    #endif
 
     func remove(_ id: String) {
         models.removeAll { $0.id == id }
@@ -111,6 +179,9 @@ final class Fleet {
     }
 
     func refresh() async {
+        #if os(iOS)
+        await syncPrinters()
+        #endif
         await withTaskGroup(of: Void.self) { group in
             for m in models where m.settings.isComplete {
                 group.addTask { await m.refresh() }
