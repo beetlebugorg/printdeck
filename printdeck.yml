@@ -2,6 +2,8 @@
 # (lulzbot/stl/slate/README.md), the webcam mounts on the printer, and the BLTouch mount of the
 # TAZ. The profiles are in profiles/. The Slate prints in navy (the case) and orange (the base).
 # The webcam mounts print in black PLA (roll-4).
+# The TAZ parts slice with zslice. The BLTouch mount stays on CuraEngine: its PETG settings have a
+# first layer bed temperature and a minimum fan speed that zslice does not have.
 # The generate step writes the STL files again on GitHub, and fails when they differ from the
 # committed files. Run the same commands on your computer, and commit the STL files.
 project: printdeck
@@ -42,6 +44,7 @@ parts:
       case. It prints on its back ring with no supports.
     files: [lulzbot/stl/slate/fdm/slate-frame_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-3
     settings: &slate {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
@@ -54,6 +57,7 @@ parts:
       rings on its inner floor. Four M3 x 6 screws go down its posts into the inserts of the frame.
     files: [lulzbot/stl/slate/fdm/slate-body_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-3
     settings: *slate
@@ -65,6 +69,7 @@ parts:
       boss into the nuts of the body. The base prints standing on the bottom of its foot, 113 mm high.
     files: [lulzbot/stl/slate/fdm/slate-base_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-2
     settings: *slate
@@ -101,6 +106,7 @@ parts:
       its post in the tab of the clamp. It prints on its back face.
     files: [lulzbot/stl/pod/fdm/camera-arm-taz_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: &pod {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner}
@@ -113,6 +119,7 @@ parts:
       bottom with a brim.
     files: [lulzbot/stl/pod/fdm/camera-clamp-taz_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     # It is 126 mm tall: a brim.
@@ -125,6 +132,7 @@ parts:
       must lie flat on the faces of the upright. It prints in a few minutes.
     files: [lulzbot/stl/pod/fdm/camera-clamp-fit-taz_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *pod
@@ -137,6 +145,7 @@ parts:
       the same part for the TAZ and the Mini 2. It prints on the top face of its plate.
     files: [lulzbot/stl/pod/fdm/camera-link_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *pod
@@ -148,6 +157,7 @@ parts:
       in the tab of the clamp. It prints on its back face.
     files: [lulzbot/stl/pod/fdm/camera-arm-mini2_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *pod
@@ -159,6 +169,7 @@ parts:
       Press two M3 heat-set inserts into its tab for the screws of the arm.
     files: [lulzbot/stl/pod/fdm/camera-clamp-mini2_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *pod
@@ -171,6 +182,7 @@ parts:
       the same part for the TAZ and the Mini 2. It prints on the top face of its plate.
     files: [lulzbot/stl/pod/fdm/camera-link_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *pod
@@ -184,6 +196,7 @@ parts:
       where the arms bend.
     files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     count: 4
@@ -196,6 +209,7 @@ parts:
       arms bend.
     files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     count: 3
@@ -243,6 +257,7 @@ parts:
       slice on its bottom face, with no supports.
     files: [lulzbot/gantrycam/arm/stl/fit_arm_slice.stl, lulzbot/gantrycam/arm/stl/fit_bracket_slice.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: &gantrycam {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
@@ -256,6 +271,7 @@ parts:
       it is also a fit test for the screw spacing.
     files: [lulzbot/gantrycam/arm/stl/clamp_plate.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
@@ -268,6 +284,7 @@ parts:
       the drop. It prints upside down on its top face, with a brim and no supports.
     files: [lulzbot/gantrycam/arm/stl/upper_arm.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
@@ -281,6 +298,7 @@ parts:
       adjustable. It prints on its bottom face with no supports.
     files: [lulzbot/gantrycam/arm/stl/camera_bracket.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *gantrycam
@@ -297,6 +315,7 @@ parts:
       blower. It must go in by hand and stay in. Print it first. It prints flat with no supports.
     files: [lulzbot/sehead/duct/stl/fit_lip.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: &seduct {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
@@ -310,6 +329,7 @@ parts:
       foot into the blower bracket. Print it in PETG. It prints on its bottom face with no supports.
     files: [lulzbot/sehead/duct/stl/duct.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *seduct
@@ -322,6 +342,7 @@ parts:
       on its blower side with no supports.
     files: [lulzbot/sehead/duct/stl/blower_bracket.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: &sebracket {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
@@ -334,6 +355,7 @@ parts:
       screws go up through the ears into the shelf. It prints on its outer face with no supports.
     files: [lulzbot/sehead/duct/stl/bltouch_bracket.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *sebracket
@@ -344,6 +366,7 @@ parts:
       stock duct. It prints flat.
     files: [lulzbot/sehead/duct/stl/motor_spacer.stl]
     printer: taz
+    slicer: zslice
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *sebracket
