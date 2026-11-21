@@ -254,6 +254,7 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .chip.changed::after { content: ""; position: absolute; top: 3px; right: 4px; width: 7px; height: 7px; border-radius: 50%;
   background: var(--orange); box-shadow: 0 0 0 1.5px var(--plate); }
 .chip.changed[aria-pressed="true"]::after { background: #fff; box-shadow: none; }
+.plans a .tag { justify-self: start; }
 .plans a.more { font-weight: 700; color: var(--link); text-align: center; }
 .chips.process { margin-bottom: 4px; }
 .material { display: inline-flex; align-items: center; gap: 5px; }

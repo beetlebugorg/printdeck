@@ -1064,7 +1064,7 @@ func (a *app) drawGit(v *wire.ProjectView) {
 	repo := byID("pGitRepo")
 	repo.Set("href", "https://github.com/"+v.Repo)
 	setText("pGitRepo", v.Repo)
-	setText("pGitAll", fmt.Sprintf("All %d builds →", v.PlansTotal))
+	setText("pGitAll", "All builds →")
 	// The newest plan of main.
 	mainEl := byID("pGitMain")
 	mainEl.Set("textContent", "")

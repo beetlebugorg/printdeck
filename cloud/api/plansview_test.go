@@ -46,3 +46,52 @@ func TestPlansViewListed(t *testing.T) {
 		t.Errorf("%d plans, %d listed", len(plans), listed)
 	}
 }
+
+// A build of a plan of main that is older than the PlansShown newest plans is in the view, with
+// its plan.
+func TestPlansViewOldBuild(t *testing.T) {
+	_, s, _ := testServer(t)
+	ctx := context.Background()
+	p := &Project{ID: newID(13)}
+	now := time.Now().UTC()
+	var old string
+	for i := range PlansShown + 5 {
+		rec := PlanRecord{ID: newID(10), Kind: cloud.BuildMain, Created: now.Add(-time.Duration(i) * time.Hour)}
+		if err := s.putJSON(ctx, planKey(p.ID, rec.ID), rec); err != nil {
+			t.Fatal(err)
+		}
+		old = rec.ID // the oldest plan
+	}
+	b := BuildRecord{ID: newID(10), Plan: old, Created: now, State: cloud.BuildReady}
+	if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
+		t.Fatal(err)
+	}
+	plans, _, _ := s.plansView(ctx, p, PlansShown)
+	if len(plans) != PlansShown+1 {
+		t.Fatalf("%d plans, not %d", len(plans), PlansShown+1)
+	}
+	last := plans[len(plans)-1]
+	if last.ID != old || len(last.Builds) != 1 || last.Builds[0].ID != b.ID {
+		t.Errorf("the old plan %s: %+v", old, last)
+	}
+}
+
+// A build that slices for more than BuildStale shows as failed. The record stays.
+func TestStaleBuild(t *testing.T) {
+	_, s, _ := testServer(t)
+	ctx := context.Background()
+	p := &Project{ID: newID(13)}
+	for _, c := range []struct {
+		age   time.Duration
+		state string
+	}{{time.Minute, cloud.BuildSlicing}, {BuildStale + time.Minute, cloud.BuildFailed}} {
+		b := &BuildRecord{ID: newID(10), Created: time.Now().UTC().Add(-c.age), State: cloud.BuildSlicing, Progress: "Slicing plate 1"}
+		got := s.projectBuild(ctx, p, b)
+		if got.State != c.state || (c.state == cloud.BuildFailed) != (got.Error != "") {
+			t.Errorf("age %v: state %q, error %q", c.age, got.State, got.Error)
+		}
+		if b.State != cloud.BuildSlicing {
+			t.Errorf("the record changed: %q", b.State)
+		}
+	}
+}
