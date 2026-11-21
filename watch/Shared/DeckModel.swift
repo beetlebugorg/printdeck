@@ -277,6 +277,44 @@ final class DeckModel: Identifiable {
         return true
     }
 
+    /// The nozzle heats for a load, an unload or an extrusion that waits for it.
+    private(set) var heating = false
+    private var heatStop = false
+
+    /// Stops the wait for a hot nozzle. The nozzle keeps its target.
+    func stopHeating() { heatStop = true }
+
+    /// Heats the nozzle to temp, waits until it is hot (3 °C under the target, as the swap of the
+    /// deck), and then runs the control. A Klipper printer refuses to extrude with a cold nozzle.
+    /// The wait ends after 8 minutes, or with stopHeating.
+    func heatThen(_ temp: Int, doing: String, effect: Effect, _ f: @escaping (DeckClient) async throws -> Void) async {
+        guard !heating else { return }
+        heating = true
+        heatStop = false
+        defer { heating = false }
+        let target = Int((status?.lcd?.tool_target ?? status?.tool?.target ?? 0).rounded())
+        if target < temp - 3 {
+            guard await run("Heating the nozzle", effect: .nozzleTarget(temp), { try await $0.setTool(temp) }) else { return }
+        }
+        let end = Date().addingTimeInterval(480)
+        while true {
+            let actual = status?.lcd?.tool ?? status?.tool?.actual ?? 0
+            if SwapMaterial.hot(actual, for: temp) { break }
+            if heatStop || Task.isCancelled {
+                show("Stopped the wait. The nozzle stays at \(temp) °C.", for: 8)
+                return
+            }
+            if Date() > end {
+                show("The nozzle did not reach \(temp) °C in 8 minutes.", for: 10)
+                return
+            }
+            show("Heating the nozzle: \(Int(actual.rounded())) of \(temp) °C", for: 5)
+            try? await Task.sleep(for: .seconds(2))
+            await refresh()
+        }
+        await run(doing, effect: effect, f)
+    }
+
     /// The number of the last control: only its check shows its text.
     private var checks = 0
 
@@ -285,7 +323,7 @@ final class DeckModel: Identifiable {
         func say(_ text: String, _ seconds: Double) {
             if token == checks { show(text, for: seconds) }
         }
-        if let text = effect.unobservable {
+        if let text = effect.unobservable(before: before) {
             await refresh()
             say(text, 6)
             return

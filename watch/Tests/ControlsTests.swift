@@ -152,8 +152,8 @@ final class ControlsTests: XCTestCase {
         XCTAssertEqual(Effect.jog.unconfirmed(before: unhomed), "The deck took the move. It reports no position before a home.")
         XCTAssertEqual(Effect.jog.unconfirmed(before: homed), "The deck took the move, but the status shows no new position yet.")
         // The Z offset has no field in the status: the text says so, and claims no change.
-        XCTAssertEqual(Effect.babystep(-0.025).unobservable, "Sent: nozzle down 0.025 mm. The deck does not report the Z offset.")
-        XCTAssertNil(Effect.jog.unobservable)
+        XCTAssertEqual(Effect.babystep(-0.025).unobservable(before: homed), "Sent: nozzle down 0.025 mm. The deck does not report the Z offset.")
+        XCTAssertNil(Effect.jog.unobservable(before: homed))
     }
 
     func testPrintEffects() {
@@ -168,5 +168,141 @@ final class ControlsTests: XCTestCase {
         XCTAssertNil(Effect.print("Benchy").confirmed(before: idle, after: idle))
         XCTAssertEqual(Effect.pause.timeout, 20)
         XCTAssertEqual(Effect.jog.timeout, 8)
+    }
+
+    /// /api/plugin/printdeck of an X2D on a deck with the control routes (#97).
+    private let x2d = #"""
+    {"process":"fdm","controls":["jog","home","fan","speed","zoffset","filament","ams_dry","chamber","tool1"],
+     "homed":"xyz","position":{"x":128,"y":128,"z":4.2},"speed":100,"speed_levels":["Silent","Standard","Sport","Ludicrous"],
+     "speed_level":2,"z_offset":0,"tool1":{"actual":24,"target":0},"chamber":{"actual":38,"target":0},"fan":60,
+     "tool_now":1,"action":"","preparing":"",
+     "ams":[{"unit":"A","temp":27.5,"humidity":2,"humidity_pct":21,"drying":null}],
+     "messages":["0300_1A00_0001_0001: The nozzle temperature is abnormal"],
+     "filaments":[{"slot":"A1","index":0,"tray":0,"material":"PLA","remain":0.8,"active":true},
+                  {"slot":"Ext","index":1,"tray":254,"nozzle":"main","material":"PLA","remain":null},
+                  {"slot":"Ext","index":2,"tray":255,"nozzle":"aux","material":"TPU","remain":null}]}
+    """#
+
+    private func state(_ json: String) -> ControlState? { ControlState.of(Data(json.utf8)) }
+
+    func testControlState() throws {
+        let cs = try XCTUnwrap(state(x2d))
+        XCTAssertTrue(cs.has("tool1"))
+        XCTAssertFalse(cs.has("flow"))
+        XCTAssertEqual(cs.position, ControlState.Position(x: 128, y: 128, z: 4.2))
+        XCTAssertEqual(ControlState.text(cs.position!), "X128 Y128 Z4.20")
+        XCTAssertEqual(cs.speed_levels?.count, 4)
+        XCTAssertEqual(cs.tool1, Temp(actual: 24, target: 0))
+        XCTAssertEqual(cs.fan, 60)
+        XCTAssertEqual(cs.ams?.first?.humidity_pct, 21)
+        XCTAssertNil(cs.ams?.first?.drying)
+        XCTAssertEqual(cs.messages?.count, 1)
+        XCTAssertEqual(cs.activeTray, 0)
+        // A deck from before the routes has no "controls": no state.
+        XCTAssertNil(state(#"{"process":"fdm","job":null}"#))
+    }
+
+    /// tool_now is the nozzle that prints: 0, 1, or missing from a deck before the field.
+    func testToolNow() throws {
+        XCTAssertEqual(state(x2d)?.tool_now, 1)
+        XCTAssertEqual(state(#"{"controls":["jog"],"tool_now":0}"#)?.tool_now, 0)
+        XCTAssertNil(try XCTUnwrap(state(#"{"controls":["jog"]}"#)).tool_now)
+        // The watch panel marks the nozzle in use only on a printer with two, and only with the field.
+        var st = Status(state: "Printing", busy: true, paused: false, time: Date())
+        st.controls = state(x2d)
+        var p = StatusPanel.make(st, connected: true, error: nil, now: Date())
+        XCTAssertEqual(p.readouts.map(\.name), ["NOZZLE", "AUX", "BED", "CHAMBER", "FAN"])
+        XCTAssertEqual(p.readouts.map(\.inUse), [false, true, false, false, false])
+        st.controls?.tool_now = 0
+        p = StatusPanel.make(st, connected: true, error: nil, now: Date())
+        XCTAssertEqual(p.readouts.map(\.inUse), [true, false, false, false, false])
+        st.controls?.tool_now = nil
+        p = StatusPanel.make(st, connected: true, error: nil, now: Date())
+        XCTAssertTrue(p.readouts.allSatisfy { !$0.inUse })
+        // A printer with one nozzle has no mark.
+        let one = Status(state: "Printing", busy: true, paused: false, controls: state(#"{"controls":["jog"],"tool_now":0}"#), time: Date())
+        XCTAssertTrue(StatusPanel.make(one, connected: true, error: nil, now: Date()).readouts.allSatisfy { !$0.inUse })
+    }
+
+    /// A deck with the routes shows only its controls, with the rules of the deck: the jog and the
+    /// filament wait for a pause, and the home for the end of a print.
+    func testListedControls() {
+        let all = ["jog", "home", "fan", "speed", "flow", "zoffset", "extrude", "filament", "ams_dry", "chamber", "tool1"]
+        let idle = Controls(process: .fdm, list: all)
+        XCTAssertTrue(idle.jogs && idle.homes && idle.loads && idle.extrudes && idle.fan && idle.dries)
+        XCTAssertFalse(idle.speed || idle.flow || idle.tunes)
+        let printing = Controls(process: .fdm, busy: true, list: all)
+        XCTAssertFalse(printing.jogs || printing.homes || printing.loads || printing.extrudes)
+        XCTAssertTrue(printing.speed && printing.flow && printing.tunes && printing.fan)
+        let paused = Controls(process: .fdm, busy: true, paused: true, list: all)
+        XCTAssertTrue(paused.jogs && paused.loads && paused.extrudes)
+        XCTAssertFalse(paused.homes)
+        XCTAssertTrue(paused.moves)
+        // The fan and the Z offset have their routes: Signed prints only and a Bambu printer keep them.
+        let signed = Controls(process: .fdm, busy: true, bambu: true, signedOnly: true, list: ["fan", "zoffset"])
+        XCTAssertTrue(signed.fan && signed.tunes)
+        // A control that the deck does not list is off.
+        let few = Controls(process: .fdm, busy: true, list: ["jog"])
+        XCTAssertFalse(few.fan || few.tunes || few.speed || few.chamber || few.aux)
+        // A resin deck lists no controls.
+        let resin = Controls(process: .resin, list: [])
+        XCTAssertFalse(resin.moves || resin.fan || resin.loads)
+        XCTAssertFalse(Controls(process: .fdm, connected: false, list: all).jogs)
+    }
+
+    /// The new effects show from the state of the controls.
+    func testControlEffects() throws {
+        let before = Status(state: "Printing", busy: true, paused: false, controls: state(x2d), time: Date())
+        var after = before
+        after.controls?.z_offset = 0.025
+        XCTAssertEqual(Effect.babystep(0.025).confirmed(before: before, after: after), "Z offset +0.025 mm")
+        XCTAssertNil(Effect.babystep(-0.025).confirmed(before: before, after: after))
+        XCTAssertNil(Effect.babystep(0.025).unobservable(before: before))
+        after.controls?.speed_level = 3
+        XCTAssertEqual(Effect.speedLevel(3).confirmed(before: before, after: after), "Speed Sport")
+        after.controls?.speed = 120
+        XCTAssertEqual(Effect.speed(120).confirmed(before: before, after: after), "Speed 120%")
+        XCTAssertNil(Effect.flow(102).confirmed(before: before, after: after))
+        after.controls?.fan = 50
+        XCTAssertEqual(Effect.fan(50).confirmed(before: before, after: after), "Fan 50%")
+        after.controls?.tool1?.target = 220
+        XCTAssertEqual(Effect.auxTarget(220).confirmed(before: before, after: after), "Aux nozzle target 220 °C")
+        after.controls?.chamber?.target = 35
+        XCTAssertEqual(Effect.chamberTarget(35).confirmed(before: before, after: after), "Chamber target 35 °C")
+        // Home by the homed axes, and a jog by the new position.
+        var cold = before
+        cold.controls?.homed = ""
+        XCTAssertNil(Effect.home(["x", "y"]).confirmed(before: cold, after: cold))
+        XCTAssertEqual(Effect.home(["x", "y"]).confirmed(before: cold, after: before), "Homed X Y · X128 Y128 Z4.20")
+        XCTAssertEqual(Effect.home([]).confirmed(before: cold, after: before), "Homed X Y Z · X128 Y128 Z4.20")
+        after.controls?.position = ControlState.Position(x: 138, y: 128, z: 4.2)
+        XCTAssertEqual(Effect.jog.confirmed(before: before, after: after), "Position X138 Y128 Z4.20")
+        XCTAssertNil(Effect.jog.confirmed(before: before, after: before))
+        // The load of a tray: the spool of the tray feeds.
+        XCTAssertNil(Effect.load(255).confirmed(before: before, after: before))
+        after.controls?.filaments = [ControlState.Spool(slot: "Ext", tray: 255, active: true)]
+        XCTAssertEqual(Effect.load(255).confirmed(before: before, after: after), "Loaded the external spool")
+        XCTAssertEqual(Effect.load(0).confirmed(before: before, after: before), "Loaded A1")
+        after.controls?.filaments = [ControlState.Spool(slot: "A1", tray: 0, active: nil)]
+        XCTAssertEqual(Effect.unload(tray: true).confirmed(before: before, after: after), "Unloaded")
+        XCTAssertNil(Effect.unload(tray: true).confirmed(before: before, after: before))
+        // A Klipper load and an extrusion have no state: the text says that the deck ran them.
+        XCTAssertEqual(Effect.load(nil).unobservable(before: before), "The deck ran the load. It does not report the filament in the nozzle.")
+        XCTAssertEqual(Effect.extrude(-10).unobservable(before: before), "The deck ran the retract of 10 mm. It does not report the length.")
+        // The drying of an AMS.
+        after.controls?.ams = [ControlState.AMSUnit(unit: "A", drying: ControlState.Drying(temp: 55, left: 28800, filament: "PLA"))]
+        XCTAssertEqual(Effect.dry("A").confirmed(before: before, after: after), "Drying AMS A at 55 °C")
+        XCTAssertNil(Effect.stopDrying("A").confirmed(before: before, after: after))
+        XCTAssertEqual(Effect.stopDrying("A").confirmed(before: after, after: before), "AMS A stopped drying")
+        XCTAssertEqual(Effect.load(0).timeout, 120)
+    }
+
+    func testSwapAndDry() {
+        XCTAssertEqual(SwapMaterial.of("petg").nozzle, 240)
+        XCTAssertEqual(SwapMaterial.of(nil).name, "PLA")
+        XCTAssertTrue(SwapMaterial.hot(207, for: 210))
+        XCTAssertFalse(SwapMaterial.hot(206.9, for: 210))
+        XCTAssertEqual(DryPreset.all.first, DryPreset(material: "PLA", temp: 55, hours: 8))
+        XCTAssertEqual(Preset.chamber.map(\.value), [0, 35, 50, 60])
     }
 }

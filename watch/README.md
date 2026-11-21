@@ -20,13 +20,25 @@ network. Each printer of a deck with many printers is a printer of its own in th
 - **Dialogs**: each dialog that starts, stops, moves or heats names the printer, for example
   "Pause the print on TAZ Workhorse?" with the key "Pause TAZ". The app opens a printer only after
   a tap. A deck with one printer has no label and no deck name.
+- **The controls of the deck**: a deck lists the controls of each printer (`controls` in
+  `/api/plugin/printdeck`), and the app shows only those: the aux nozzle and the chamber, the fan,
+  the speed (by level on a Bambu Lab printer) and the flow of a print, the Z offset, the load and
+  the unload of a spool of an AMS with a tap, the drying of an AMS with the presets of the deck,
+  and on a Klipper printer Load, Unload, Extrude and Retract. A Klipper printer heats the nozzle
+  first, for the material that the user picks, and the control waits until the nozzle is 3 °C
+  under its target, as the swap of the deck. The jog and the filament wait for a pause during a
+  print, and the home for the end of a print. The screen shows the messages of the printer, the
+  action of the deck that runs, the start step of a print, the axes that are homed, and the
+  nozzle that prints now (`tool_now`) on a printer with two.
 - **The effect of a control**: after the deck accepts a control, the app reads the status about
   once a second until it shows the change, and shows the change: "Bed target 60 °C", "Homed X Y Z",
-  the new position, "Paused". When the status does not show the change in time, the text says so.
-  The status has no Z offset, so a change of the Z offset shows as sent only.
-- **G-code controls**: the fan and the Z offset go to the deck as G-code, so they need a Klipper
-  printer and Signed prints only off (`signed_only` in `/api/plugin/printdeck`). Move, home and
-  the targets of the heaters use their own routes, and stay on.
+  the new position, "Z offset +0.025 mm", "Speed Sport", "Loaded A2", "Drying AMS A at 55 °C",
+  "Paused". When the status does not show the change in time, the text says so. The status has no
+  length of an extrusion and no filament in the extruder of a Klipper printer, so those say that
+  the deck ran them.
+- **A deck before the control routes**: the app shows the nozzle, the bed, move and home between
+  prints, and the fan and the Z offset as G-code, which needs a Klipper printer and Signed prints
+  only off (`signed_only` in `/api/plugin/printdeck`).
 - **Resin decks**: a deck with `process` resin in `/api/plugin/printdeck` has no Print a file, no
   Resume, no temperatures, no moves and no filament. Only a press on the touch screen of the deck
   starts or resumes a resin print, because both turn on the UV light. The app has Pause and Cancel.
@@ -35,7 +47,8 @@ network. Each printer of a deck with many printers is a printer of its own in th
   left on a resin deck), the state and the clock time of the end, the time left and the time so
   far, the layer, the loaded spools as little rolls, and the progress bar, in the amber of the
   deck on its dark window. A printer with two nozzles and a chamber has the aux nozzle and the
-  chamber too, in two rows, once the deck sends `tool1` and `chamber`. A printer of a deck with
+  chamber too, in two rows, once the deck sends `tool1` and `chamber`, and a mark on the nozzle
+  that prints now. A printer of a deck with
   many printers has its label and its name at the top. Turn the Digital Crown for the camera, the
   model, the layer times and the filament. Tap for Pause, Resume or Cancel.
 - **Complications** and **widgets**: the progress and the time left, on the watch face, the Home
@@ -219,6 +232,17 @@ All other requests have the header `X-Api-Key`:
 - `POST /api/printer/command` with `{"commands":["M106 S127"]}`: the fan and the Z offset
   (`SET_GCODE_OFFSET Z_ADJUST=0.025 MOVE=1`), as the deck writes them.
 - `DELETE /api/files/local/<path>`: deletes a file.
+- The control routes, for the controls that `controls` lists: `POST /api/printer/tool` with
+  `"targets":{"tool1":220}` (the aux nozzle) or `{"command":"flowrate","factor":104}`,
+  `POST /api/printer/printhead` with `{"command":"feedrate","factor":120}` or `"level":"Sport"`,
+  `POST /api/printer/chamber` with `{"command":"target","target":35}`,
+  `POST /api/plugin/printdeck/fan` with `{"percent":50}`, `POST /api/plugin/printdeck/zoffset`
+  with `{"adjust":0.025}`, `POST /api/plugin/printdeck/filament` with `{"action":"load","tray":2}`,
+  `{"action":"load"}`, `{"action":"unload"}` or `{"action":"extrude","mm":10}`, and `POST` and
+  `DELETE /api/plugin/printdeck/ams/<unit>/dry` with `{"temp":55,"hours":8,"filament":"PLA"}`.
+  The state of the controls is at the top of `/api/plugin/printdeck`: `homed`, `position`, `speed`,
+  `flow`, `speed_levels`, `speed_level`, `z_offset`, `tool1`, `chamber`, `fan`, `tool_now`,
+  `action`, `preparing`, `ams`, `messages`, and `active` on the spool that feeds.
 - `GET /api/files?recursive=true`, and `POST /api/files/local/<path>` with
   `{"command":"select","print":true}`: the files, and a print.
 - `GET /api/plugin/printdeck/model.png?w=..&h=..&mono=1`: the model of the print in 1-bit dots.

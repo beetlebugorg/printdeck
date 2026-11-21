@@ -502,6 +502,8 @@ struct Status: Codable, Equatable {
     var chamber: Temp?
     /// The deck accepts only signed prints and refuses G-code commands from apps.
     var signedOnly: Bool?
+    /// The controls of the printer and their state, or nil from a deck with no control routes.
+    var controls: ControlState?
     /// When the app read the status.
     var time: Date
 
@@ -728,9 +730,10 @@ struct DeckClient {
     /// Reads the job, the printer and the Printdeck plugin at the same time.
     func status() async throws -> Status {
         async let job: JobReply = get("/api/job")
-        async let plugin: PluginReply = get("/api/plugin/printdeck")
+        async let pluginData = send("/api/plugin/printdeck")
         async let printer = printer()
-        let (j, p, pr) = try await (job, plugin, printer)
+        let (j, pd, pr) = try await (job, pluginData, printer)
+        guard let p = try? JSONDecoder().decode(PluginReply.self, from: pd) else { throw DeckError.badReply }
 
         var st = Status(state: j.state ?? "Unknown", busy: p.job != nil, paused: p.job?.state == "paused", time: Date())
         if let pj = p.job {
@@ -751,6 +754,7 @@ struct DeckClient {
         st.tool1 = p.tool1
         st.chamber = p.chamber
         st.signedOnly = p.signed_only
+        st.controls = ControlState.of(pd)
         if let t = pr?.temperature {
             st.tool = t["tool0"].map { Temp(actual: $0.actual, target: $0.target) }
             st.bed = t["bed"].map { Temp(actual: $0.actual, target: $0.target) }
@@ -982,6 +986,70 @@ struct DeckClient {
     /// Sends G-code lines to the printer. The deck refuses them with Signed prints only on.
     func gcode(_ lines: [String]) async throws {
         _ = try await send("/api/printer/command", method: "POST", body: ["commands": lines])
+    }
+
+    /// Sets the target of the aux nozzle (tool1) in °C.
+    func setTool1(_ target: Int) async throws {
+        _ = try await send("/api/printer/tool", method: "POST", body: ["command": "target", "targets": ["tool1": target]])
+    }
+
+    /// Sets the target of the chamber in °C, 0 to 80.
+    func setChamber(_ target: Int) async throws {
+        _ = try await send("/api/printer/chamber", method: "POST", body: ["command": "target", "target": target])
+    }
+
+    /// Sets the part fan in percent, with the route of the deck.
+    func setFan(_ percent: Int) async throws {
+        _ = try await send("/api/plugin/printdeck/fan", method: "POST", body: ["percent": percent])
+    }
+
+    /// Moves the nozzle up (positive) or down by adjust mm, at most 0.5 mm.
+    func adjustZ(_ adjust: Double) async throws {
+        _ = try await send("/api/plugin/printdeck/zoffset", method: "POST", body: ["adjust": adjust])
+    }
+
+    /// Sets the speed of the print in percent, 10 to 300.
+    func setSpeed(_ factor: Int) async throws {
+        _ = try await send("/api/printer/printhead", method: "POST", body: ["command": "feedrate", "factor": factor])
+    }
+
+    /// Sets the speed level of a Bambu Lab printer by its name.
+    func setSpeedLevel(_ name: String) async throws {
+        _ = try await send("/api/printer/printhead", method: "POST", body: ["command": "feedrate", "level": name])
+    }
+
+    /// Sets the flow of the print in percent, 10 to 300.
+    func setFlow(_ factor: Int) async throws {
+        _ = try await send("/api/printer/tool", method: "POST", body: ["command": "flowrate", "factor": factor])
+    }
+
+    /// Extrudes mm of filament, or retracts with a negative mm, -150 to 150. The nozzle must be hot.
+    func extrude(_ mm: Double) async throws {
+        _ = try await send("/api/plugin/printdeck/filament", method: "POST", body: ["action": "extrude", "mm": mm])
+    }
+
+    /// Loads the filament: of a tray of an AMS by its number, or of the extruder of a Klipper
+    /// printer with no tray. The nozzle of a Klipper printer must be hot.
+    func loadFilament(tray: Int? = nil) async throws {
+        var body: [String: Any] = ["action": "load"]
+        if let tray { body["tray"] = tray }
+        _ = try await send("/api/plugin/printdeck/filament", method: "POST", body: body)
+    }
+
+    /// Unloads the filament: back to its tray, or out of the extruder of a Klipper printer.
+    func unloadFilament() async throws {
+        _ = try await send("/api/plugin/printdeck/filament", method: "POST", body: ["action": "unload"])
+    }
+
+    /// Dries the filament of an AMS unit ("A") at temp °C for hours.
+    func dry(unit: String, temp: Int, hours: Int, filament: String) async throws {
+        _ = try await send("/api/plugin/printdeck/ams/\(unit)/dry", method: "POST",
+                           body: ["temp": temp, "hours": hours, "filament": filament])
+    }
+
+    /// Stops the drying of an AMS unit.
+    func stopDrying(unit: String) async throws {
+        _ = try await send("/api/plugin/printdeck/ams/\(unit)/dry", method: "DELETE")
     }
 
     /// Deletes a G-code file. The deck refuses the file of the print that runs.

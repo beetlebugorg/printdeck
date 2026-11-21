@@ -198,6 +198,13 @@ struct ReadoutCell: View {
         .padding(.bottom, compact ? 3 : 5)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 6).fill(p.lcdCell))
+        // The nozzle in use has a mark at its top right, as on the deck.
+        .overlay(alignment: .topTrailing) {
+            if readout.inUse {
+                RoundedRectangle(cornerRadius: 2).fill(p.orange).frame(width: 6, height: 6).padding(5)
+                    .accessibilityLabel("Prints now")
+            }
+        }
         .overlay(alignment: .bottom) {
             if readout.power > 0 {
                 GeometryReader { g in
