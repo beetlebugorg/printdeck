@@ -99,7 +99,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		mux.Handle("/", rs.Handler())
 		registerSystemPage(mux, rs, pr, up, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
 		registerRollPages(mux, rs, pr, app)
-		registerSlicer(mux, rs, slicerDir, deckKeys.ValidRequest)
+		registerSlicer(mux, rs, slicerDir, listKey(deckKeys, append([]*octoapi.Server{api}, otherAPIs...)))
 		// The 3D window of the desktop app shows the simulated printer of the deck, with an API key.
 		if k, ok := pr.(*printer.Klippy); ok && api != nil {
 			registerSim(mux, k, api.ValidKey)
@@ -470,4 +470,21 @@ func (k *keyAdmin) RemoveKey(id string) error {
 		}
 	}
 	return errors.New("no such key")
+}
+
+// listKey reports that a request has a key for the list of the printers (/slicer/printer.json): a
+// deck key, or the key of any printer of the deck in apis (nil for a printer with no API). A
+// slicer that paired before deck keys, or under /printers/<id>/, lists the printers too.
+func listKey(deck *octoapi.DeckKeys, apis []*octoapi.Server) func(*http.Request) bool {
+	return func(r *http.Request) bool {
+		if deck.ValidRequest(r) {
+			return true
+		}
+		for _, a := range apis {
+			if a != nil && a.ValidKey(r) {
+				return true
+			}
+		}
+		return false
+	}
 }

@@ -25,12 +25,12 @@ const slicerCSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; wor
 // deck. The app slices in the browser, and sends the G-code to the deck (POST /api/files/local,
 // with the login). A print starts only after a press on the touch screen. An image with no zslice
 // app has no /slicer/ page.
-func registerSlicer(mux *http.ServeMux, rs *remote.Server, dir string, deckKey func(*http.Request) bool) {
+func registerSlicer(mux *http.ServeMux, rs *remote.Server, dir string, apiKey func(*http.Request) bool) {
 	// The app adds the deck as its printer. The empty url is the server of the page, and https
 	// the HTTPS address of the deck, or "" (https.go). A deck with many printers also lists each
 	// printer in printers: its url is "" for the first printer and /printers/<id> for another. The
-	// file needs the login, or a deck key (an App Keys key of the whole deck): a slicer app reads
-	// it after the Allow on the deck.
+	// file needs the login, or a key that apiKey takes (web.go: a deck key or the key of a printer
+	// of the deck): a slicer app reads it after the Allow on the deck.
 	printerFile := func(w http.ResponseWriter, r *http.Request) {
 		// A JSON file for the apps: the zslice web app reads it from its own origin (remote.CORS),
 		// so it gets no headers of the page of the app (slicerHeaders).
@@ -41,7 +41,7 @@ func registerSlicer(mux *http.ServeMux, rs *remote.Server, dir string, deckKey f
 	}
 	authed := rs.Auth(printerFile)
 	mux.HandleFunc("GET /slicer/printer.json", func(w http.ResponseWriter, r *http.Request) {
-		if deckKey != nil && deckKey(r) {
+		if apiKey != nil && apiKey(r) {
 			printerFile(w, r)
 			return
 		}
