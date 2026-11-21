@@ -155,7 +155,9 @@ the root of its deck for a new key.
 
 When the owner removes the deck key on the deck, each printer of the deck answers 403. The home
 screen then shows one Connect again for the deck, and the cards of its printers wait for a new
-key. The new deck key goes to each printer of the deck.
+key. The new deck key goes to each printer of the deck. Only a 403 with `"error": "Invalid API key"`
+counts as a refused key. The deck also sends 403 with a good key, to a G-code command while
+Signed prints only is on, and the app shows that reason.
 
 ## Network
 

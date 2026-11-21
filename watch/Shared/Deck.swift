@@ -627,13 +627,17 @@ struct DeckClient {
         return data
     }
 
-    /// The error of a reply, or nil for a success. A 403 is a key that the deck does not have: a
-    /// removed deck key gives it for each printer of the deck.
+    /// The error of a reply, or nil for a success. The deck sends 403 for a key that it does not
+    /// have ("Invalid API key"): a removed deck key gives it for each printer of the deck. It also
+    /// sends 403 with a good key for a G-code command while Signed prints only is on, and then
+    /// the error has the reason.
     static func error(code: Int, data: Data) -> DeckError? {
         switch code {
         case 200..<300:
             return nil
         case 403:
+            let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
+            if let msg, msg != "Invalid API key" { return .refused(msg) }
             return .badKey
         case 400, 409:
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]

@@ -158,6 +158,14 @@ final class PrintersTests: XCTestCase {
             return XCTFail("403 is no bad key")
         }
         XCTAssertNil(DeckClient.error(code: 204, data: Data()))
+        // With Signed prints only on, the deck refuses a G-code command with 403 and a good key.
+        let signed = #"{"error":"Signed prints only is on: the deck accepts no G-code commands from apps"}"#
+        guard case .refused(let msg)? = DeckClient.error(code: 403, data: Data(signed.utf8)) else {
+            return XCTFail("the 403 of Signed prints only is a bad key")
+        }
+        XCTAssertTrue(msg.hasPrefix("Signed prints only is on"))
+        XCTAssertNil(DeckProblem.of(DeckError.refused(msg), sharedDeck: true))
+        guard case .badKey? = DeckClient.error(code: 403, data: Data()) else { return XCTFail("403 with no body") }
         XCTAssertEqual(DeckProblem.of(DeckError.badKey, sharedDeck: true), .key)
         XCTAssertEqual(DeckProblem.of(DeckError.badKey, sharedDeck: false), .key)
 
