@@ -247,25 +247,60 @@ final class DeckModel: Identifiable {
     /// The controls that the app shows for this printer now.
     var controls: Controls { Controls(deck: deck, status: status, live: live) }
 
-    /// Runs a control on the deck: shows the text while it runs, or the error of the deck after
-    /// it, and reads the deck again. It reports that the deck took the control.
+    /// Runs a control on the deck, and checks its effect: after the deck accepts it, the app reads
+    /// the status until it shows the change, and shows the change. When the status does not show
+    /// it in time, or cannot show it, the text says so. taken runs when the deck accepts the control.
+    /// It reports that the deck took the control.
     @discardableResult
-    func run(_ doing: String, _ f: @escaping (DeckClient) async throws -> Void) async -> Bool {
+    func run(_ doing: String, effect: Effect, taken: (() -> Void)? = nil,
+             _ f: @escaping (DeckClient) async throws -> Void) async -> Bool {
         guard !sending else { return false }
         sending = true
-        defer { sending = false }
         generation += 1
-        show(doing, for: 30)
-        var ok = true
+        checks += 1
+        let token = checks
+        let before = status
+        show(doing, for: 60)
         do {
             try await f(DeckClient(settings: settings))
-            show(doing, for: 3)
         } catch {
-            ok = false
+            sending = false
             show(errorText(error), for: 8)
+            await refresh()
+            return false
         }
-        await refresh()
-        return ok
+        // The next control can go now, and the page of this one can close: the screen of the
+        // printer shows the check.
+        sending = false
+        taken?()
+        await check(effect, before: before, token: token)
+        return true
+    }
+
+    /// The number of the last control: only its check shows its text.
+    private var checks = 0
+
+    /// Reads the status about once a second until it shows the effect, or until the timeout.
+    private func check(_ effect: Effect, before: Status?, token: Int) async {
+        func say(_ text: String, _ seconds: Double) {
+            if token == checks { show(text, for: seconds) }
+        }
+        if let text = effect.unobservable {
+            await refresh()
+            say(text, 6)
+            return
+        }
+        let end = Date().addingTimeInterval(effect.timeout)
+        repeat {
+            await refresh()
+            if token != checks { return }
+            if live, let st = status, let text = effect.confirmed(before: before, after: st) {
+                say(text, 5)
+                return
+            }
+            try? await Task.sleep(for: .seconds(1))
+        } while Date() < end && !Task.isCancelled
+        say(effect.unconfirmed(before: before), 8)
     }
 
     enum Command {
@@ -290,22 +325,17 @@ final class DeckModel: Identifiable {
             show("Resume on the touch screen of the deck", for: 8)
             return
         }
-        sending = true
-        defer { sending = false }
-        // A read that started before the command has the old state.
-        generation += 1
-        show(command.doing, for: 30)
-        let client = DeckClient(settings: settings)
-        do {
+        let effect: Effect = switch command {
+        case .pause: .pause
+        case .resume: .resume
+        case .cancel: .cancel
+        }
+        await run(command.doing, effect: effect) { client in
             switch command {
             case .pause: try await client.pause()
             case .resume: try await client.resume()
             case .cancel: try await client.cancel()
             }
-            show(command.doing, for: 4)
-        } catch {
-            show(errorText(error), for: 8)
         }
-        await refresh()
     }
 }

@@ -70,7 +70,7 @@ private struct FanRow: View {
         Menu {
             ForEach([0, 25, 50, 75, 100], id: \.self) { pct in
                 Button(pct == 0 ? "Off" : "\(pct)%") {
-                    Task { await model.run("Fan \(pct == 0 ? "off" : "\(pct)%")") { try await $0.gcode([Gcode.fan(pct)]) } }
+                    Task { await model.run("Fan \(pct == 0 ? "off" : "\(pct)%")", effect: .fan(pct)) { try await $0.gcode([Gcode.fan(pct)]) } }
                 }
             }
         } label: {
@@ -132,10 +132,10 @@ struct HeaterSheet: View {
                     Button {
                         let t = target
                         Task {
-                            let ok = await model.run(t == 0 ? "\(heater.name) off" : "Heating the \(heater.name.lowercased())") {
+                            await model.run(t == 0 ? "\(heater.name) off" : "Heating the \(heater.name.lowercased())",
+                                            effect: heater == .nozzle ? .nozzleTarget(t) : .bedTarget(t), taken: { dismiss() }) {
                                 if heater == .nozzle { try await $0.setTool(t) } else { try await $0.setBed(t) }
                             }
-                            if ok { dismiss() }
                         }
                     } label: {
                         Text(target == 0 ? "Turn off the \(heater.name.lowercased()) of \(short)" : "Heat \(short) to \(target)°")
@@ -292,7 +292,7 @@ struct ControlSection: View {
     }
 
     private func babystep(_ mm: Double) {
-        Task { await model.run(mm < 0 ? "Nozzle down 0.025 mm" : "Nozzle up 0.025 mm") { try await $0.gcode([Gcode.babystep(mm)]) } }
+        Task { await model.run(mm < 0 ? "Nozzle down 0.025 mm" : "Nozzle up 0.025 mm", effect: .babystep(mm)) { try await $0.gcode([Gcode.babystep(mm)]) } }
     }
 
     /// Why a control is off, or nil.
@@ -376,7 +376,7 @@ struct MoveView: View {
         }
         .confirmationDialog(homeQuestion, isPresented: Binding(get: { homing != nil }, set: { if !$0 { homing = nil } }),
                             titleVisibility: .visible, presenting: homing) { axes in
-            Button("Home \(short)") { Task { await model.run("Homing") { try await $0.home(axes) } } }
+            Button("Home \(short)") { Task { await model.run("Homing", effect: .home(axes)) { try await $0.home(axes) } } }
             Button("Back", role: .cancel) {}
         }
         .overlay(alignment: .bottom) {
@@ -402,7 +402,7 @@ struct MoveView: View {
 
     private func key(_ symbol: String, _ name: String, _ f: @escaping (DeckClient) async throws -> Void) -> some View {
         Button {
-            Task { await model.run("Moving \(name)", f) }
+            Task { await model.run("Moving \(name)", effect: .jog, f) }
         } label: {
             Image(systemName: symbol).font(.title2).frame(width: 64, height: 52)
         }

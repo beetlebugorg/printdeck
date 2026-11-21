@@ -20,6 +20,10 @@ network. Each printer of a deck with many printers is a printer of its own in th
 - **Dialogs**: each dialog that starts, stops, moves or heats names the printer, for example
   "Pause the print on TAZ Workhorse?" with the key "Pause TAZ". The app opens a printer only after
   a tap. A deck with one printer has no label and no deck name.
+- **The effect of a control**: after the deck accepts a control, the app reads the status about
+  once a second until it shows the change, and shows the change: "Bed target 60 °C", "Homed X Y Z",
+  the new position, "Paused". When the status does not show the change in time, the text says so.
+  The status has no Z offset, so a change of the Z offset shows as sent only.
 - **G-code controls**: the fan and the Z offset go to the deck as G-code, so they need a Klipper
   printer and Signed prints only off (`signed_only` in `/api/plugin/printdeck`). Move, home and
   the targets of the heaters use their own routes, and stay on.

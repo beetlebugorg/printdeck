@@ -105,3 +105,94 @@ enum StateText {
         return ["Print done", "Print failed"].contains(st.lcd?.state ?? "")
     }
 }
+
+/// What a control changes on the printer, and how a later status shows it. The app shows a
+/// control as done only when a status after it shows the change.
+enum Effect: Equatable {
+    case nozzleTarget(Int)
+    case bedTarget(Int)
+    /// The part fan in percent.
+    case fan(Int)
+    /// A home of the axes ("x", "y", "z"), or of all axes with none.
+    case home([String])
+    case jog
+    /// A move of the nozzle during a print, in mm. The deck does not report the Z offset.
+    case babystep(Double)
+    case pause, resume, cancel
+    /// A print of the file with the name.
+    case print(String)
+
+    /// The seconds that the app waits for a status that shows the change. A pause waits for the
+    /// move of the printer to end.
+    var timeout: Double {
+        switch self {
+        case .pause, .cancel, .print: 20
+        case .home: 30
+        default: 8
+        }
+    }
+
+    /// The text when the status cannot show the change, or nil.
+    var unobservable: String? {
+        guard case .babystep(let mm) = self else { return nil }
+        return String(format: "Sent: nozzle %@ %.3f mm. The deck does not report the Z offset.", mm < 0 ? "down" : "up", abs(mm))
+    }
+
+    /// The text that the status after the control shows its change, or nil while it does not show
+    /// it. before is the status before the control.
+    func confirmed(before: Status?, after st: Status) -> String? {
+        let lcd = st.lcd
+        switch self {
+        case .nozzleTarget(let t):
+            guard let now = lcd?.tool_target ?? st.tool?.target, Int(now.rounded()) == t else { return nil }
+            return t == 0 ? "Nozzle off" : "Nozzle target \(t) °C"
+        case .bedTarget(let t):
+            guard let now = lcd?.bed_target ?? st.bed?.target, Int(now.rounded()) == t else { return nil }
+            return t == 0 ? "Bed off" : "Bed target \(t) °C"
+        case .fan(let pct):
+            // The deck sends the fan as 0 to 1, from M106 S0 to S255.
+            guard let f = lcd?.fan, abs(f * 100 - Double(pct)) < 1.5 else { return nil }
+            return pct == 0 ? "Fan off" : "Fan \(pct)%"
+        case .home(let axes):
+            // The status screen of the deck says "XYZ homed" when all axes are homed, and has the
+            // position once an axis is homed.
+            if axes.isEmpty || Set(axes) == ["x", "y", "z"] {
+                guard lcd?.message == "XYZ homed" else { return nil }
+                return "Homed X Y Z" + (lcd?.position.map { " · " + $0 } ?? "")
+            }
+            guard let pos = lcd?.position, pos != before?.lcd?.position else { return nil }
+            return "Position " + pos
+        case .jog:
+            guard let pos = lcd?.position, pos != before?.lcd?.position else { return nil }
+            return "Position " + pos
+        case .babystep:
+            return nil
+        case .pause:
+            return st.busy && st.paused ? "Paused" : nil
+        case .resume:
+            return st.busy && !st.paused ? "Printing" : nil
+        case .cancel:
+            return st.busy ? nil : "Cancelled"
+        case .print(let name):
+            return st.busy ? "Printing " + name : nil
+        }
+    }
+
+    /// The text when the status does not show the change within the timeout.
+    func unconfirmed(before: Status?) -> String {
+        switch self {
+        case .nozzleTarget(let t): "The deck took the command, but the nozzle target is not \(t) °C yet."
+        case .bedTarget(let t): "The deck took the command, but the bed target is not \(t) °C yet."
+        case .fan(let pct): "The deck took the command, but the fan is not at \(pct)% yet."
+        case .home: "The deck took the command, but the status does not show the axes homed yet."
+        case .jog where before?.lcd?.position == nil:
+            "The deck took the move. It reports no position before a home."
+        case .jog: "The deck took the move, but the status shows no new position yet."
+        case .babystep: unobservable ?? ""
+        case .pause: "The deck took the command, but the print is not paused yet."
+        case .resume: "The deck took the command, but the print has not resumed yet."
+        case .cancel: "The deck took the command, but the print has not stopped yet."
+        case .print: "The deck took the file, but no print runs yet. Check the touch screen of the deck."
+        }
+    }
+}
