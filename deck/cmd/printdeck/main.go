@@ -228,7 +228,12 @@ func run(cfg config.Config) {
 	printerFormat = func(id string) (string, string) {
 		for i, p := range printers {
 			if (id == "" && i == 0) || (id != "" && p.ID == id) {
-				return backendFormat(backends[i])
+				files, model := backendFormat(backends[i])
+				// A Klipper printer: the machine of its printer.cfg, so a slicer picks its model.
+				if _, ok := backends[i].(*printer.Klippy); ok && model == "" {
+					model = printer.ConfigModel(cfgs[i].KlipperConfig)
+				}
+				return files, model
 			}
 		}
 		return "", ""

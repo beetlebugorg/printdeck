@@ -151,3 +151,20 @@ func TestConfigModel(t *testing.T) {
 		t.Errorf("no file: %q", got)
 	}
 }
+
+// A model line names the machine, also in a file from an example, and in the lines after the
+// first one.
+func TestConfigModelLine(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "printer.cfg")
+	for _, c := range []struct{ text, want string }{
+		{"# Klipper's example config printer-lulzbot-taz-workhorse-2019.cfg, chosen on the Printdeck.\n" +
+			"# Check each setting.\n" + ModelLine + " LulzBot TAZ Workhorse SE 0.5 mm\n[mcu]\n", "LulzBot TAZ Workhorse SE 0.5 mm"},
+		{"[mcu]\n  " + ModelLine + "  Mini 2  \n", "Mini 2"},
+		{ModelLine + "\n[mcu]\n", ""},
+	} {
+		os.WriteFile(path, []byte(c.text), 0o644)
+		if got := ConfigModel(path); got != c.want {
+			t.Errorf("%q: model %q, not %q", c.text, got, c.want)
+		}
+	}
+}
