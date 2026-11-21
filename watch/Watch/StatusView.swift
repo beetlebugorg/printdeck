@@ -90,7 +90,7 @@ struct StatusView: View {
     private var scroll: some View {
         ScrollView {
             VStack(spacing: 8) {
-                PanelView(text: panel)
+                PanelView(text: panel, deck: model.deck)
                 // The camera stops while the watch is dimmed.
                 if let cam = model.camera, cam.on, !dimmed {
                     cameraPicture(cam)
@@ -135,10 +135,21 @@ struct StatusView: View {
             if new == .idle { scrolled = Date() }
         }
         #if DEBUG
-        // For screenshots in the simulator: PRINTDECK_SCREEN=bottom opens the end of the scroll.
-        .defaultScrollAnchor(ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] == "bottom" ? .bottom : .top)
+        // For screenshots in the simulator: PRINTDECK_SCREEN=bottom opens the end of the scroll, and
+        // PRINTDECK_SCREEN=panel the end of the panel.
+        .defaultScrollAnchor(debugAnchor)
         #endif
     }
+
+    #if DEBUG
+    private var debugAnchor: UnitPoint {
+        switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
+        case "bottom": .bottom
+        case "panel": UnitPoint(x: 0.5, y: 0.12)
+        default: .top
+        }
+    }
+    #endif
 
     /// The panel for the state now.
     private var panel: PanelText {

@@ -393,6 +393,8 @@ struct Filament: Codable, Equatable, Identifiable {
     var name: String?
     /// The part of a full spool that is left, 0 to 1, or nil when it is not known.
     var remain: Double?
+    /// The spool feeds the nozzle now, or nil from a deck that does not tell it.
+    var active: Bool?
 
     var id: Int { index }
 
@@ -418,6 +420,7 @@ struct Filament: Codable, Equatable, Identifiable {
         color = try c.decodeIfPresent(String.self, forKey: .color).flatMap { $0.isEmpty ? nil : $0 }
         name = try c.decodeIfPresent(String.self, forKey: .name).flatMap { $0.isEmpty ? nil : $0 }
         remain = try c.decodeIfPresent(Double.self, forKey: .remain)
+        active = try c.decodeIfPresent(Bool.self, forKey: .active)
     }
 
     /// The spool is in an AMS: its slot is a unit letter and a tray number.
@@ -494,6 +497,9 @@ struct Status: Codable, Equatable {
     var nozzles: [DeckNozzle]?
     /// The code of the build plate that the printer found on the heatbed, or nil.
     var plate: String?
+    /// The aux nozzle and the chamber of a printer that has them, or nil.
+    var tool1: Temp?
+    var chamber: Temp?
     /// The deck accepts only signed prints and refuses G-code commands from apps.
     var signedOnly: Bool?
     /// When the app read the status.
@@ -742,6 +748,8 @@ struct DeckClient {
         st.filaments = p.filaments
         st.nozzles = p.nozzles
         st.plate = p.plate.flatMap { $0.isEmpty ? nil : $0 }
+        st.tool1 = p.tool1
+        st.chamber = p.chamber
         st.signedOnly = p.signed_only
         if let t = pr?.temperature {
             st.tool = t["tool0"].map { Temp(actual: $0.actual, target: $0.target) }
@@ -1146,6 +1154,9 @@ struct PluginReply: Decodable {
     var nozzles: [DeckNozzle]?
     var plate: String?
     var signed_only: Bool?
+    /// The aux nozzle and the chamber, {"actual", "target"}, or null.
+    var tool1: Temp?
+    var chamber: Temp?
 }
 
 private struct TimelapseReply: Decodable {

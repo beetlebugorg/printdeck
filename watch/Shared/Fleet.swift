@@ -25,7 +25,8 @@ final class Fleet {
         var list = Store.decks
         #if DEBUG
         // For screenshots in the simulator: PRINTDECK_ADDRESS and PRINTDECK_KEY set one deck, and
-        // PRINTDECK_DECKS sets several as "name|address|key,name|address|key".
+        // PRINTDECK_DECKS sets several as "name|address|key,name|address|key". A printer of a deck
+        // with many printers has its label and color too: "name|address|key|label|#rrggbb".
         let env = ProcessInfo.processInfo.environment
         if let a = env["PRINTDECK_ADDRESS"], let k = env["PRINTDECK_KEY"] {
             list = [SavedDeck(id: "debug", name: "Printdeck", settings: DeckSettings(address: a, key: k))]
@@ -33,8 +34,15 @@ final class Fleet {
         if let d = env["PRINTDECK_DECKS"] {
             list = d.split(separator: ",").enumerated().compactMap { i, part in
                 let f = part.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-                guard f.count == 3 else { return nil }
-                return SavedDeck(id: "debug\(i)", name: f[0], settings: DeckSettings(address: f[1], key: f[2]))
+                guard f.count == 3 || f.count == 5 else { return nil }
+                var d = SavedDeck(id: "debug\(i)", name: f[0], settings: DeckSettings(address: f[1], key: f[2]))
+                // A printer of a deck with many printers: its label and its color.
+                if f.count == 5 {
+                    d.printer = "debug\(i)"
+                    d.label = f[3]
+                    d.color = f[4]
+                }
+                return d
             }
         }
         #endif

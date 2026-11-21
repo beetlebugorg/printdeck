@@ -32,9 +32,12 @@ network. Each printer of a deck with many printers is a printer of its own in th
   starts or resumes a resin print, because both turn on the UV light. The app has Pause and Cancel.
 - **Watch app**: the print of the deck that prints, or of the first deck, as the status panel of
   the touch screen of the deck: the nozzle, the bed and the fan (the plate, the time and the time
-  left on a resin deck), the state and the end, the time left and the time so far, the layer, and
-  the progress bar, in the amber of the deck on its dark window. Turn the Digital Crown for the
-  camera, the model, the layer times and the filament. Tap for Pause, Resume or Cancel.
+  left on a resin deck), the state and the clock time of the end, the time left and the time so
+  far, the layer, the loaded spools as little rolls, and the progress bar, in the amber of the
+  deck on its dark window. A printer with two nozzles and a chamber has the aux nozzle and the
+  chamber too, in two rows, once the deck sends `tool1` and `chamber`. A printer of a deck with
+  many printers has its label and its name at the top. Turn the Digital Crown for the camera, the
+  model, the layer times and the filament. Tap for Pause, Resume or Cancel.
 - **Complications** and **widgets**: the progress and the time left, on the watch face, the Home
   Screen and the Lock Screen. Edit a widget to choose its deck. The default is the deck that
   prints: with two prints, the print that ends first.
@@ -243,12 +246,13 @@ All other requests have the header `X-Api-Key`:
 ## Screenshots in the simulator
 
 In a debug build, `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set one deck, and `PRINTDECK_DECKS` sets
-several, as `TAZ|127.0.0.1:7361|key1,Phenom|127.0.0.1:7362|key2`. `PRINTDECK_DECK_KEY` connects to
+several, as `TAZ|127.0.0.1:7361|key1,Phenom|127.0.0.1:7362|key2`, and a printer of a deck with
+many printers as `name|address|key|label|#rrggbb`. `PRINTDECK_DECK_KEY` connects to
 a deck with a deck key, as `127.0.0.1:7361|key`, and adds each printer of the deck. `PRINTDECK_SCREEN` opens a
-screen: `menu` or `cancel` on the watch, `deck`, `files`, `setup`, `camera`, `timelapse`, `nozzle`,
-`move` or `loading` on the iPhone. The screens of a printer open the printer of `PRINTDECK_PRINTER`
-(its place in the list, from 0), or the first printer. `PRINTDECK_SCROLL` scrolls the printer
-screen to `temps`, `filament`, `control`, `queue` or `info`.
+screen: `menu`, `cancel`, `panel` or `bottom` on the watch, `deck`, `files`, `setup`, `camera`,
+`timelapse`, `nozzle`, `move` or `loading` on the iPhone. The screens of a printer open the printer
+of `PRINTDECK_PRINTER` (its place in the list, from 0), or the first printer. `PRINTDECK_SCROLL`
+scrolls the printer screen to `temps`, `filament`, `control`, `queue` or `info`.
 With `xcrun simctl launch`, add the prefix `SIMCTL_CHILD_`. The deck of `printdeck app -sim`
 reads its API key from `OCTOPRINT_API_KEY`.
 
