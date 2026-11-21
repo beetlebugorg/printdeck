@@ -283,14 +283,18 @@ func (a *app) showPlanPage(projectID, id string) {
 		a.planChoices[i] = planChoice{on: (pp.Changed || p.Kind == wire.BuildRelease) && pp.SliceError == "", count: max(1, pp.Count)}
 	}
 	a.firstChoice()
-	// The kind of print: the kind of the first part that changed, else the kind of the first part.
-	a.planProcess = p.Parts[0].Process
+	// The printer: the printer of the first part that changed, else of the first part.
+	first := p.Parts[0]
 	for _, pp := range p.Parts {
 		if pp.Changed {
-			a.planProcess = pp.Process
+			first = pp
 			break
 		}
 	}
+	a.planPrinter, a.planProcess, a.planLive = first.Printer, first.Process, nil
+	setHidden("plLiveCard", true)
+	byID("plLivePlates").Set("textContent", "")
+	byID("plLivePlates").Get("dataset").Set("build", "")
 	a.keepProcess()
 	doc.Set("title", planName(p)+" · "+v.Name+" · Printdeck")
 	byID("plBack").Set("href", "/projects/"+v.Slug+"/plans")
@@ -346,7 +350,7 @@ func (a *app) checkParts(want func(wire.ProjectPlanPart) bool) {
 		return
 	}
 	for i, pp := range a.plan.Parts {
-		a.planChoices[i].on = want(pp) && (a.planProcess == "" || pp.Process == a.planProcess)
+		a.planChoices[i].on = want(pp) && pp.Printer == a.planPrinter
 	}
 	a.firstChoice()
 	a.planPlates = nil
@@ -354,42 +358,44 @@ func (a *app) checkParts(want func(wire.ProjectPlanPart) bool) {
 	a.drawPlates()
 }
 
-// keepProcess turns off the parts of the other kind of print: a plate prints on one printer.
+// keepProcess turns off the parts of the other printers: the page shows the parts of one printer
+// (planPrinter), so each plate is for that printer.
 func (a *app) keepProcess() {
 	for i, pp := range a.plan.Parts {
-		if pp.Process != a.planProcess {
+		if pp.Printer != a.planPrinter {
 			a.planChoices[i].on = false
 		}
 	}
 }
 
-// drawProcess draws the choice of the kind of print: FDM or resin, when the plan has both.
+// drawProcess draws the choice of the printer when the plan has parts for more than one: a chip
+// for each printer, in the order of the parts. A tap shows the parts of that printer only.
 func (a *app) drawProcess() {
 	box := byID("plProcess")
 	box.Set("textContent", "")
-	kinds := []string{}
-	printer := map[string]string{}
+	var printers []wire.ProjectPlanPart // the first part of each printer
+	seen := map[string]bool{}
 	for _, pp := range a.plan.Parts {
-		if _, ok := printer[pp.Process]; !ok {
-			kinds = append(kinds, pp.Process)
-			printer[pp.Process] = printerName(pp.Printer)
+		if !seen[pp.Printer] {
+			seen[pp.Printer] = true
+			printers = append(printers, pp)
 		}
 	}
-	box.Set("hidden", len(kinds) < 2)
-	for _, k := range []string{"fdm", "resin"} {
-		k := k
-		if _, ok := printer[k]; !ok {
-			continue
+	box.Set("hidden", len(printers) < 2)
+	for _, pp := range printers {
+		pp := pp
+		name := printerName(pp.Printer)
+		if pp.Process == "resin" {
+			name += " · resin"
 		}
-		name := map[string]string{"fdm": "FDM", "resin": "Resin"}[k]
-		b := el("button", "chip", name+" · "+printer[k])
+		b := el("button", "chip", name)
 		b.Set("type", "button")
-		b.Call("setAttribute", "aria-pressed", strconv.FormatBool(a.planProcess == k))
+		b.Call("setAttribute", "aria-pressed", strconv.FormatBool(a.planPrinter == pp.Printer))
 		b.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
-			if a.planProcess == k {
+			if a.planPrinter == pp.Printer {
 				return nil
 			}
-			a.planProcess = k
+			a.planPrinter, a.planProcess = pp.Printer, pp.Process
 			a.keepProcess()
 			a.planPlates = nil
 			a.drawPlanParts()
@@ -419,16 +425,17 @@ func (a *app) partGroups() [][]int {
 
 // firstChoice keeps one variant of each part on: a release plan or the first look of a plan has
 // all the changed variants on, and a test round tests one quality at a time. The first variant
-// that changed stays on.
+// that changed stays on, for each printer.
 func (a *app) firstChoice() {
 	for _, g := range a.partGroups() {
-		kept := false
+		kept := map[string]bool{} // by printer
 		for _, i := range g {
 			if a.planChoices[i].on {
-				if kept {
+				pr := a.plan.Parts[i].Printer
+				if kept[pr] {
 					a.planChoices[i].on = false
 				}
-				kept = true
+				kept[pr] = true
 			}
 		}
 	}
@@ -458,12 +465,18 @@ func (a *app) drawPlanParts() {
 		a.drawPlates()
 	}
 	a.drawProcess()
-	for _, g := range a.partGroups() {
-		g := g
-		first := p.Parts[g[0]]
-		if first.Process != a.planProcess {
-			continue // the other kind of print
+	for _, all := range a.partGroups() {
+		// The variants of the part for the printer of the page; a part with none has no row.
+		var g []int
+		for _, i := range all {
+			if p.Parts[i].Printer == a.planPrinter {
+				g = append(g, i)
+			}
 		}
+		if len(g) == 0 {
+			continue
+		}
+		first := p.Parts[g[0]]
 		on, changed := false, false
 		shownHere := false
 		for _, i := range g {
@@ -1044,13 +1057,84 @@ func (a *app) slicePlan() {
 		req.Plates = append(req.Plates, plate)
 	}
 	say("plMsg", nil, "Starting the slice…")
+	playing := a.playing
 	var b wire.ProjectBuild
 	if err := a.api("POST", "/projects/"+a.view.ID+"/plans/"+a.plan.ID+"/builds", req, &b); err != nil {
 		say("plMsg", err, "")
 		return
 	}
 	say("plMsg", nil, "")
-	openAddress(buildPath(a.view.Slug, b.ID))
+	// The page stays: the card "The slice" shows the progress of the run, and then the plates
+	// with their facts, their settings and their 3D views. The build page has the approval.
+	a.plan.Builds = append([]wire.ProjectBuild{b}, a.plan.Builds...)
+	a.drawPlanBuilds()
+	a.drawLive(b)
+	byID("plLiveCard").Call("scrollIntoView", map[string]any{"behavior": "smooth", "block": "start"})
+	for b.State == wire.BuildSlicing {
+		time.Sleep(3 * time.Second)
+		if a.playing != playing {
+			return // another page
+		}
+		var nb wire.ProjectBuild
+		if a.api("GET", "/projects/"+a.view.ID+"/builds/"+b.ID, nil, &nb) != nil {
+			continue
+		}
+		if a.playing != playing {
+			return
+		}
+		b = nb
+		a.drawLive(b)
+	}
+	for i := range a.plan.Builds {
+		if a.plan.Builds[i].ID == b.ID {
+			a.plan.Builds[i] = b
+		}
+	}
+	a.drawPlanBuilds()
+}
+
+// drawLive draws the card "The slice" of the plan page for the build b: its state and progress
+// while it slices, its error, and its plates when it is ready.
+func (a *app) drawLive(b wire.ProjectBuild) {
+	a.planLive = &b
+	setHidden("plLiveCard", false)
+	byID("plLiveOpen").Set("href", buildPath(a.view.Slug, b.ID))
+	text := count(len(b.Plates), "plate", "plates") + " · " + buildStateText(b.State)
+	if b.State == wire.BuildReady {
+		text = buildStateText(b.State) // buildFacts has the plates
+	}
+	switch b.State {
+	case wire.BuildSlicing:
+		if b.Progress != "" {
+			text += " · " + b.Progress
+		} else {
+			text += " · the slice run on GitHub starts"
+		}
+		text += " · " + clock(int(time.Since(b.Created).Seconds()))
+	case wire.BuildFailed:
+		if b.Error != "" {
+			text += " · " + b.Error
+		}
+	case wire.BuildReady:
+		text += " · " + buildFacts(b) + ". Approve the plates on the build page."
+	}
+	setText("plLiveText", text)
+	plates := byID("plLivePlates")
+	if b.State != wire.BuildReady {
+		plates.Set("textContent", "")
+		return
+	}
+	if plates.Get("dataset").Get("build").String() == b.ID {
+		return // drawn already, with its 3D views
+	}
+	plates.Set("textContent", "")
+	plates.Get("dataset").Set("build", b.ID)
+	if a.plateViews == nil || a.plateBuild != b.ID {
+		a.plateViews, a.plateBuild = map[string]js.Value{}, b.ID
+	}
+	for n := range b.Plates {
+		plates.Call("appendChild", a.plateCard(b, n))
+	}
 }
 
 // drawPlanBuilds draws the builds of the plan.
@@ -1240,6 +1324,73 @@ func (a *app) sliceAgain() {
 	openAddress(buildPath(a.view.Slug, nb.ID))
 }
 
+// plateCard returns the card of the plate n of the build b: its printer and state, its parts,
+// the facts and the settings of its slice, and its 3D view or its picture. The build page adds
+// the approval and the sending; the plan page shows it after a slice (slicePlan).
+func (a *app) plateCard(b wire.ProjectBuild, n int) js.Value {
+	pl := b.Plates[n]
+	card := el("section", "card", "")
+	h := el("h2", "", fmt.Sprintf("Plate %d · %s ", n+1, printerName(pl.Printer)))
+	if pl.State != "" {
+		h.Call("appendChild", el("span", "tag "+pl.State, buildStateText(pl.State)))
+	}
+	card.Call("appendChild", h)
+	var parts []string
+	for _, pp := range pl.Parts {
+		parts = append(parts, fmt.Sprintf("%s × %d", partLabel(pp.Name, pp.Variant), pp.Count))
+	}
+	card.Call("appendChild", el("p", "", strings.Join(parts, ", ")))
+	facts := el("dl", "facts", "")
+	fact := func(k, val string) {
+		if val == "" {
+			return
+		}
+		d := el("div", "", "")
+		d.Call("appendChild", el("dt", "", k))
+		d.Call("appendChild", el("dd", "", val))
+		facts.Call("appendChild", d)
+	}
+	fact("Profile", pl.Profile)
+	if pl.Material != "" || pl.MaterialName != "" {
+		d := el("div", "", "")
+		d.Call("appendChild", el("dt", "", "Material"))
+		dd := el("dd", "", "")
+		dd.Call("appendChild", materialEl(pl.MaterialName, pl.MaterialColor, pl.Material))
+		withReorder(dd, pl.MaterialURL, pl.MaterialLinks)
+		d.Call("appendChild", dd)
+		facts.Call("appendChild", d)
+	}
+	if pl.Seconds > 0 {
+		fact("Print time", clock(pl.Seconds))
+	}
+	if pl.Grams > 0 {
+		fact("Filament", fmt.Sprintf("%.0f g", pl.Grams))
+	}
+	if pl.ML > 0 {
+		fact("Resin", fmt.Sprintf("%.0f ml", pl.ML))
+	}
+	if pl.Layers > 0 {
+		fact("Layers", fmt.Sprintf("%d of %.2f mm", pl.Layers, pl.LayerHeight))
+	}
+	fact("File", pl.File)
+	fact("Slicer", pl.Slicer)
+	card.Call("appendChild", facts)
+	if set := settingsEl(pl.Settings); !set.IsNull() {
+		card.Call("appendChild", set)
+	}
+	if pl.FileURL != "" && pl.Process == "fdm" {
+		card.Call("appendChild", a.plateView(b, n))
+		card.Call("appendChild", el("p", "small dim", "Drag to turn the plate. Shift and drag, or two fingers, to move it. Scroll or pinch to zoom. Double-click for the start view. Click the view, then the arrow keys move the layer."))
+	} else if pl.PictureURL != "" {
+		img := el("img", "", "")
+		img.Set("src", pl.PictureURL)
+		img.Set("alt", "The plate")
+		img.Set("style", "max-width:100%;border-radius:8px")
+		card.Call("appendChild", img)
+	}
+	return card
+}
+
 // The build page.
 
 // showBuildPage shows the build id of the project. While the build slices, the page looks
@@ -1395,65 +1546,7 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 	}
 	for n, pl := range b.Plates {
 		n, pl := n, pl
-		card := el("section", "card", "")
-		h := el("h2", "", fmt.Sprintf("Plate %d · %s ", n+1, printerName(pl.Printer)))
-		if pl.State != "" {
-			h.Call("appendChild", el("span", "tag "+pl.State, buildStateText(pl.State)))
-		}
-		card.Call("appendChild", h)
-		var parts []string
-		for _, pp := range pl.Parts {
-			parts = append(parts, fmt.Sprintf("%s × %d", partLabel(pp.Name, pp.Variant), pp.Count))
-		}
-		card.Call("appendChild", el("p", "", strings.Join(parts, ", ")))
-		facts := el("dl", "facts", "")
-		fact := func(k, val string) {
-			if val == "" {
-				return
-			}
-			d := el("div", "", "")
-			d.Call("appendChild", el("dt", "", k))
-			d.Call("appendChild", el("dd", "", val))
-			facts.Call("appendChild", d)
-		}
-		fact("Profile", pl.Profile)
-		if pl.Material != "" || pl.MaterialName != "" {
-			d := el("div", "", "")
-			d.Call("appendChild", el("dt", "", "Material"))
-			dd := el("dd", "", "")
-			dd.Call("appendChild", materialEl(pl.MaterialName, pl.MaterialColor, pl.Material))
-			withReorder(dd, pl.MaterialURL, pl.MaterialLinks)
-			d.Call("appendChild", dd)
-			facts.Call("appendChild", d)
-		}
-		if pl.Seconds > 0 {
-			fact("Print time", clock(pl.Seconds))
-		}
-		if pl.Grams > 0 {
-			fact("Filament", fmt.Sprintf("%.0f g", pl.Grams))
-		}
-		if pl.ML > 0 {
-			fact("Resin", fmt.Sprintf("%.0f ml", pl.ML))
-		}
-		if pl.Layers > 0 {
-			fact("Layers", fmt.Sprintf("%d of %.2f mm", pl.Layers, pl.LayerHeight))
-		}
-		fact("File", pl.File)
-		fact("Slicer", pl.Slicer)
-		card.Call("appendChild", facts)
-		if set := settingsEl(pl.Settings); !set.IsNull() {
-			card.Call("appendChild", set)
-		}
-		if pl.FileURL != "" && pl.Process == "fdm" {
-			card.Call("appendChild", a.plateView(b, n))
-			card.Call("appendChild", el("p", "small dim", "Drag to turn the plate. Shift and drag, or two fingers, to move it. Scroll or pinch to zoom. Double-click for the start view. Click the view, then the arrow keys move the layer."))
-		} else if pl.PictureURL != "" {
-			img := el("img", "", "")
-			img.Set("src", pl.PictureURL)
-			img.Set("alt", "The plate")
-			img.Set("style", "max-width:100%;border-radius:8px")
-			card.Call("appendChild", img)
-		}
+		card := a.plateCard(b, n)
 		if pl.State == wire.PartRejected && pl.Reason != "" {
 			card.Call("appendChild", el("p", "", "Rejected by "+pl.By+": "+pl.Reason))
 		}
