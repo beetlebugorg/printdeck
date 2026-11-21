@@ -36,6 +36,7 @@ struct PrinterScreen: View {
                     .listRowInsets(EdgeInsets())
             }
             printSection(c)
+            MessagesSection()
             TemperatureSection(heater: $heater).id("temps")
             FilamentSection().id("filament")
             ControlSection().id("control")
@@ -167,6 +168,12 @@ struct PrinterScreen: View {
     @ViewBuilder private func printSection(_ c: Controls) -> some View {
         let st = model.status
         Section {
+            if let a = st?.controls?.action, !a.isEmpty, model.live {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text(a).font(.subheadline)
+                }
+            }
             if let st, st.busy, model.live {
                 PrintSummary(status: st)
                 HStack(spacing: 12) {
@@ -273,7 +280,8 @@ private struct PrintSummary: View {
                     Text(st.file ?? "Print")
                         .font(.headline)
                         .lineLimit(2)
-                    Text(st.paused ? "Paused" : StateText.of(st, live: true, error: nil))
+                    Text(st.paused ? "Paused" : st.controls?.preparing.flatMap { $0.isEmpty ? nil : $0 }
+                         ?? StateText.of(st, live: true, error: nil))
                         .font(.subheadline)
                         .foregroundStyle(st.paused ? .orange : .secondary)
                 }
@@ -324,6 +332,9 @@ private struct PrinterInfoSection: View {
             }
             if let plate = st?.plate { LabeledContent("Build plate", value: plate) }
             if st?.signedOnly == true { LabeledContent("Signed prints only", value: "On") }
+            if let cs = st?.controls, let h = cs.homed {
+                LabeledContent("Homed", value: h.isEmpty ? "None" : h.uppercased().map(String.init).joined(separator: " "))
+            }
             LabeledContent("Address", value: d.address)
         }
     }
@@ -341,6 +352,26 @@ private struct CameraPicker: View {
             }
         } label: {
             RowLabel("Camera", symbol: "video")
+        }
+    }
+}
+
+/// The messages of the printer, one line each: the HMS messages of a Bambu Lab printer have
+/// their codes in the text.
+private struct MessagesSection: View {
+    @Environment(DeckModel.self) private var model
+
+    var body: some View {
+        if let list = model.status?.controls?.messages, !list.isEmpty, model.live {
+            Section("Printer messages") {
+                ForEach(Array(list.enumerated()), id: \.offset) { _, line in
+                    Label {
+                        Text(line).font(.subheadline)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    }
+                }
+            }
         }
     }
 }

@@ -74,6 +74,7 @@ targets:
       - Notifications
       - Push
       - Shared/Deck.swift
+      - Shared/ControlState.swift
       - Shared/Service.swift
       - Shared/Store.swift
     info:
@@ -122,6 +123,7 @@ targets:
       - Push/PushCrypto.swift
       - Phone/Timelapse.swift
       - Shared/Deck.swift
+      - Shared/ControlState.swift
       - Shared/Service.swift
       - Shared/StatusPanel.swift
       - Shared/Projects.swift

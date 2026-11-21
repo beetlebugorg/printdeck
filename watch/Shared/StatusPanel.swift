@@ -10,6 +10,8 @@ struct PanelReadout: Equatable {
     var target = ""
     /// 0 to 1: the power of a heater that is on, or 0.
     var power = 0.0
+    /// The nozzle prints now, on a printer with two.
+    var inUse = false
 }
 
 /// A spool that the printer has loaded, as a little roll of the panel: its color, the part left,
@@ -139,13 +141,18 @@ enum StatusPanel {
         // A printer with two nozzles has the aux nozzle after the nozzle, and a printer with a
         // chamber has it between the bed and the fan, as the panel of the deck.
         var out = [heater("NOZZLE", lcd?.tool ?? st.tool?.actual, lcd?.tool_target ?? st.tool?.target, lcd?.tool_power)]
-        if let t = st.tool1 {
+        if let t = st.tool1 ?? st.controls?.tool1 {
             out.append(heater("AUX", t.actual, t.target, nil))
         } else if st.nozzles?.contains(where: { $0.role == "aux" }) == true {
             out.append(PanelReadout(name: "AUX", value: "--"))
         }
+        // The nozzle that prints now has a mark, as on the deck (tool_now). A deck before the
+        // field has none.
+        if out.count > 1, out[1].name == "AUX", let now = st.controls?.tool_now, now == 0 || now == 1 {
+            out[now].inUse = true
+        }
         out.append(heater("BED", lcd?.bed ?? st.bed?.actual, lcd?.bed_target ?? st.bed?.target, lcd?.bed_power))
-        if let c = st.chamber {
+        if let c = st.chamber ?? st.controls?.chamber {
             out.append(PanelReadout(name: "CHAMBER", value: String(format: "%.0f°", c.actual),
                                     target: c.target > 0 ? String(format: "→%.0f", c.target) : ""))
         }
