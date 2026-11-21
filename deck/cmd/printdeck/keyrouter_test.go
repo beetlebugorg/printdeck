@@ -87,11 +87,26 @@ func TestDeckKeyRoutes(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	registerSlicer(mux, remote.New(), filepath.Join(dir, "none"), dk.ValidRequest)
+	registerSlicer(mux, remote.New(), filepath.Join(dir, "none"), listKey(dk, []*octoapi.Server{first, nil, other}))
+	// A key of the second printer only, as a slicer that paired under /printers/<id>/.
+	other.Ask = first.Ask
+	w = httptest.NewRecorder()
+	om.ServeHTTP(w, httptest.NewRequest("POST", "/plugin/appkeys/request", strings.NewReader(`{"app":"old"}`)))
+	json.Unmarshal(w.Body.Bytes(), &req)
+	w = httptest.NewRecorder()
+	om.ServeHTTP(w, httptest.NewRequest("GET", "/plugin/appkeys/request/"+req.Token, nil))
+	var own struct {
+		Key   string `json:"api_key"`
+		Scope string `json:"scope"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &own)
+	if own.Key == "" || own.Scope != "printer" {
+		t.Fatalf("printer key %s", w.Body.String())
+	}
 	for _, c := range []struct {
 		key  string
 		want int
-	}{{ans.Key, 200}, {"", http.StatusUnauthorized}, {"wrong", http.StatusUnauthorized}} {
+	}{{ans.Key, 200}, {own.Key, 200}, {"", http.StatusUnauthorized}, {"wrong", http.StatusUnauthorized}} {
 		r := httptest.NewRequest("GET", "/slicer/printer.json", nil)
 		if c.key != "" {
 			r.Header.Set("X-Api-Key", c.key)
