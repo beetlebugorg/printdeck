@@ -144,7 +144,8 @@ Deck (Go), done (`deck/internal/octoapi/controls.go`):
   `zoffset`, `extrude`, `filament`, `ams_dry`, `chamber` and `tool1`. The app shows only these.
   The reply also has the state that shows their effect: `homed` ("xyz"), `position` (`x`, `y`,
   `z`, or null), `speed` and `flow` in percent, `speed_levels` and `speed_level` of a Bambu Lab
-  printer, `z_offset`, `tool1` and `chamber` (`actual`, `target`, or null), `fan` in percent,
+  printer, `z_offset`, `tool1` and `chamber` (`actual`, `target`, or null), `tool_now` (0 the main
+  nozzle, 1 the aux nozzle that prints now), `fan` in percent,
   `action` (a deck action that runs), `preparing` (the start step of a print), `ams` (each unit
   with `unit` "A", `temp`, `humidity`, `humidity_pct` and `drying`), `messages` (one line each,
   with the HMS code in the text), and `active` on the spool that feeds the nozzle.

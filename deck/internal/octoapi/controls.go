@@ -433,6 +433,9 @@ type controlState struct {
 	// Tool1 and Chamber are the aux nozzle and the chamber, or null.
 	Tool1   *heaterJSON `json:"tool1"`
 	Chamber *heaterJSON `json:"chamber"`
+	// ToolNow is the nozzle that prints now on a printer with two: 0 the main nozzle (tool0), 1
+	// the aux nozzle (tool1). It is 0 on a printer with one nozzle.
+	ToolNow int `json:"tool_now"`
 	// Fan is the part fan in percent, or null when the printer does not report it.
 	Fan *float64 `json:"fan"`
 	// Action is the action of the deck that runs now (a load, a calibration), or "".
@@ -458,6 +461,7 @@ func (s *Server) state() controlState {
 	}
 	if st.HasTool2 {
 		out.Tool1 = &heaterJSON{st.Tool2, st.Tool2Target}
+		out.ToolNow = st.ToolNow
 	}
 	if st.HasChamber {
 		out.Chamber = &heaterJSON{st.Chamber, st.ChamberTarget}

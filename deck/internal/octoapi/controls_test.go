@@ -244,7 +244,7 @@ func TestControlsInPlugin(t *testing.T) {
 // The state of the controls in /api/plugin/printdeck, and tool1 and the chamber in /api/printer.
 func TestControlState(t *testing.T) {
 	p := &trayFake{klipperFake{fakePrinter: fakePrinter{st: printer.State{Connected: true, Homed: "xyz", X: 10, Y: 20,
-		Z: 5, HasZ: true, SpeedPct: 110, ZOffset: -0.05, HasTool2: true, Tool2: 30, Tool2Target: 220,
+		Z: 5, HasZ: true, SpeedPct: 110, ZOffset: -0.05, HasTool2: true, Tool2: 30, Tool2Target: 220, ToolNow: 1,
 		HasChamber: true, Chamber: 35, ErrDetail: "Line one (0300_1A00)\nLine two"}}}}
 	_, ts := newWith(t, p)
 	_, m := do(t, "GET", ts.URL+"/api/plugin/printdeck", mainKey, nil, "")
@@ -254,7 +254,7 @@ func TestControlState(t *testing.T) {
 	msgs, _ := m["messages"].([]any)
 	fils, _ := m["filaments"].([]any)
 	if m["homed"] != "xyz" || pos["z"] != 5.0 || m["speed"] != 110.0 || m["z_offset"] != -0.05 || m["speed_level"] != 2.0 ||
-		tool1["target"] != 220.0 || len(ams) != 1 || len(msgs) != 2 || len(fils) != 2 {
+		tool1["target"] != 220.0 || m["tool_now"] != 1.0 || len(ams) != 1 || len(msgs) != 2 || len(fils) != 2 {
 		t.Errorf("state %v", m)
 	}
 	if u, _ := ams[0].(map[string]any); u["unit"] != "A" || u["drying"] == nil {
