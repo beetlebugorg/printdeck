@@ -265,7 +265,16 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		case r.State == "FAILED":
 			result = "error"
 			st.FinishedError = fmt.Sprintf("Error %08X", int(r.Error))
-			if text := b.hms().ErrorText(int64(r.Error)); text != "" {
+			if int(r.Error) == 0 {
+				// The printer stopped the print with no error code: its first message, or a
+				// text that says so.
+				st.FinishedError = "The printer gave no reason"
+				if first, all := b.hmsLines(r.HMS); first != "" {
+					st.FinishedError = first
+				} else if all != "" {
+					st.FinishedError = strings.SplitN(all, "\n", 2)[0]
+				}
+			} else if text := b.hms().ErrorText(int64(r.Error)); text != "" {
 				st.FinishedError = text + " (" + fmt.Sprintf("%08X", int(r.Error)) + ")"
 			}
 		case r.State != "FINISH":

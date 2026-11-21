@@ -338,3 +338,24 @@ func TestBambuPlateFileOfX2D(t *testing.T) {
 		}
 	}
 }
+
+// A print that fails with no error code shows the message of the printer, or a text that says
+// that the printer gave no reason, not "Error 00000000".
+func TestBambuFailNoCode(t *testing.T) {
+	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
+	t0 := time.Now()
+	run := bambu.Report{State: "RUNNING", TaskID: "1", Subtask: "cover"}
+	b.update(run, t0)
+	run.State = "FAILED"
+	b.update(run, t0.Add(time.Minute))
+	if st := b.State(); st.Finished != "error" || st.FinishedError != "The printer gave no reason" {
+		t.Fatalf("no code, no message %+v", st)
+	}
+	run.State, run.TaskID = "RUNNING", "2"
+	b.update(run, t0.Add(2*time.Minute))
+	run.State, run.HMS = "FAILED", []bambu.HMS{{Attr: 0x05000600, Code: 0x00020070}}
+	b.update(run, t0.Add(3*time.Minute))
+	if st := b.State(); st.FinishedError != st.Message || st.FinishedError == "" {
+		t.Fatalf("no code, a message %+v", st)
+	}
+}
