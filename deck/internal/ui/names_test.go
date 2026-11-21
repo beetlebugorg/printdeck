@@ -63,3 +63,18 @@ func TestPrintQuestionWholeName(t *testing.T) {
 	}
 	shot(t, a, "question-long")
 }
+
+// A name of the last print with no spaces, as zslice and Bambu Studio write it, wraps at its
+// "-", "_" and "." and shows whole.
+func TestLastPrintNameNoSpaces(t *testing.T) {
+	a := New()
+	title := "pen-slider.stl-and-4-more_0.3mm_PLA_Bambu-Lab-X2D_4h42m"
+	a.Printer = &DemoPrinter{View: -1, State_: printer.State{Reachable: true, Connected: true, Text: "Ready"},
+		Img:      image.NewRGBA(image.Rect(0, 0, 40, 30)),
+		History_: []printer.Record{{Path: "p.gcode.3mf", File: "p.gcode.3mf", Title: title, Result: "complete", End: time.Now(), Duration: 32 * time.Minute}}}
+	f := frameText(a)
+	if strings.Contains(f, "…") || !strings.Contains(f, "pen-slider") || !strings.Contains(f, "4h42m") {
+		t.Errorf("the name of the last print: %s", f)
+	}
+	shot(t, a, "lastprint-nospaces")
+}
