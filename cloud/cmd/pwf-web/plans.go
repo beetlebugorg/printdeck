@@ -180,6 +180,7 @@ func (a *app) showPublicBuild(v *wire.ProjectView, b wire.ProjectBuild) {
 	doc.Set("title", b.PlanName+" · "+buildTitle(nil, b)+" · "+v.Name+" · Printdeck")
 	byID("bdBack").Set("href", "/projects/"+v.Slug+"/plans")
 	setText("bdBack", "All builds")
+	a.plateViews = nil
 	show("vBuild")
 	a.drawBuild(b)
 	setText("bdTitle", b.PlanName+" · "+buildTitle(nil, b))
@@ -1152,7 +1153,8 @@ func (a *app) plateView(b wire.ProjectBuild, n int) js.Value {
 	box := el("div", "gcode-view", "")
 	a.plateViews[key] = box
 	start := func() {
-		v := js.Global().Get("pwfView3d")
+		// The zslice viewer (assets/zsview.js).
+		v := js.Global().Get("pwfZslice")
 		if v.IsUndefined() {
 			return
 		}
@@ -1162,8 +1164,7 @@ func (a *app) plateView(b wire.ProjectBuild, n int) js.Value {
 		bed := js.Global().Get("Array").New()
 		bed.Call("push", bx, by)
 		opts.Set("bed", bed)
-		opts.Set("printer", pl.Printer)
-		opts.Set("many", true)
+		opts.Set("color", pl.MaterialColor)
 		v.Call("showGcode", box, opts)
 	}
 	io := js.Global().Get("IntersectionObserver")
@@ -1261,6 +1262,7 @@ func (a *app) showBuildPage(projectID, id string) {
 	a.view = &v
 	a.playing++
 	playing := a.playing
+	a.plateViews = nil // the page frees the views of the last page (show)
 	doc.Set("title", buildTitle(&v, b)+" · "+v.Name+" · Printdeck")
 	byID("bdBack").Set("href", planPath(v.Slug, b.Plan))
 	setText("bdBack", "The plan")
@@ -1444,7 +1446,7 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 		}
 		if pl.FileURL != "" && pl.Process == "fdm" {
 			card.Call("appendChild", a.plateView(b, n))
-			card.Call("appendChild", el("p", "small dim", "Drag to turn the plate, also under the bed. Pinch or scroll to zoom. Click the view, then the arrow keys move the layer."))
+			card.Call("appendChild", el("p", "small dim", "Drag to turn the plate. Shift and drag, or two fingers, to move it. Scroll or pinch to zoom. Double-click for the start view. Click the view, then the arrow keys move the layer."))
 		} else if pl.PictureURL != "" {
 			img := el("img", "", "")
 			img.Set("src", pl.PictureURL)

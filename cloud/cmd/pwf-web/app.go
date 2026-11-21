@@ -216,6 +216,10 @@ func show(id string) {
 	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && id != "vPlan" && id != "vBuild" && id != "vPrint" && !v.IsUndefined() {
 		v.Call("hide")
 	}
+	// The zslice views of the plates of a build: a new page of a build makes new ones.
+	if v := js.Global().Get("pwfZslice"); !v.IsUndefined() {
+		v.Call("hide")
+	}
 	for _, v := range views {
 		setHidden(v, v != id)
 	}
