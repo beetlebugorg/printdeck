@@ -254,3 +254,6 @@ const (
 	PhaseSlice   = wire.PhaseSlice
 	PhaseUpload  = wire.PhaseUpload
 )
+
+// SliceSettings are the names and the labels of the main settings of a slice.
+var SliceSettings = wire.SliceSettings

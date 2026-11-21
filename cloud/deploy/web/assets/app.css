@@ -542,3 +542,6 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
 .pubstate.on .dot { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 25%, transparent); }
 /* The link to the shop page of a material. */
 a.reorder { font-weight: 600; white-space: nowrap; }
+/* The main settings of the slice of a plate, under its facts. */
+.slice-settings { margin-top: var(--s4); }
+.slice-settings h3 { margin: 0 0 var(--s1); font: 700 12px/1 "Archivo", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
