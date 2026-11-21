@@ -157,6 +157,8 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	}
 	api := octoapi.New(k, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
 	api.Version, api.Ask = osVersion(), askOn(app)
+	// The lengths of the swap of the touch screen, for the load and the unload of the apps.
+	api.SwapLengths = func() (float64, float64) { return app.UnloadMM, app.LoadMM }
 	api.Spools = k.Spools
 	api.Diameter = func() float64 { return k.Machine().Diameter() }
 	materialFile := filepath.Join(cfg.StateDir, "material")

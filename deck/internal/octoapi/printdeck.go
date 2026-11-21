@@ -109,6 +109,11 @@ type printdeckJSON struct {
 	// SignedOnly is true when the deck accepts only G-code files with a good signature of a trusted
 	// slicer.
 	SignedOnly bool `json:"signed_only"`
+	// Controls are the controls of the printer for the apps (controls.go): "jog", "home", "fan",
+	// "speed", "flow", "zoffset", "extrude", "filament", "ams_dry", "chamber" and "tool1". The
+	// state of the controls follows, at the top of the reply (controlState).
+	Controls []string `json:"controls"`
+	controlState
 	// Filaments are the spools that the printer has loaded (filamentsOf), or null when the printer
 	// does not tell them.
 	Filaments []filamentJSON `json:"filaments,omitempty"`
@@ -159,6 +164,8 @@ type filamentJSON struct {
 	Color    string   `json:"color,omitempty"`
 	Name     string   `json:"name,omitempty"`
 	Remain   *float64 `json:"remain"`
+	// Active is true for the spool that feeds the nozzle now.
+	Active bool `json:"active,omitempty"`
 }
 
 // filamentsOf returns the loaded spools of the printer p: each tray of an AMS with a spool and
@@ -183,7 +190,7 @@ func filamentsOf(p any) []filamentJSON {
 				continue
 			}
 			f := filamentJSON{Slot: fmt.Sprintf("%c%d", 'A'+t.Unit, t.Index+1), Tray: t.Slot, Material: t.Material,
-				Color: t.Color, Name: t.Brand, Remain: remain(-1)}
+				Color: t.Color, Name: t.Brand, Remain: remain(-1), Active: t.Active}
 			if t.External {
 				f.Slot = "Ext"
 			}
@@ -211,7 +218,7 @@ func filamentsOf(p any) []filamentJSON {
 				continue
 			}
 			out = append(out, filamentJSON{Index: len(out), Tray: -1, Material: it.Material, Color: it.Color,
-				Remain: remain(it.Fraction)})
+				Remain: remain(it.Fraction), Active: it.Active})
 		}
 		return out
 	}
@@ -251,6 +258,9 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.Signing != nil {
 		out.SignedOnly = s.Signing.SignedOnly()
+	}
+	if s.Printer != nil {
+		out.Controls, out.controlState = s.controls(), s.state()
 	}
 	if s.Diameter != nil {
 		out.Diameter = s.Diameter()

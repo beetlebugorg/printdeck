@@ -75,6 +75,9 @@ type Server struct {
 	// request of this server give a deck key: the server at the root of the deck.
 	DeckKeys *DeckKeys
 	DeckWide bool
+	// SwapLengths gives the lengths in mm of the unload and the load of the filament of the swap
+	// of the touch screen (Settings), for /api/plugin/printdeck/filament. It can be nil.
+	SwapLengths func() (unload, load float64)
 
 	mu       sync.Mutex
 	requests map[string]*keyRequest // App Keys requests by token
@@ -104,6 +107,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/printer/printhead", s.key(s.servePrinthead))
 	mux.HandleFunc("POST /api/printer/tool", s.key(s.serveTool))
 	mux.HandleFunc("POST /api/printer/bed", s.key(s.serveBed))
+	mux.HandleFunc("POST /api/printer/chamber", s.key(s.serveChamber))
 	mux.HandleFunc("GET /api/job", s.key(s.serveJob))
 	mux.HandleFunc("POST /api/job", s.key(s.serveJobCommand))
 	mux.HandleFunc("GET /api/connection", s.key(s.serveConnection))
@@ -123,6 +127,11 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/plugin/printdeck/push/pair", s.key(s.servePair))
 	mux.HandleFunc("GET /api/plugin/printdeck/push", s.key(s.servePhones))
 	mux.HandleFunc("DELETE /api/plugin/printdeck/push/{id}", s.key(s.serveUnpair))
+	mux.HandleFunc("POST /api/plugin/printdeck/fan", s.key(s.serveFan))
+	mux.HandleFunc("POST /api/plugin/printdeck/zoffset", s.key(s.serveZOffset))
+	mux.HandleFunc("POST /api/plugin/printdeck/filament", s.key(s.serveFilament))
+	mux.HandleFunc("POST /api/plugin/printdeck/ams/{unit}/dry", s.key(s.serveDry))
+	mux.HandleFunc("DELETE /api/plugin/printdeck/ams/{unit}/dry", s.key(s.serveDry))
 	mux.HandleFunc("GET /api/plugin/printdeck/queue", s.key(s.serveQueue))
 	mux.HandleFunc("POST /api/plugin/printdeck/queue/{id}/move", s.key(s.serveQueueMove))
 	mux.HandleFunc("DELETE /api/plugin/printdeck/queue/{id}", s.key(s.serveQueueRemove))
