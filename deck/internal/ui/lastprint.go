@@ -33,11 +33,11 @@ type ModelViewer interface {
 	Reset()
 }
 
-// drawLastPrintView draws the last print l in the card r of the home screen: the name, the
-// summary and a small Reprint key at the top, and the model under them. With a ModelViewer the
-// model turns under the finger, and a scrubber shows it up to a layer; else it is the picture of
-// the print.
-func (a *App) drawLastPrintView(c *gfx.Canvas, r image.Rectangle, l printer.Record, summary string) {
+// drawLastPrintView draws the last print l in the card r of the home screen: the name and a small
+// Reprint key at the top, and the model under them, as large as the card allows. With a
+// ModelViewer one finger turns the model and two fingers zoom it; else it is the picture of the
+// print. A tap on the name opens the page of the print, with its facts and the layers.
+func (a *App) drawLastPrintView(c *gfx.Canvas, r image.Rectangle, l printer.Record) {
 	in := r.Inset(12)
 	// The name in one line, or a long name in two lines in a smaller face: the head is then
 	// higher, and the model lower.
@@ -47,15 +47,15 @@ func (a *App) drawLastPrintView(c *gfx.Canvas, r image.Rectangle, l printer.Reco
 	if len(lines) > 1 {
 		lh = nf.Metrics().Height.Ceil() + 2
 	}
-	head := image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+max(48, len(lines)*lh+22))
+	head := image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+max(48, len(lines)*lh))
 	reprint := image.Rect(head.Max.X-120, head.Min.Y, head.Max.X, head.Min.Y+48)
-	sf := gfx.Face(false, 15)
 	textR := image.Rect(head.Min.X+4, head.Min.Y, reprint.Min.X-12, head.Max.Y)
+	// The name in the middle of the height of Reprint, when it has room.
+	top := textR.Min.Y + max(0, (head.Dy()-len(lines)*lh)/2)
 	for k, line := range lines {
-		y := textR.Min.Y + k*lh
+		y := top + k*lh
 		c.Text(image.Rect(textR.Min.X, y, textR.Max.X, y+lh), line, nf, text, gfx.Left)
 	}
-	c.Text(image.Rect(textR.Min.X, textR.Min.Y+len(lines)*lh, textR.Max.X, textR.Max.Y), gfx.Fit(sf, summary, textR.Dx()), sf, dim, gfx.Left)
 	rec := l
 	open := func() {
 		a.record = rec
@@ -81,16 +81,21 @@ type viewState struct {
 	of    string
 }
 
-// drawLastModel draws the model of l with the Viewer in r, with the scrubber and the zoom keys
-// under it. It reports false when the Viewer cannot draw the file.
+// drawLastModel draws the model of l with the Viewer in all of r, with no keys. It reports false
+// when the Viewer cannot draw the file.
 func (a *App) drawLastModel(c *gfx.Canvas, r image.Rectangle, l printer.Record) bool {
-	return a.turnView(c, r, l.Path, l.SpoolID, &a.homeView)
+	return a.gcodeView(c, r, l.Path, l.SpoolID, &a.homeView, false)
 }
 
 // turnView draws the file path with the Viewer in r: the model that one finger turns, and under
 // it the zoom keys, Reset, and the scrubber of the layers, in the state vs. It reports false when
 // the Viewer cannot draw the file.
 func (a *App) turnView(c *gfx.Canvas, r image.Rectangle, path, spoolID string, vs *viewState) bool {
+	return a.gcodeView(c, r, path, spoolID, vs, true)
+}
+
+// gcodeView is turnView, with the keys and the scrubber under the model only with keys.
+func (a *App) gcodeView(c *gfx.Canvas, r image.Rectangle, path, spoolID string, vs *viewState, keys bool) bool {
 	if a.Viewer == nil || path == "" {
 		return false
 	}
@@ -101,8 +106,11 @@ func (a *App) turnView(c *gfx.Canvas, r image.Rectangle, path, spoolID string, v
 	if gfx.FinePrint() {
 		ctlH = 56
 	}
-	rows := kit.Rows(r, 10, kit.Fr(1), kit.Px(ctlH))
-	model, ctl := rows[0], rows[1]
+	model, ctl := r, image.Rectangle{}
+	if keys {
+		rows := kit.Rows(r, 10, kit.Fr(1), kit.Px(ctlH))
+		model, ctl = rows[0], rows[1]
+	}
 	hex := ""
 	if rolls := a.Printer.SpoolStore(); rolls != nil {
 		if sp, ok := rolls.Get(spoolID); ok {
@@ -122,6 +130,9 @@ func (a *App) turnView(c *gfx.Canvas, r image.Rectangle, path, spoolID string, v
 		a.Redraw()
 	}})
 	a.pinchArea = inner
+	if !keys {
+		return true
+	}
 	// The zoom keys and Reset at the left, and the scrubber of the layers at the right.
 	k := kit.Cols(ctl, 8, kit.Px(ctlH), kit.Px(ctlH), kit.Px(ctlH*16/10), kit.Fr(1))
 	a.namedButton(c, k[0], "−", "Zoom out", raised, text, func() { a.Viewer.Zoom(-1); a.Redraw() })
