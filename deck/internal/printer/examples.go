@@ -172,17 +172,28 @@ func UseExample(path, file, serial string) error {
 	return os.Rename(tmp, path)
 }
 
-// ConfigModel is the name of the printer of a printer.cfg that came from an example config, for
-// example "LulzBot TAZ Workhorse", or "".
+// ModelLine is the start of a comment line of printer.cfg that names the machine, for the slicers
+// (/slicer/printer.json), for example "# Printdeck model: LulzBot TAZ Workhorse SE 0.5 mm". It is
+// in the first lines of the file.
+const ModelLine = "# Printdeck model:"
+
+// ConfigModel is the name of the printer of a printer.cfg: the text of its ModelLine, or else the
+// printer of the example config that it came from, for example "LulzBot TAZ Workhorse", or "".
 func ConfigModel(path string) string {
 	f, err := os.Open(path)
 	if err != nil {
 		return ""
 	}
 	defer f.Close()
-	b := make([]byte, 256)
-	n, _ := f.Read(b)
-	line, _, _ := strings.Cut(string(b[:n]), "\n")
+	b := make([]byte, 4096)
+	n, _ := io.ReadFull(f, b)
+	head := string(b[:n])
+	for _, l := range strings.Split(head, "\n") {
+		if m, ok := strings.CutPrefix(strings.TrimSpace(l), ModelLine); ok && strings.TrimSpace(m) != "" {
+			return strings.TrimSpace(m)
+		}
+	}
+	line, _, _ := strings.Cut(head, "\n")
 	file, ok := strings.CutPrefix(line, "# Klipper's example config ")
 	if !ok {
 		return ""
