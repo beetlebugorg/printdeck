@@ -329,12 +329,14 @@ type BuildFailure struct {
 
 // ProjectBuild is a build on the plan page, the build page and the project page.
 type ProjectBuild struct {
-	ID      string    `json:"id"`
-	Plan    string    `json:"plan"`
-	Commit  string    `json:"commit"`
-	Created time.Time `json:"created"`
-	State   string    `json:"state"`
-	Error   string    `json:"error,omitempty"`
+	ID   string `json:"id"`
+	Plan string `json:"plan"`
+	// PlanName is the short name of the plan ("PR #7", "v1.2", a branch), on the public page.
+	PlanName string    `json:"plan_name,omitempty"`
+	Commit   string    `json:"commit"`
+	Created  time.Time `json:"created"`
+	State    string    `json:"state"`
+	Error    string    `json:"error,omitempty"`
 	// Start is the command that starts the slice run by hand, while the service cannot start it.
 	Start string `json:"start,omitempty"`
 	// Progress is what the slice run does now, while the build slices.

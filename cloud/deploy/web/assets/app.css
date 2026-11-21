@@ -284,7 +284,7 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .ptabs { display: flex; gap: 2px; border-bottom: 1px solid var(--seam); overflow-x: auto; scrollbar-width: none; margin-bottom: calc(var(--s1) - var(--s4) + 4px);
   position: sticky; top: 0; z-index: 20; background: var(--chassis); }
 /* The public view: a visitor sees the project with no keys of the members. */
-body.public #tbSettings, body.public #tbBuilds, body.public #backLink, body.public #pPublicChip, body.public #pGitCard,
+body.public #tbSettings, body.public #backLink, body.public #pPublicChip, body.public #pGitCard,
 body.public #pPeopleEdit, body.public #pNotesEdit, body.public #pRepoEdit, body.public label.file, body.public #photoAgain,
 body.public #prOwnerKeys, body.public #prRename, body.public #prNotesEdit, body.public #prSourceEdit, body.public #prPhotoAgain,
 body.public #prDanger, body.public #prRemove, body.public [data-on="settings"] { display: none !important; }
