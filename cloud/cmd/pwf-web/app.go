@@ -36,6 +36,8 @@ type app struct {
 	layouts     map[string]*plateLayout // the layouts of the plates of the plan page, by parts and counts
 	planShown   int
 	planProcess string            // the kind of print of the plan page: "fdm" or "resin"
+	planPrinter string            // the printer of the plan page: its parts show, and only they
+	planLive    *wire.ProjectBuild // the build that the plan page sliced, until the page changes
 	lastBuild   wire.ProjectBuild // the build of the build page
 	peopleEdit  bool              // the card People shows the keys to invite and remove people
 	// The members of the other projects of the owner, for the project knownFor: the owner adds
