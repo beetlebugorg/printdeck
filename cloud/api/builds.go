@@ -41,7 +41,12 @@ const (
 	MaxPartCount     = 100
 	// PlansShown is the count of the newest plans that the view of a project has: the project
 	// page shows some of them, and the page of all the plans gets all of them.
-	PlansShown    = 10
+	PlansShown = 10
+	// BuildsShown is the count of the newest builds whose plans the view of a project has, also
+	// when the plan is older than the PlansShown newest plans.
+	BuildsShown = 10
+	// BuildStale is the time after which a build that still slices shows as failed.
+	BuildStale    = 2 * time.Hour
 	buildGrantTTL = time.Hour
 )
 

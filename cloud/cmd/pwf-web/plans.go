@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -103,12 +104,46 @@ func (a *app) showPlansPage(id string) {
 	doc.Set("title", "Plans · "+v.Name+" · Printdeck")
 	byID("psBack").Set("href", projectPath(v.Slug, 0))
 	setText("psBack", v.Name)
-	setText("psSub", "github.com/"+v.Repo+" · "+count(len(plans), "plan", "plans")+", the newest first")
+	n := drawBuildList(byID("psBuilds"), v.Slug, plans)
+	setText("psSub", "github.com/"+v.Repo+" · "+count(n, "build", "builds")+", the newest first")
+	setText("psPlansSub", count(len(plans), "plan", "plans")+", the newest first. Open a plan to choose its parts and slice them.")
 	list := byID("psList")
 	list.Set("textContent", "")
 	rows := drawPlanList(list, v.Slug, plans)
 	show("vPlans")
 	go describePlans(plans, rows)
+}
+
+// drawBuildList fills list with a row for each build of the plans, the newest first, and returns
+// the count of the builds.
+func drawBuildList(list js.Value, slug string, plans []wire.ProjectPlan) int {
+	type row struct {
+		b wire.ProjectBuild
+		p wire.ProjectPlan
+	}
+	var rows []row
+	for _, p := range plans {
+		for _, b := range p.Builds {
+			rows = append(rows, row{b, p})
+		}
+	}
+	sort.SliceStable(rows, func(i, j int) bool { return rows[i].b.Created.After(rows[j].b.Created) })
+	list.Set("textContent", "")
+	for _, r := range rows {
+		li := el("li", "", "")
+		link := el("a", "", "")
+		link.Set("href", buildPath(slug, r.b.ID))
+		link.Call("appendChild", el("strong", "", planName(r.p)+" · "+count(len(r.b.Plates), "plate", "plates")))
+		text, class := buildSummary(r.b)
+		link.Call("appendChild", el("span", "sub", shortSHA(r.b.Commit)+" · "+localWhen(r.b.Created)))
+		link.Call("appendChild", el("span", "tag "+class, text))
+		li.Call("appendChild", link)
+		list.Call("appendChild", li)
+	}
+	if len(rows) == 0 {
+		list.Call("appendChild", el("li", "dim small", "No builds yet. Open a plan, choose its parts, and tap Slice."))
+	}
+	return len(rows)
 }
 
 // drawPlanList adds a row for each plan to list: its name and commit, the parts that changed,

@@ -1251,6 +1251,27 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 			}
 		}
 	}
+	// The plans of the newest builds (BuildsShown), so that the Overview and the Builds tab show
+	// a build of an old plan of main. loadBuilds gives the newest first.
+	if limit > 0 {
+		in := map[string]bool{}
+		for _, rec := range shown {
+			in[rec.ID] = true
+		}
+		byID := map[string]*PlanRecord{}
+		for _, rec := range plans {
+			byID[rec.ID] = rec
+		}
+		for i, b := range builds {
+			if i == BuildsShown {
+				break
+			}
+			if rec := byID[b.Plan]; rec != nil && !in[rec.ID] {
+				shown = append(shown, rec)
+				in[rec.ID] = true
+			}
+		}
+	}
 	// The states of the pull requests, and the names of the printers of the plates, at the same
 	// time.
 	var prs []int
@@ -1339,6 +1360,13 @@ func (s *Server) projectBuildNamed(ctx context.Context, p *Project, b *BuildReco
 	}
 	if b.State == cloud.BuildSlicing {
 		out.Progress, out.Phase, out.Plate = b.Progress, b.Phase, b.Plate
+	}
+	// A slice run that stopped with no "done" or "failed" (a cancelled run, a run that GitHub did
+	// not start) keeps the build in BuildSlicing. The pages show it as failed, with Slice again. A
+	// late "done" still makes the build ready: the record does not change.
+	if b.State == cloud.BuildSlicing && s.now().Sub(b.Created) > BuildStale {
+		out.State, out.Error, out.Start = cloud.BuildFailed, "The slice did not finish in 2 hours.", ""
+		out.Progress, out.Phase, out.Plate = "", "", 0
 	}
 	dir := buildDir(p.ID, b.ID)
 	for i, pl := range b.Plates {
