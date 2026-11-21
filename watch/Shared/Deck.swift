@@ -571,6 +571,8 @@ enum DeckError: LocalizedError {
     case http(Int)
     case badReply
     case denied
+    /// A camera that the deck has, and that is off: 503 with "The camera is off".
+    case cameraOff
 
     var errorDescription: String? {
         switch self {
@@ -580,6 +582,7 @@ enum DeckError: LocalizedError {
         case .http(let code): "The deck sent HTTP \(code)."
         case .badReply: "The reply of the deck has an unknown format."
         case .denied: "The deck denied the app, or nobody tapped Allow within 2 minutes."
+        case .cameraOff: "The camera is off."
         }
     }
 }
@@ -673,6 +676,11 @@ struct DeckClient {
         case 400, 409:
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
             return .refused(msg ?? "The printer refused the command.")
+        case 503:
+            // A still of a camera that is off. Any other 503 is a camera that has no picture yet,
+            // as the RTSP stream of a Bambu Lab printer while it starts.
+            let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
+            return msg == "The camera is off" ? .cameraOff : .http(code)
         default:
             return .http(code)
         }

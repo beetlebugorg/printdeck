@@ -15,7 +15,9 @@ network. Each printer of a deck with many printers is a printer of its own in th
   no picture in place of a picture of its screen. A card reads a still every 15 seconds while it is
   on the screen, at the width of the card, and keeps the last still while the next one loads. The
   first still of a Bambu Lab printer starts its RTSP stream and can be slow or fail: the card
-  waits up to 25 seconds, then tries again after 2, 4, 8 up to 60 seconds. The model of the print
+  waits up to 25 seconds, then tries again after 2, 4, 8 up to 60 seconds. A camera that is off
+  (503 "The camera is off") shows the color of the printer at once, and the card asks again after
+  a minute. The model of the print
   (`/api/plugin/printdeck/model.png`) is there only during a print. The screen of a printer shows
   the same picture under its camera stream until the first frame.
 - **Printer screen**: the camera (tap for the full screen view), or the model of the print. The
