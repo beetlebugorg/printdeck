@@ -102,7 +102,7 @@ struct FilesView: View {
             message = "Start a resin print on the touch screen of the deck."
             return
         }
-        if await model.run("Starting \(f.name)", { try await $0.printFile(f.path) }) { close() }
+        await model.run("Starting \(f.name)", effect: .print(f.name), taken: close) { try await $0.printFile(f.path) }
     }
 
     private func delete(_ f: DeckFile) async {
