@@ -30,8 +30,11 @@ network. Each printer of a deck with many printers is a printer of its own in th
 - **Resin decks**: a deck with `process` resin in `/api/plugin/printdeck` has no Print a file, no
   Resume, no temperatures, no moves and no filament. Only a press on the touch screen of the deck
   starts or resumes a resin print, because both turn on the UV light. The app has Pause and Cancel.
-- **Watch app**: the print of the deck that prints, or of the first deck, on a blue dot-matrix display. Turn the Digital Crown for the camera, the
-  model, the layer times and the filament. Tap for Pause, Resume or Cancel.
+- **Watch app**: the print of the deck that prints, or of the first deck, as the status panel of
+  the touch screen of the deck: the nozzle, the bed and the fan (the plate, the time and the time
+  left on a resin deck), the state and the end, the time left and the time so far, the layer, and
+  the progress bar, in the amber of the deck on its dark window. Turn the Digital Crown for the
+  camera, the model, the layer times and the filament. Tap for Pause, Resume or Cancel.
 - **Complications** and **widgets**: the progress and the time left, on the watch face, the Home
   Screen and the Lock Screen. Edit a widget to choose its deck. The default is the deck that
   prints: with two prints, the print that ends first.

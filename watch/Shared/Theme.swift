@@ -33,6 +33,9 @@ struct Palette {
     /// The blue character display: the backlight, a dot that is off, and a dot that is on. Both
     /// palettes have the bright blue of the day palette of the deck, as the app icon.
     var glcd = Color(rgb: 0x1f4bd1), glcdCell = Color(rgb: 0x2a58e0), glcdInk = Color(rgb: 0xf2f6ff)
+    /// The readout cells and the empty progress bar of the status panel: the night color of the
+    /// deck (lcdCell in deck/internal/ui/theme.go). The watch has the night palette.
+    var lcdCell = Color(rgb: 0x1a120c)
 
     static let day = Palette(
         bg: Color(rgb: 0xd3d0c8), surface: Color(rgb: 0xe6e3dc), raised: Color(rgb: 0xf3f1ec),
