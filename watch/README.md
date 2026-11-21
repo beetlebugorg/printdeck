@@ -3,18 +3,29 @@
 An iPhone app and a watch app for the Printdeck. They use the API of the decks on the local
 network. Each printer of a deck with many printers is a printer of its own in the apps.
 
-- **Home screen**: a card for each deck, with the state, the print, the time left, the progress and
-  a picture: the camera, else the model, else the status screen of the deck. A tap opens the deck
-  screen. Add connects another deck. Menu > Remove on the deck screen removes a deck.
-- **Deck screen**: the deck screen in its tall layout. It shows the print, the roll, the model and
-  the camera. It has Pause, Resume and Cancel, and Print a file. Tap the camera for a full screen
-  view. With two cameras, tap a camera name at the top of that view, or swipe, to switch. The app
-  keeps the choice for each deck, and the watch shows the same camera. Time lapse lists the videos
-  of the deck. The app converts a video to H.264 on the iPhone, plays it, and has Share and Save to
-  Photos.
+- **Home screen**: a card for each printer, with the camera or the model of the print, the state,
+  the progress, the time left and the end. The printers of a deck with many printers go under the
+  name of the deck, and each card has the short label of its printer on its color. A card marks a
+  printer that needs you: a pause, a failed print, or a print that is done. A tap opens the screen
+  of the printer. Add connects another deck.
+- **Printer screen**: the camera (tap for the full screen view), or the model of the print. The
+  print with its progress, its layer, the time left, the end and the time so far, with Pause,
+  Resume and Cancel. The nozzle and the bed with their targets: a tap sets a target, with the
+  presets of the deck. The fan. The loaded filament: the trays of each AMS with the part that is
+  left, the external spool, or the roll. Move and home, between prints. The Z offset during a
+  print. The queue: a swipe moves a file up or down, or removes it. Print a file, with a search
+  and the folders of the files, and a swipe to delete a file. Time lapses. The cameras, the model,
+  the nozzles and the build plate. Settings: the notifications, the watch, Connect again, the
+  address and key by hand, and Remove.
+- **Dialogs**: each dialog that starts, stops, moves or heats names the printer, for example
+  "Pause the print on TAZ Workhorse?" with the key "Pause TAZ". The app opens a printer only after
+  a tap. A deck with one printer has no label and no deck name.
+- **G-code controls**: the fan and the Z offset go to the deck as G-code, so they need a Klipper
+  printer and Signed prints only off (`signed_only` in `/api/plugin/printdeck`). Move, home and
+  the targets of the heaters use their own routes, and stay on.
 - **Resin decks**: a deck with `process` resin in `/api/plugin/printdeck` has no Print a file, no
-  Resume and no roll. Only a press on the touch screen of the deck starts or resumes a resin print,
-  because both turn on the UV light. The app has Pause and Cancel.
+  Resume, no temperatures, no moves and no filament. Only a press on the touch screen of the deck
+  starts or resumes a resin print, because both turn on the UV light. The app has Pause and Cancel.
 - **Watch app**: the print of the deck that prints, or of the first deck, on a blue dot-matrix display. Turn the Digital Crown for the camera, the
   model, the layer times and the filament. Tap for Pause, Resume or Cancel.
 - **Complications** and **widgets**: the progress and the time left, on the watch face, the Home
@@ -48,8 +59,8 @@ deck for a key. Or type the key from http://printdeck.local/system and tap Save.
 
 ## Push messages
 
-1. On the iPhone, open the deck, then Menu > Notifications, and tap Pair for notifications. Each
-   deck pairs on its own. With several decks the subtitle of a message is the name of the deck.
+1. On the iPhone, open the printer, then Settings, and tap Pair for notifications. Each
+   printer pairs on its own. With several decks the subtitle of a message is the name of the deck.
 2. Allow the notifications.
 3. The deck sends "This phone gets the messages of your prints."
 
@@ -121,14 +132,15 @@ The routes: `GET /api/v1/projects/<id>`, `PATCH /api/v1/projects/<id>/prints/<pr
 
 ## The queue
 
-The deck screen shows the queue of the deck: the files in their order, each with its material and
-its time, and the total time. Up and Down move a file, and Remove deletes it from the queue. The app
+The printer screen shows the queue of the printer: the files in their order, each with its material
+and its time, and the total time. A swipe to the right moves a file up or down, and a swipe to the
+left removes it from the queue. The app
 has no Start: only a press on the touch screen of the deck starts the next file. Away from home, a
 card shows the count of the files in the queue of its deck (owner), and a project shows its files in
 the queues.
 
 At the end of a print with files in the queue, the deck sends "Next in the queue". A tap on a push
-message opens the deck screen of its deck.
+message opens the screen of its printer.
 
 The routes of the deck: `GET /api/plugin/printdeck/queue`, `POST
 /api/plugin/printdeck/queue/<id>/move` with `{"by": -1}`, and `DELETE
@@ -190,6 +202,13 @@ All other requests have the header `X-Api-Key`:
   `camera=<id>` for another camera, or `camera=picture` for the camera of the notifications.
 - `POST /api/job`: `{"command":"pause","action":"pause"}`, `{"command":"pause","action":"resume"}`
   and `{"command":"cancel"}`.
+- `POST /api/printer/tool` with `{"command":"target","targets":{"tool0":210}}`, and
+  `POST /api/printer/bed` with `{"command":"target","target":60}`: the targets of the heaters.
+- `POST /api/printer/printhead` with `{"command":"jog","x":10,"y":0,"z":0}` or
+  `{"command":"home","axes":["x","y"]}`: the moves.
+- `POST /api/printer/command` with `{"commands":["M106 S127"]}`: the fan and the Z offset
+  (`SET_GCODE_OFFSET Z_ADJUST=0.025 MOVE=1`), as the deck writes them.
+- `DELETE /api/files/local/<path>`: deletes a file.
 - `GET /api/files?recursive=true`, and `POST /api/files/local/<path>` with
   `{"command":"select","print":true}`: the files, and a print.
 - `GET /api/plugin/printdeck/model.png?w=..&h=..&mono=1`: the model of the print in 1-bit dots.
@@ -219,8 +238,10 @@ All other requests have the header `X-Api-Key`:
 In a debug build, `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set one deck, and `PRINTDECK_DECKS` sets
 several, as `TAZ|127.0.0.1:7361|key1,Phenom|127.0.0.1:7362|key2`. `PRINTDECK_DECK_KEY` connects to
 a deck with a deck key, as `127.0.0.1:7361|key`, and adds each printer of the deck. `PRINTDECK_SCREEN` opens a
-screen: `menu` or `cancel` on the watch, `deck`, `files`, `setup`, `camera` or `loading` on the
-iPhone. The screens of a deck open the first deck.
+screen: `menu` or `cancel` on the watch, `deck`, `files`, `setup`, `camera`, `timelapse`, `nozzle`,
+`move` or `loading` on the iPhone. The screens of a printer open the printer of `PRINTDECK_PRINTER`
+(its place in the list, from 0), or the first printer. `PRINTDECK_SCROLL` scrolls the printer
+screen to `temps`, `filament`, `control`, `queue` or `info`.
 With `xcrun simctl launch`, add the prefix `SIMCTL_CHILD_`. The deck of `printdeck app -sim`
 reads its API key from `OCTOPRINT_API_KEY`.
 

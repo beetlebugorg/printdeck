@@ -3,104 +3,86 @@
 
 import SwiftUI
 
-/// The queue of the deck on the deck screen: the files in their order, each with its material and
-/// its time, and the total time. Each file has Up, Down and Remove. The app has no Start: only a
-/// press on the touch screen of the deck starts the next file. A deck with no queue route shows no
-/// plate.
-struct QueuePlate: View {
+/// The queue of the printer on its screen: the files in their order, each with its material and
+/// its time, and the total time. A swipe moves a file up or down, or removes it. The app has no
+/// Start: only a press on the touch screen of the deck starts the next file. A deck with no queue
+/// route, and an empty queue, show no section.
+struct QueueSection: View {
     @Environment(DeckModel.self) private var model
-    @Environment(\.palette) private var p
-    @Environment(\.scenePhase) private var phase
 
-    @State private var queue: DeckQueue?
     @State private var removing: DeckQueue.Item?
     @State private var busy = false
     @State private var message: String?
 
     var body: some View {
-        // The stack is there with no files too, so that its task reads the queue.
-        VStack(spacing: 0) {
-            if let q = queue, !q.items.isEmpty {
-                Plate(label: "Queue · \(q.items.count) file\(q.items.count == 1 ? "" : "s")" +
-                      (q.seconds.map { $0 > 0 ? " · " + Format.duration(Double($0)) : "" } ?? "")) {
+        Group {
+            if let q = model.queue, !q.items.isEmpty {
+                Section {
                     ForEach(Array(q.items.enumerated()), id: \.element.id) { i, item in
-                        row(item, place: i, count: q.items.count)
+                        row(item, place: i)
+                            .swipeActions(edge: .trailing) {
+                                Button("Remove", role: .destructive) { removing = item }
+                            }
+                            .swipeActions(edge: .leading) {
+                                if i > 0 {
+                                    Button { Task { await change { try await $0.moveQueued(item.id, by: -1) } } } label: {
+                                        Label("Up", systemImage: "arrow.up")
+                                    }
+                                    .tint(.blue)
+                                }
+                                if i < q.items.count - 1 {
+                                    Button { Task { await change { try await $0.moveQueued(item.id, by: 1) } } } label: {
+                                        Label("Down", systemImage: "arrow.down")
+                                    }
+                                    .tint(.indigo)
+                                }
+                            }
+                            .disabled(busy)
                     }
-                    Text(model.deck.process == .resin
-                         ? "Check the vat and the build plate, then press Start on the deck for the next file."
-                         : "Take the part off the bed, then press Start on the deck for the next file.")
-                        .font(Theme.plex(12, bold: false))
-                        .foregroundStyle(p.dim)
-                        .padding(.horizontal, 4)
-                    if let message {
-                        Text(message.uppercased())
-                            .font(Theme.plex(12))
-                            .foregroundStyle(p.red)
-                            .padding(.horizontal, 4)
+                } header: {
+                    HStack {
+                        Text("Queue")
+                        Spacer()
+                        Text("\(q.items.count) file\(q.items.count == 1 ? "" : "s")" +
+                             (q.seconds.map { $0 > 0 ? " · " + Format.duration(Double($0)) : "" } ?? ""))
+                    }
+                } footer: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(model.deck.process == .resin
+                             ? "Check the vat and the build plate, then press Start on the deck for the next file."
+                             : "Take the part off the bed, then press Start on the deck for the next file. Swipe a file to move or remove it.")
+                        if let message { Text(message).foregroundStyle(.red) }
                     }
                 }
             }
         }
-        .task(id: Poll(active: phase == .active, settings: model.settings)) {
-            while phase == .active && !Task.isCancelled {
-                await load()
-                try? await Task.sleep(for: .seconds(5))
-            }
-        }
-        .overlay {
-            if let item = removing {
-                ConfirmPanel(question: "Remove \(item.name) from the queue?", yes: "Remove", danger: true,
-                             onYes: {
-                                 removing = nil
-                                 Task { await change { try await $0.removeQueued(item.id) } }
-                             },
-                             onNo: { removing = nil })
-            }
+        .confirmationDialog(removing.map { "Remove \($0.name) from the queue of \(model.deck.title)?" } ?? "",
+                            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                            titleVisibility: .visible, presenting: removing) { item in
+            Button("Remove", role: .destructive) { Task { await change { try await $0.removeQueued(item.id) } } }
+            Button("Back", role: .cancel) {}
         }
     }
 
-    private struct Poll: Equatable {
-        let active: Bool
-        let settings: DeckSettings
-    }
-
-    private func row(_ item: DeckQueue.Item, place: Int, count: Int) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Text("\(place + 1)")
-                    .font(Theme.plex(15))
-                    .foregroundStyle(p.dim)
-                    .frame(width: 22)
-                Circle()
-                    .fill(item.color.flatMap { $0.isEmpty ? nil : Color(hex: $0) } ?? p.dim)
-                    .overlay(Circle().stroke(p.edge, lineWidth: 1))
-                    .frame(width: 16, height: 16)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
-                        .font(Theme.plex(15))
-                        .foregroundStyle(p.text)
-                        .lineLimit(1)
-                    Text(detail(item))
-                        .font(Theme.plex(12, bold: false))
-                        .foregroundStyle(p.dim)
-                        .lineLimit(1)
-                }
-                Spacer()
+    private func row(_ item: DeckQueue.Item, place: Int) -> some View {
+        HStack(spacing: 12) {
+            Text("\(place + 1)")
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+            Circle()
+                .fill(item.color.flatMap { $0.isEmpty ? nil : Color(hex: $0) } ?? Color(.tertiarySystemFill))
+                .overlay(Circle().stroke(.primary.opacity(0.2), lineWidth: 1))
+                .frame(width: 18, height: 18)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name).lineLimit(1)
+                Text(detail(item))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            HStack(spacing: 8) {
-                Button("Up") { Task { await change { try await $0.moveQueued(item.id, by: -1) } } }
-                    .buttonStyle(KeyStyle())
-                    .disabled(busy || place == 0)
-                Button("Down") { Task { await change { try await $0.moveQueued(item.id, by: 1) } } }
-                    .buttonStyle(KeyStyle())
-                    .disabled(busy || place == count - 1)
-                Button("Remove") { removing = item }
-                    .buttonStyle(KeyStyle(cap: .danger))
-                    .disabled(busy)
-            }
-            .environment(\.panelScale, 0.75)
         }
-        .padding(.vertical, 2)
     }
 
     /// The material, the time and the project: "MatterHackers PLA Black · 45m · Bittlex".
@@ -110,25 +92,15 @@ struct QueuePlate: View {
          item.project ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
-    private func load() async {
-        guard model.settings.isComplete else { return }
-        do {
-            queue = try await DeckClient(settings: model.settings).queue()
-            message = nil
-        } catch {
-            // A failed read keeps the last queue. The deck screen shows the error of the deck.
-        }
-    }
-
     private func change(_ f: (DeckClient) async throws -> DeckQueue) async {
         busy = true
         defer { busy = false }
         do {
-            queue = try await f(DeckClient(settings: model.settings))
+            model.queue = try await f(DeckClient(settings: model.settings))
             message = nil
         } catch {
             message = errorText(error)
-            await load()
+            await model.refreshQueue()
         }
     }
 }

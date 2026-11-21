@@ -148,6 +148,20 @@ final class Fleet {
     }
     #endif
 
+    /// The printers of each deck, in the order of the list: the first printer of a deck sets its
+    /// place. A deck with one printer is a group of one.
+    var groups: [[DeckModel]] {
+        var out: [[DeckModel]] = []
+        for m in models {
+            if let i = out.firstIndex(where: { $0[0].deck.deckRoot == m.deck.deckRoot }) {
+                out[i].append(m)
+            } else {
+                out.append([m])
+            }
+        }
+        return out
+    }
+
     /// The decks that refused their deck key, once each: the app shows one Connect again for each.
     var refusedDecks: [String] {
         SavedDeck.refusedDecks(decks) { model($0.id)?.problem == .key }

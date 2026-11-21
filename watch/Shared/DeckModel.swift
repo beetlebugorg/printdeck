@@ -235,6 +235,39 @@ final class DeckModel: Identifiable {
         }
     }
 
+    /// The queue of the printer, while its screen reads it, or nil.
+    var queue: DeckQueue?
+
+    /// Reads the queue. A failed read keeps the last queue: the screen shows the error of the deck.
+    func refreshQueue() async {
+        guard settings.isComplete, let q = try? await DeckClient(settings: settings).queue() else { return }
+        queue = q
+    }
+
+    /// The controls that the app shows for this printer now.
+    var controls: Controls { Controls(deck: deck, status: status, live: live) }
+
+    /// Runs a control on the deck: shows the text while it runs, or the error of the deck after
+    /// it, and reads the deck again. It reports that the deck took the control.
+    @discardableResult
+    func run(_ doing: String, _ f: @escaping (DeckClient) async throws -> Void) async -> Bool {
+        guard !sending else { return false }
+        sending = true
+        defer { sending = false }
+        generation += 1
+        show(doing, for: 30)
+        var ok = true
+        do {
+            try await f(DeckClient(settings: settings))
+            show(doing, for: 3)
+        } catch {
+            ok = false
+            show(errorText(error), for: 8)
+        }
+        await refresh()
+        return ok
+    }
+
     enum Command {
         case pause, resume, cancel
 

@@ -128,6 +128,7 @@ targets:
       - Shared/LCDScreen.swift
       - Shared/LCDFonts.swift
       - Shared/Theme.swift
+      - Shared/Controls.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).tests

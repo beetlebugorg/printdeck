@@ -3,78 +3,81 @@
 
 import SwiftUI
 
-/// The Files page of the deck: the G-code files, newest first. A tap asks to print the file.
+/// The files of the printer, newest first, in their folders, with a search. A tap asks to print
+/// the file, and a swipe deletes it. Each dialog names the printer. A resin printer, and a printer
+/// that prints, list the files with no Print.
 struct FilesView: View {
     @Environment(DeckModel.self) private var model
-    @Environment(\.palette) private var p
     let close: () -> Void
 
     @State private var files: [DeckFile] = []
     @State private var message: String? = "Reading the files"
-    @State private var confirm: DeckFile?
+    @State private var search = ""
+    @State private var printing: DeckFile?
+    @State private var deleting: DeckFile?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                Heading(title: "Files") {
-                    Button("Back", action: close)
-                        .buttonStyle(KeyStyle())
-                        .frame(width: 100)
-                        .environment(\.panelScale, 0.75)
-                }
-                .padding(.top, 8)
-                Text(message?.uppercased() ?? "NEWEST FIRST · \(files.count) FILE\(files.count == 1 ? "" : "S")")
-                    .font(Theme.plex(13))
-                    .foregroundStyle(p.dim)
-                ForEach(files) { f in
-                    Button { confirm = f } label: { row(f) }
-                        .buttonStyle(.plain)
+        let short = model.deck.label ?? model.deck.title
+        List {
+            if let message {
+                Text(message).foregroundStyle(.secondary)
+            }
+            ForEach(DeckFile.folders(shown), id: \.name) { folder in
+                Section(folder.name.isEmpty ? (folder.files.count == shown.count ? "Newest first" : "Files") : folder.name) {
+                    ForEach(folder.files) { f in
+                        Button { if model.controls.prints { printing = f } } label: { row(f) }
+                            .foregroundStyle(.primary)
+                            .swipeActions {
+                                Button("Delete", role: .destructive) { deleting = f }
+                            }
+                    }
                 }
             }
-            .padding(16)
         }
-        .background(p.bg.ignoresSafeArea())
+        .listStyle(.insetGrouped)
+        .searchable(text: $search, prompt: "Search the files")
+        .navigationTitle("Files · \(short)")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { Button("Done", action: close) }
+        .refreshable { await load() }
         .task { await load() }
-        .overlay {
-            if let f = confirm {
-                ConfirmPanel(question: "Print \(f.name)?", yes: "Print",
-                             onYes: {
-                                 confirm = nil
-                                 Task { await print(f) }
-                             },
-                             onNo: { confirm = nil })
-            }
+        .confirmationDialog(printing.map { "Print \($0.name) on \(model.deck.title)?" } ?? "",
+                            isPresented: Binding(get: { printing != nil }, set: { if !$0 { printing = nil } }),
+                            titleVisibility: .visible, presenting: printing) { f in
+            Button("Print on \(short)") { Task { await print(f) } }
+            Button("Back", role: .cancel) {}
+        } message: { _ in
+            Text("The deck asks on its touch screen when the material of the file is not the material in the printer.")
+        }
+        .confirmationDialog(deleting.map { "Delete \($0.name) from \(model.deck.title)?" } ?? "",
+                            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                            titleVisibility: .visible, presenting: deleting) { f in
+            Button("Delete", role: .destructive) { Task { await delete(f) } }
+            Button("Back", role: .cancel) {}
         }
     }
 
+    private var shown: [DeckFile] {
+        let q = search.trimmingCharacters(in: .whitespaces)
+        return q.isEmpty ? files : files.filter { $0.path.localizedCaseInsensitiveContains(q) }
+    }
+
     private func row(_ f: DeckFile) -> some View {
-        HStack(spacing: 14) {
-            // The thumbnail of the deck: a part on the bed, in a dark window.
-            ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: 4).fill(p.lcd)
-                VStack(spacing: 0) {
-                    Rectangle().fill(p.lcdDim).frame(width: 14, height: 12)
-                    Trapezoid().fill(p.orange).frame(width: 34, height: 12)
-                    Rectangle().fill(p.lcdDim).frame(width: 54, height: 3)
-                }
-                .padding(.bottom, 10)
-            }
-            .frame(width: 66, height: 66)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(p.edge, lineWidth: 2))
-            VStack(alignment: .leading, spacing: 6) {
-                Text(f.name)
-                    .font(Theme.plex(18))
-                    .foregroundStyle(p.text)
-                    .lineLimit(1)
-                Text(detail(f))
-                    .font(Theme.plex(15, bold: false))
-                    .foregroundStyle(p.dim)
+        HStack(spacing: 12) {
+            Image(systemName: model.deck.process == .resin ? "drop" : "doc.text")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(f.name).lineLimit(2)
+                Text(detail(f)).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
+            if model.controls.prints {
+                Image(systemName: "play.circle").font(.title3).foregroundStyle(.tint)
+                    .accessibilityLabel("Print")
+            }
         }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 5).fill(p.surface))
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(p.edge, lineWidth: 1))
     }
 
     private func detail(_ f: DeckFile) -> String {
@@ -94,31 +97,20 @@ struct FilesView: View {
     }
 
     private func print(_ f: DeckFile) async {
-        // Only an FDM deck starts a print from the app. The deck screen has no Print a file for
-        // any other deck.
-        guard model.deck.printsFromApp else {
+        // Only an FDM printer with no print starts a print from the app.
+        guard model.controls.prints else {
             message = "Start a resin print on the touch screen of the deck."
             return
         }
+        if await model.run("Starting \(f.name)", { try await $0.printFile(f.path) }) { close() }
+    }
+
+    private func delete(_ f: DeckFile) async {
         do {
-            try await DeckClient(settings: model.settings).printFile(f.path)
-            await model.refresh()
-            close()
+            try await DeckClient(settings: model.settings).deleteFile(f.path)
+            files.removeAll { $0.path == f.path }
         } catch {
             message = errorText(error)
         }
-    }
-}
-
-/// A trapezoid: the part on the bed in the thumbnails of the deck.
-struct Trapezoid: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: r.minX + r.width * 0.2, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX - r.width * 0.2, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
-        p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
-        p.closeSubpath()
-        return p
     }
 }

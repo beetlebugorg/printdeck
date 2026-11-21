@@ -946,6 +946,36 @@ struct DeckClient {
         return q
     }
 
+    /// Sets the target of the nozzle (tool0) in °C. 0 turns the heater off.
+    func setTool(_ target: Int) async throws {
+        _ = try await send("/api/printer/tool", method: "POST", body: ["command": "target", "targets": ["tool0": target]])
+    }
+
+    /// Sets the target of the bed in °C. 0 turns the heater off.
+    func setBed(_ target: Int) async throws {
+        _ = try await send("/api/printer/bed", method: "POST", body: ["command": "target", "target": target])
+    }
+
+    /// Moves the head by x, y and z mm, relative to where it is.
+    func jog(x: Double = 0, y: Double = 0, z: Double = 0) async throws {
+        _ = try await send("/api/printer/printhead", method: "POST", body: ["command": "jog", "x": x, "y": y, "z": z])
+    }
+
+    /// Homes the axes ("x", "y", "z"), or all axes with none.
+    func home(_ axes: [String] = []) async throws {
+        _ = try await send("/api/printer/printhead", method: "POST", body: ["command": "home", "axes": axes])
+    }
+
+    /// Sends G-code lines to the printer. The deck refuses them with Signed prints only on.
+    func gcode(_ lines: [String]) async throws {
+        _ = try await send("/api/printer/command", method: "POST", body: ["commands": lines])
+    }
+
+    /// Deletes a G-code file. The deck refuses the file of the print that runs.
+    func deleteFile(_ path: String) async throws {
+        _ = try await send("/api/files/local/" + path, method: "DELETE")
+    }
+
     func pause() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "pause"]) }
     func resume() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "resume"]) }
     func cancel() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "cancel"]) }
@@ -1006,6 +1036,23 @@ struct DeckFile: Identifiable, Hashable {
     var date: Date?
     var size: Int?
     var id: String { path }
+}
+
+extension DeckFile {
+    /// The files by their folder, in the order of the list: the files with no folder first, then
+    /// each folder by its name.
+    static func folders(_ list: [DeckFile]) -> [(name: String, files: [DeckFile])] {
+        var out: [(name: String, files: [DeckFile])] = []
+        for f in list {
+            let dir = f.path.split(separator: "/").dropLast().joined(separator: "/")
+            if let i = out.firstIndex(where: { $0.name == dir }) {
+                out[i].files.append(f)
+            } else {
+                out.append((dir, [f]))
+            }
+        }
+        return out.sorted { a, b in a.name.isEmpty != b.name.isEmpty ? a.name.isEmpty : a.name < b.name }
+    }
 }
 
 /// A time lapse video on the deck.
