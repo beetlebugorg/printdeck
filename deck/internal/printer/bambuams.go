@@ -45,6 +45,8 @@ type AMSTray struct {
 	Feeds int
 	// Temp is the nozzle temperature of the filament for a load, from the printer, or 0.
 	Temp int
+	// InfoIdx is the filament code of Bambu Studio for the spool (tray_info_idx), or "".
+	InfoIdx string
 }
 
 // AMSUnit is one AMS.
@@ -106,7 +108,7 @@ func (b *Bambu) AMS() AMS {
 			slot := ui*4 + ti
 			tr := AMSTray{Slot: slot, Unit: ui, Index: ti, Loaded: r.TrayLoaded(slot), Material: t.Type,
 				Brand: t.Brand, Color: t.ColorHex(), Remain: -1, Active: slot == active, Roll: links[slot],
-				Tag: t.Tag(), Weight: float64(t.Weight), Feeds: feed(slot), Temp: t.TempMax.Int()}
+				Tag: t.Tag(), Weight: float64(t.Weight), Feeds: feed(slot), Temp: t.TempMax.Int(), InfoIdx: t.InfoIdx}
 			if t.Known() {
 				tr.Remain = t.Remain.Int()
 			}
@@ -122,7 +124,7 @@ func (b *Bambu) AMS() AMS {
 		}
 		tr := AMSTray{Slot: id, Unit: -1, Index: 0, Loaded: t.Type != "", Material: t.Type, Brand: t.Brand,
 			Color: t.ColorHex(), Remain: -1, Active: id == active, Roll: links[id], Tag: t.Tag(),
-			Weight: float64(t.Weight), External: true, Feeds: feed(id), Temp: t.TempMax.Int()}
+			Weight: float64(t.Weight), External: true, Feeds: feed(id), Temp: t.TempMax.Int(), InfoIdx: t.InfoIdx}
 		if t.Known() {
 			tr.Remain = t.Remain.Int()
 		}

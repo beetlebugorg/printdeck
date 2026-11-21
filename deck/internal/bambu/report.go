@@ -148,6 +148,9 @@ type Tray struct {
 	Weight Num    `json:"tray_weight"` // the grams of a full spool, from the RFID tag, or 0
 	// TempMax is the highest nozzle temperature of the filament in °C, or 0.
 	TempMax Num `json:"nozzle_temp_max"`
+	// InfoIdx is the filament code of Bambu Studio for the spool (tray_info_idx), for example
+	// "GFA00", or "".
+	InfoIdx string `json:"tray_info_idx"`
 }
 
 // Tag returns the RFID tag of the spool, or "" with no tag.

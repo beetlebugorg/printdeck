@@ -35,6 +35,9 @@ func TestReportX2D(t *testing.T) {
 	if r.Name() != "new_machine_auto_cali_for_user" {
 		t.Errorf("name %q", r.Name())
 	}
+	if len(r.AMS.Units) == 0 || len(r.AMS.Units[0].Trays) == 0 || r.AMS.Units[0].Trays[0].InfoIdx != "GFL99" {
+		t.Errorf("the filament code of tray 1: %+v", r.AMS.Units)
+	}
 	temp, target, ok := r.Nozzles()
 	if !ok || len(temp) != 2 || temp[0] != 48 || temp[1] != 51 || target[0] != 0 {
 		t.Errorf("nozzles %v %v %v", temp, target, ok)
