@@ -144,4 +144,66 @@ final class PrintersTests: XCTestCase {
         XCTAssertNil(st.filaments)
         XCTAssertNil(st.release)
     }
+
+    /// The entries of the deck of twoPrinters, as the app has them after a connect.
+    private func entries() throws -> [SavedDeck] {
+        let list = try JSONDecoder().decode(DeckPrinterList.self, from: Data(twoPrinters.utf8))
+        return list.entries(address: "192.168.1.50", key: "old", name: "", existing: [])
+    }
+
+    /// A removed deck key gives 403 for each printer of the deck. The app shows one Connect again
+    /// for the deck, and the new key goes to each entry of the deck.
+    func testRemovedDeckKey() throws {
+        guard case .badKey? = DeckClient.error(code: 403, data: Data(#"{"error":"Invalid API key"}"#.utf8)) else {
+            return XCTFail("403 is no bad key")
+        }
+        XCTAssertNil(DeckClient.error(code: 204, data: Data()))
+        XCTAssertEqual(DeckProblem.of(DeckError.badKey, sharedDeck: true), .key)
+        XCTAssertEqual(DeckProblem.of(DeckError.badKey, sharedDeck: false), .key)
+
+        var other = SavedDeck(name: "Other", settings: DeckSettings(address: "192.168.1.60", key: "k2"))
+        other.deckKey = true
+        let printerKey = SavedDeck(name: "Old", settings: DeckSettings(address: "192.168.1.70", key: "k3"))
+        let list = try entries() + [other, printerKey]
+        // All printers of the first deck refuse the key, and the printer key of another deck too.
+        let refused: Set = ["192.168.1.50", "192.168.1.70"]
+        XCTAssertEqual(SavedDeck.refusedDecks(list) { refused.contains($0.deckRoot) }, ["192.168.1.50"])
+        XCTAssertEqual(SavedDeck.refusedDecks(list) { _ in false }, [])
+
+        let new = SavedDeck.rekeyed(list, root: "192.168.1.50/", key: "new")
+        XCTAssertEqual(new.map(\.address), ["192.168.1.50", "192.168.1.50/printers/x2d", "192.168.1.50/printers/phenom"])
+        XCTAssertTrue(new.allSatisfy { $0.key == "new" })
+        XCTAssertEqual(new.map(\.id), Array(list.prefix(3)).map(\.id))
+    }
+
+    /// A printer that the deck no longer lists is marked gone, and its reads answer 404. It is no
+    /// longer gone when the deck lists it again.
+    func testRemovedPrinter() throws {
+        let old = try entries()
+        let list = try JSONDecoder().decode(DeckPrinterList.self, from: Data(#"""
+        {"name":"Workshop","printers":[
+          {"id":"","name":"TAZ Workhorse","label":"TAZ","color":"#2f6fd0","kind":"fdm","url":""},
+          {"id":"phenom","name":"Phenom","label":"PHE","color":"#8e5bd0","kind":"resin","url":"/printers/phenom"}]}
+        """#.utf8))
+        let e = list.entries(address: "192.168.1.50", key: "old", name: "", existing: old)
+        XCTAssertEqual(e.count, 3)
+        let x2d = try XCTUnwrap(e.first { $0.printer == "x2d" })
+        XCTAssertEqual(x2d.gone, true)
+        XCTAssertEqual(x2d.id, old[1].id)
+        XCTAssertEqual(e.filter { $0.gone == true }.count, 1)
+        // Back on the deck.
+        let again = try JSONDecoder().decode(DeckPrinterList.self, from: Data(twoPrinters.utf8))
+            .entries(address: "192.168.1.50", key: "old", name: "", existing: e)
+        XCTAssertTrue(again.allSatisfy { $0.gone == nil })
+        XCTAssertEqual(again.count, 3)
+        // A printer of another deck is no part of it.
+        var far = SavedDeck(settings: DeckSettings(address: "192.168.1.60/printers/a", key: "k"))
+        far.printer = "a"
+        XCTAssertFalse(list.entries(address: "192.168.1.50", key: "old", name: "", existing: old + [far])
+            .contains { $0.address == far.address })
+
+        XCTAssertEqual(DeckProblem.of(DeckError.http(404), sharedDeck: true), .gone)
+        XCTAssertNil(DeckProblem.of(DeckError.http(404), sharedDeck: false))
+        XCTAssertNil(DeckProblem.of(DeckError.http(500), sharedDeck: true))
+    }
 }

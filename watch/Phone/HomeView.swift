@@ -43,6 +43,9 @@ struct HomeView: View {
                         .environment(\.panelScale, 0.75)
                 }
                 .padding(.top, 8)
+                ForEach(fleet.refusedDecks, id: \.self) { root in
+                    RefusedKeyPlate(root: root)
+                }
                 ForEach(fleet.models) { m in
                     Button { open(m.id) } label: {
                         DeckCard().environment(m)
@@ -53,6 +56,50 @@ struct HomeView: View {
             .padding(16)
         }
         .background(p.bg.ignoresSafeArea())
+    }
+}
+
+/// A deck that refused its deck key: the owner removed the key on the deck. Each printer of the
+/// deck fails, and one Connect again asks the deck for a new key for all of them.
+private struct RefusedKeyPlate: View {
+    @Environment(Fleet.self) private var fleet
+    @Environment(\.palette) private var p
+    let root: String
+
+    @State private var busy = false
+    @State private var message: String?
+
+    var body: some View {
+        let name = fleet.decks.first { $0.deckRoot == root }?.deckName ?? root
+        Plate(label: "Key") {
+            DisplayWindow {
+                Text((message ?? "\(name) does not accept the key").uppercased())
+                    .font(Theme.plex(16))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+            }
+            Button("Connect again") { Task { await connect(name) } }
+                .buttonStyle(KeyStyle(cap: .orange))
+                .disabled(busy)
+            Text("Tap Allow on the touch screen of the deck. The new key works for each printer of the deck.")
+                .font(Theme.plex(12, bold: false))
+                .foregroundStyle(p.dim)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private func connect(_ name: String) async {
+        guard let base = DeckSettings(address: root).baseURL else { return }
+        busy = true
+        defer { busy = false }
+        message = "Tap Allow on the deck"
+        do {
+            let g = try await DeckClient.requestKey(base: base, app: "Printdeck on iPhone")
+            message = nil
+            await fleet.connect(address: root, grant: g, name: name)
+        } catch {
+            message = errorText(error)
+        }
     }
 }
 
@@ -80,7 +127,7 @@ struct DeckCard: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(stateText.uppercased())
                     .font(Theme.plex(17))
-                    .foregroundStyle(model.error == nil ? p.text : p.red)
+                    .foregroundStyle(model.error == nil || model.problemNow != nil ? p.text : p.red)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Spacer()
@@ -114,6 +161,11 @@ struct DeckCard: View {
 
     /// "Layer 12 of 27", "Paused", the state of the deck, or the error of the last read.
     private var stateText: String {
+        switch model.problemNow {
+        case .gone: return "Not on this deck now"
+        case .key where model.deck.deckKey == true: return "Waiting for a new key"
+        default: break
+        }
         guard let st = model.status else { return model.error == nil ? "Reading the deck" : "No connection" }
         if !model.live, model.error != nil { return "No connection" }
         if st.paused { return "Paused" }

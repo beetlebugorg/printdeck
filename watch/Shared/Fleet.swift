@@ -117,9 +117,14 @@ final class Fleet {
         if grant.deck {
             let root = SavedDeck.root(address)
             let client = DeckClient(settings: DeckSettings(address: root, key: grant.key))
-            if let list = try? await client.printers() {
-                return add(list.entries(address: root, key: grant.key, name: name, existing: decks))
+            let first = (try? await client.printers()).flatMap {
+                add($0.entries(address: root, key: grant.key, name: name, existing: decks))
             }
+            // Each other entry of the deck with a deck key gets the new key too: a removed deck
+            // key failed for all of them.
+            add(SavedDeck.rekeyed(decks, root: root, key: grant.key))
+            if let first { return first }
+            if let m = models.first(where: { $0.deck.deckRoot == root && $0.deck.deckKey == true }) { return m }
         }
         var d = SavedDeck(name: name, settings: DeckSettings(address: address, key: grant.key))
         if let old = models.first(where: { $0.settings.address == address }) { d = old.deck; d.key = grant.key }
@@ -142,6 +147,11 @@ final class Fleet {
         }
     }
     #endif
+
+    /// The decks that refused their deck key, once each: the app shows one Connect again for each.
+    var refusedDecks: [String] {
+        SavedDeck.refusedDecks(decks) { model($0.id)?.problem == .key }
+    }
 
     func remove(_ id: String) {
         models.removeAll { $0.id == id }
