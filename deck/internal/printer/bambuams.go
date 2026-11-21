@@ -272,7 +272,9 @@ func (b *Bambu) AddTrayRoll(slot int, grams float64, color string) (Spool, error
 
 // bambuPrint is what the deck keeps of the print now for its filament count.
 type bambuPrint struct {
-	file    string       // gcode_file: the 3MF on the card
+	file    string       // gcode_file: the 3MF on the card, or the G-code in it (the X2D)
+	subtask string       // subtask_name: the name of the 3MF with no .gcode.3mf
+	stored  string       // the copy of the 3MF in the store, for a file that the deck sent, or ""
 	plate   int          // plate_idx
 	mapping []int        // the tray of each filament (Report.AMSMapping)
 	used    map[int]bool // the trays that fed the nozzle during the print
@@ -290,6 +292,13 @@ func (b *Bambu) track(r bambu.Report) {
 	p := &b.cur
 	if r.File != "" {
 		p.file = r.File
+	}
+	if r.Subtask != "" {
+		p.subtask = r.Subtask
+	}
+	// A print of a file that the deck sent: its copy in the store (update sets b.path).
+	if b.sent.path != "" && b.path == b.sent.path {
+		p.stored = b.sent.path
 	}
 	if n := r.PlateIdx.Int(); n > 0 {
 		p.plate = n

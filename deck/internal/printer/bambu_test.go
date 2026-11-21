@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -312,4 +314,27 @@ func TestBambuSpoolChanges(t *testing.T) {
 	// A new spool goes in: the screens ask.
 	b.update(r, time.Now())
 	waitFor(t, "question of the new spool", func() bool { q, ok := b.TrayQuestion(); return ok && q.Slot == 0 })
+}
+
+// The X2D reports the G-code in the 3MF as its file: the deck reads the 3MF by the name of the
+// task.
+func TestBambuPlateFileOfX2D(t *testing.T) {
+	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
+	old := fetch3MF
+	t.Cleanup(func() { fetch3MF = old })
+	var asked string
+	fetch3MF = func(_ *bambu.Client, file string) ([]byte, error) {
+		asked = file
+		return nil, errors.New("no file")
+	}
+	for _, c := range []struct{ file, subtask, want string }{
+		{"/data/Metadata/plate_1.gcode", "cover-screw", "/cover-screw.gcode.3mf"},
+		{"/cube.gcode.3mf", "cube", "/cube.gcode.3mf"},
+		{"/data/Metadata/plate_1.gcode", "", "/data/Metadata/plate_1.gcode"},
+	} {
+		b.plateFile(bambuPrint{file: c.file, subtask: c.subtask}, func(io.ReaderAt, int64) error { return nil })
+		if asked != c.want {
+			t.Errorf("%s, %q: asked %q, not %q", c.file, c.subtask, asked, c.want)
+		}
+	}
 }
