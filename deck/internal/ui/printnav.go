@@ -153,25 +153,29 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		keys, rest = f.side, f.main
 	} else {
 		s := kit.NewStack(kit.Inset(f.main, margin, 0, margin, 0), 12)
-		keys, rest = s.Next(72+12+60+12+homeRowH), s.Rest()
+		keys, rest = s.Next(60+12+homeRowH), s.Rest()
 	}
 
-	// Lower keys on a tall screen than before: the last print, a 3D view, gets the room.
-	printH, heatH := 72, 60
+	// A tall screen has the heaters and the home row at the top, and Print a file at the bottom,
+	// under the pages, where the thumb is: the last print, a 3D view, gets the room between them.
+	// The side of a wide screen has Print a file at the top.
+	pagesH, printH := 72, 72
+	var mainR image.Rectangle
 	if f.wide {
-		printH, heatH = 96, 68
-	}
-	k := kit.Rows(keys, 12, kit.Px(printH), kit.Px(heatH), kit.Px(homeRowH))
-	a.homeKeys(c, st, k[0], k[1])
-	a.homeRow(c, st, k[2])
-
-	// The last print, and the pages in the space under it, down to the bottom.
-	if !f.wide {
+		k := kit.Rows(keys, 12, kit.Px(96), kit.Px(68), kit.Px(homeRowH))
+		a.homeKeys(c, st, k[0], k[1])
+		a.homeRow(c, st, k[2])
+	} else {
+		k := kit.Rows(keys, 12, kit.Px(60), kit.Px(homeRowH))
 		rest = kit.Inset(rest, 0, 0, 0, 16)
+		b := kit.Rows(rest, 12, kit.Fr(1), kit.Px(printH))
+		rest, mainR = b[0], b[1]
+		a.homeKeys(c, st, mainR, k[0])
+		a.homeRow(c, st, k[1])
 	}
-	// The pages are one row of keys at the bottom, also with four pages. The last print gets the
-	// space over them.
-	pagesH := 72
+
+	// The last print, and the pages in the space under it. The pages are one row of keys, also
+	// with four pages. The last print gets the space over them.
 	r := kit.Rows(rest, 12, kit.Fr(1), kit.Px(pagesH))
 	a.drawLastPrint(c, st, r[0])
 	a.region("Pages", r[1])
@@ -347,8 +351,7 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 		c.Text(last, "No print yet", gfx.Face(false, 18), dim, gfx.Center)
 		return
 	}
-	summary := l.Summary(func(mm float64) float64 { return a.grams(mm, "") })
-	a.drawLastPrintView(c, last, l, summary)
+	a.drawLastPrintView(c, last, l)
 }
 
 // confirmPrint asks before it starts a file. The question checks the material of the file
