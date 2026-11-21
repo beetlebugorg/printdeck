@@ -84,8 +84,31 @@ final class DeckModel: Identifiable {
         deck.name = new.name
         deck.process = new.process ?? deck.process
         deck.printerID = new.printerID ?? deck.printerID
+        identify(new)
         chooseCamera(new.camera)
         apply(settings)
+    }
+
+    /// Uses the entry of the printer from the list of its deck: the key, and the name, the label,
+    /// the color and the kind of the printer. A printer of a deck with one printer keeps the name
+    /// that the user gave it. The chosen camera stays.
+    func merge(_ new: SavedDeck) {
+        if new.printer != nil || deck.name.isEmpty { deck.name = new.name }
+        deck.process = new.process ?? deck.process
+        identify(new)
+        Store.save(deck)
+        apply(new.settings)
+    }
+
+    /// Copies the fields of the printer and of its deck.
+    private func identify(_ new: SavedDeck) {
+        deck.deckAddress = new.deckAddress
+        deck.deckName = new.deckName
+        deck.printer = new.printer
+        deck.label = new.label
+        deck.color = new.color
+        deck.model = new.model
+        deck.deckKey = new.deckKey
     }
 
     /// Uses a new address or key: from the iPhone on the watch, from the setup on the iPhone.

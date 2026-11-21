@@ -20,6 +20,86 @@ struct DeckSettings: Codable, Equatable {
     }
 
     var isComplete: Bool { baseURL != nil && !key.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// The URL of a path of the API. A path from a reply of the deck, such as the url of a time
+    /// lapse, starts with the path of the printer (/printers/<id>/downloads/...), so a path that
+    /// starts with the path of the address goes on the host alone.
+    func url(_ path: String) -> URL? {
+        guard let base = baseURL else { return nil }
+        let prefix = base.path
+        let parts = path.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        var p = String(parts[0])
+        if !prefix.isEmpty, prefix != "/", p.hasPrefix(prefix + "/") { p.removeFirst(prefix.count) }
+        var url = base.appending(path: p)
+        if parts.count > 1, let q = URL(string: url.absoluteString + "?" + parts[1]) { url = q }
+        return url
+    }
+}
+
+/// A key from the App Keys flow. A deck key works for each printer of the deck: at the root, and
+/// under /printers/<id>/. A printer key works for one printer.
+struct KeyGrant: Equatable {
+    var key: String
+    /// The reply has "scope": "deck". An older deck sends no scope, and its key is a printer key.
+    var deck: Bool
+}
+
+/// A printer of a deck in /slicer/printer.json (slicerPrinter in deck/cmd/printdeck/slicerweb.go).
+struct DeckPrinter: Decodable, Equatable {
+    var id: String
+    var name: String
+    /// The short label of the printer: 2 to 4 characters.
+    var label: String
+    /// The color of the printer as #rrggbb.
+    var color: String
+    /// "fdm" or "resin".
+    var kind: String
+    /// "" for the first printer of the deck, and "/printers/<id>" for another.
+    var url: String
+    /// "gcode", "gcode.3mf" or "ctb", or nil from an older deck.
+    var files: String?
+    /// The model that the printer reports, for example "Bambu Lab X2D", or nil.
+    var model: String?
+}
+
+/// /slicer/printer.json of a deck: the name of the deck, and its printers when it has more than
+/// one.
+struct DeckPrinterList: Decodable, Equatable {
+    var name: String?
+    var printers: [DeckPrinter]?
+
+    /// The list entries of the printers of the deck at the address, with the deck key. A deck
+    /// with one printer has no list, and gives one entry with the name. A printer keeps the ID of
+    /// its entry in `existing` (same address), so its status, its pairing and its camera stay.
+    func entries(address: String, key: String, name fallback: String, existing: [SavedDeck]) -> [SavedDeck] {
+        let root = SavedDeck.root(address)
+        guard let list = printers, !list.isEmpty else {
+            var d = existing.first { $0.address == root } ?? SavedDeck(name: fallback)
+            d.address = root
+            d.key = key
+            if d.name.isEmpty { d.name = fallback.isEmpty ? (name ?? "") : fallback }
+            d.deckAddress = root
+            d.deckName = name
+            d.deckKey = true
+            return [d]
+        }
+        return list.map { p in
+            let a = root + p.url
+            var d = existing.first { $0.address == a } ?? SavedDeck()
+            d.address = a
+            d.key = key
+            d.name = p.name
+            d.deckAddress = root
+            d.deckName = name
+            d.printer = p.id
+            d.label = p.label
+            d.color = p.color
+            d.model = p.model?.isEmpty == false ? p.model : nil
+            d.process = DeckProcess(rawValue: p.kind) ?? d.process
+            d.deckKey = true
+            return d
+        }
+    }
 }
 
 /// The kind of printer of a deck, from `process` in /api/plugin/printdeck.
@@ -42,6 +122,20 @@ struct SavedDeck: Codable, Equatable, Identifiable {
     /// The ID of the printer of the deck at the service, from the last status, or nil. The app
     /// finds the live print of the deck at the service with it, away from home.
     var printerID: String?
+    /// The address of the deck of the printer, with no /printers/<id>, or nil for an entry from an
+    /// older app. Each printer of a deck with many printers has an entry of its own.
+    var deckAddress: String?
+    /// The name of the deck, from /slicer/printer.json, or nil.
+    var deckName: String?
+    /// The ID of the printer in the list of its deck, or nil on a deck with one printer.
+    var printer: String?
+    /// The short label and the color (#rrggbb) of the printer, or nil on a deck with one printer.
+    var label: String?
+    var color: String?
+    /// The model of the printer, for example "Bambu Lab X2D", or nil.
+    var model: String?
+    /// The key is a deck key: it works for each printer of the deck (KeyGrant.deck).
+    var deckKey: Bool?
 
     init(id: String = UUID().uuidString, name: String = "", settings: DeckSettings = DeckSettings(),
          process: DeckProcess? = nil, camera: String? = nil) {
@@ -62,7 +156,28 @@ struct SavedDeck: Codable, Equatable, Identifiable {
         process = try? c.decodeIfPresent(DeckProcess.self, forKey: .process)
         camera = try c.decodeIfPresent(String.self, forKey: .camera)
         printerID = try c.decodeIfPresent(String.self, forKey: .printerID)
+        deckAddress = try c.decodeIfPresent(String.self, forKey: .deckAddress)
+        deckName = try c.decodeIfPresent(String.self, forKey: .deckName)
+        printer = try c.decodeIfPresent(String.self, forKey: .printer)
+        label = try c.decodeIfPresent(String.self, forKey: .label)
+        color = try c.decodeIfPresent(String.self, forKey: .color)
+        model = try c.decodeIfPresent(String.self, forKey: .model)
+        deckKey = try c.decodeIfPresent(Bool.self, forKey: .deckKey)
     }
+
+    /// The address of the deck of a printer address: the address with no /printers/<id>.
+    static func root(_ address: String) -> String {
+        var a = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        while a.hasSuffix("/") { a.removeLast() }
+        if let r = a.range(of: "/printers/") { a = String(a[..<r.lowerBound]) }
+        return a
+    }
+
+    /// The address of the deck: the address of the App Keys request for a key of all its printers.
+    var deckRoot: String { deckAddress ?? Self.root(address) }
+
+    /// The entry is a printer of a deck with many printers.
+    var onSharedDeck: Bool { printer != nil }
 
     var settings: DeckSettings {
         get { DeckSettings(address: address, key: key) }
@@ -221,6 +336,83 @@ private final class MJPEGReader: NSObject, URLSessionDataDelegate, @unchecked Se
     }
 }
 
+/// A spool that the printer has loaded (filamentJSON in deck/internal/octoapi/printdeck.go).
+struct Filament: Codable, Equatable, Identifiable {
+    /// The name of the slot on the printer: "A1" for tray 1 of the first AMS, "Ext" for the
+    /// external spool, "" for the roll of a printer with no AMS.
+    var slot: String
+    /// The place in the list, in the order of the trays.
+    var index: Int
+    /// The number of the tray in the reports of a Bambu Lab printer, or -1.
+    var tray: Int
+    /// "main" or "aux" on a printer with two nozzles, else nil.
+    var nozzle: String?
+    var material: String
+    /// #rrggbb, or nil.
+    var color: String?
+    /// The brand or the name of the spool, or nil.
+    var name: String?
+    /// The part of a full spool that is left, 0 to 1, or nil when it is not known.
+    var remain: Double?
+
+    var id: Int { index }
+
+    init(slot: String = "", index: Int, tray: Int = -1, nozzle: String? = nil, material: String,
+         color: String? = nil, name: String? = nil, remain: Double? = nil) {
+        self.slot = slot
+        self.index = index
+        self.tray = tray
+        self.nozzle = nozzle
+        self.material = material
+        self.color = color
+        self.name = name
+        self.remain = remain
+    }
+
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        slot = try c.decodeIfPresent(String.self, forKey: .slot) ?? ""
+        index = try c.decodeIfPresent(Int.self, forKey: .index) ?? 0
+        tray = try c.decodeIfPresent(Int.self, forKey: .tray) ?? -1
+        nozzle = try c.decodeIfPresent(String.self, forKey: .nozzle).flatMap { $0.isEmpty ? nil : $0 }
+        material = try c.decodeIfPresent(String.self, forKey: .material) ?? ""
+        color = try c.decodeIfPresent(String.self, forKey: .color).flatMap { $0.isEmpty ? nil : $0 }
+        name = try c.decodeIfPresent(String.self, forKey: .name).flatMap { $0.isEmpty ? nil : $0 }
+        remain = try c.decodeIfPresent(Double.self, forKey: .remain)
+    }
+
+    /// The spool is in an AMS: its slot is a unit letter and a tray number.
+    var inAMS: Bool { slot.count >= 2 && slot.first!.isUppercase && slot.dropFirst().allSatisfy(\.isNumber) }
+
+    /// The AMS units of the list, in order, each with its trays: "A" with A1 to A4.
+    static func units(_ list: [Filament]) -> [(unit: String, trays: [Filament])] {
+        var out: [(unit: String, trays: [Filament])] = []
+        for f in list where f.inAMS {
+            let u = String(f.slot.prefix(1))
+            if let i = out.firstIndex(where: { $0.unit == u }) {
+                out[i].trays.append(f)
+            } else {
+                out.append((u, [f]))
+            }
+        }
+        return out
+    }
+}
+
+/// A nozzle of a Bambu Lab printer (nozzleJSON in deck/internal/octoapi/printdeck.go).
+struct DeckNozzle: Codable, Equatable, Identifiable {
+    var id: Int
+    /// "main" with the AMS, or "aux" with the external spool.
+    var role: String
+    /// The diameter in mm.
+    var diameter: Double
+    /// The type code as the printer reports it, for example "HS01".
+    var type: String
+
+    /// The name on the panel of the deck: "Aux" for the aux nozzle, and "Nozzle" for the other.
+    var name: String { role == "aux" ? "Aux" : "Nozzle" }
+}
+
 /// The state of the deck at one time.
 struct Status: Codable, Equatable {
     /// The state text of /api/job: "Printing", "Paused", "Operational", "Offline" and so on.
@@ -252,6 +444,19 @@ struct Status: Codable, Equatable {
     /// The ID of the printer of the deck at the service, or nil before its registration and from
     /// an older deck.
     var printerID: String?
+    /// The path of the file of the print on the deck, or nil.
+    var path: String?
+    /// Seconds until the bed after the print is cool enough to remove the part, or nil.
+    var release: Double?
+    /// The spools that the printer has loaded, in the order of the trays, or nil when the printer
+    /// does not tell them.
+    var filaments: [Filament]?
+    /// The nozzles of a Bambu Lab printer, or nil.
+    var nozzles: [DeckNozzle]?
+    /// The code of the build plate that the printer found on the heatbed, or nil.
+    var plate: String?
+    /// The deck accepts only signed prints and refuses G-code commands from apps.
+    var signedOnly: Bool?
     /// When the app read the status.
     var time: Date
 
@@ -351,11 +556,7 @@ struct DeckClient {
 
     /// A request to the deck with the API key.
     private func request(_ path: String, method: String = "GET") throws -> URLRequest {
-        guard settings.isComplete, let base = settings.baseURL else { throw DeckError.noSettings }
-        // The path can have a query; appending(path:) encodes a "?".
-        let parts = path.split(separator: "?", maxSplits: 1)
-        var url = base.appending(path: String(parts[0]))
-        if parts.count > 1, let q = URL(string: url.absoluteString + "?" + parts[1]) { url = q }
+        guard settings.isComplete, let url = settings.url(path) else { throw DeckError.noSettings }
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue(settings.key.trimmingCharacters(in: .whitespaces), forHTTPHeaderField: "X-Api-Key")
@@ -385,7 +586,7 @@ struct DeckClient {
 
     /// Asks the deck for a key of its own with the App Keys flow of OctoPrint. The touch screen of
     /// the deck asks to allow the app, and the request waits up to 2 minutes for the answer.
-    static func requestKey(base: URL, app: String) async throws -> String {
+    static func requestKey(base: URL, app: String) async throws -> KeyGrant {
         var req = URLRequest(url: base.appending(path: "/plugin/appkeys/request"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -404,10 +605,7 @@ struct DeckClient {
             case 202:
                 continue
             case 200:
-                guard let key = (try? JSONDecoder().decode([String: String].self, from: data))?["api_key"] else {
-                    throw DeckError.badReply
-                }
-                return key
+                return try grant(data)
             case 404:
                 throw DeckError.denied
             case let c:
@@ -415,6 +613,24 @@ struct DeckClient {
             }
         }
         throw DeckError.denied
+    }
+
+    /// The key of the reply of an App Keys request after Allow.
+    static func grant(_ data: Data) throws -> KeyGrant {
+        guard let r = try? JSONDecoder().decode([String: String].self, from: data), let key = r["api_key"] else {
+            throw DeckError.badReply
+        }
+        return KeyGrant(key: key, deck: r["scope"] == "deck")
+    }
+
+    /// The printers of the deck (/slicer/printer.json), with a deck key. It is nil from a deck
+    /// with no list.
+    func printers() async throws -> DeckPrinterList? {
+        do {
+            return try await get("/slicer/printer.json")
+        } catch DeckError.http(let code) where code == 404 || code == 401 {
+            return nil
+        }
     }
 
     private func get<T: Decodable>(_ path: String) async throws -> T {
@@ -452,7 +668,13 @@ struct DeckClient {
                 st.layer = pj.layer
                 st.layers = pj.layers
             }
+            st.path = pj.file.isEmpty ? nil : pj.file
+            if let r = pj.release, r >= 0 { st.release = r }
         }
+        st.filaments = p.filaments
+        st.nozzles = p.nozzles
+        st.plate = p.plate.flatMap { $0.isEmpty ? nil : $0 }
+        st.signedOnly = p.signed_only
         if let t = pr?.temperature {
             st.tool = t["tool0"].map { Temp(actual: $0.actual, target: $0.target) }
             st.bed = t["bed"].map { Temp(actual: $0.actual, target: $0.target) }
@@ -776,7 +998,7 @@ private struct PrinterReply: Decodable {
     var temperature: [String: Temp]?
 }
 
-private struct PluginReply: Decodable {
+struct PluginReply: Decodable {
     struct Spool: Decodable {
         var name: String
         var material: String
@@ -793,6 +1015,8 @@ private struct PluginReply: Decodable {
         var layers: Int
         var progress: Double
         var left: Double
+        /// Seconds until the part can come off the bed; -1 is not known. Nil from an older deck.
+        var release: Double?
     }
     /// "fdm" or "resin", or nil from an older deck.
     var process: String?
@@ -803,6 +1027,10 @@ private struct PluginReply: Decodable {
     var lcd: DeckLCD?
     var camera: DeckCamera?
     var cameras: [DeckCamera]?
+    var filaments: [Filament]?
+    var nozzles: [DeckNozzle]?
+    var plate: String?
+    var signed_only: Bool?
 }
 
 private struct TimelapseReply: Decodable {

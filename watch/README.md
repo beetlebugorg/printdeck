@@ -1,7 +1,7 @@
 # Printdeck for iPhone and Apple Watch
 
 An iPhone app and a watch app for the Printdeck. They use the API of the decks on the local
-network.
+network. Each printer of a deck with many printers is a printer of its own in the apps.
 
 - **Home screen**: a card for each deck, with the state, the print, the time left, the progress and
   a picture: the camera, else the model, else the status screen of the deck. A tap opens the deck
@@ -38,7 +38,7 @@ Install the apps from Xcode. The deployment targets are iOS 17 and watchOS 11.
 4. For the watch, choose the `PrintdeckWatch` scheme and the watch, and run. Turn on Developer
    Mode on the watch. The watch and the Mac must be on the same network.
 5. Open Printdeck on the iPhone. Tap Connect, then tap Allow on the touch screen of the deck. Add
-   connects the next deck.
+   connects the next deck. On a deck with many printers, the app adds each printer of the deck.
 6. To add the complication, edit the watch face and choose Printdeck.
 
 If Xcode fails to find the watch, turn off Bluetooth on the iPhone for a minute.
@@ -134,6 +134,24 @@ The routes of the deck: `GET /api/plugin/printdeck/queue`, `POST
 /api/plugin/printdeck/queue/<id>/move` with `{"by": -1}`, and `DELETE
 /api/plugin/printdeck/queue/<id>`.
 
+## Many printers on one deck
+
+The App Keys request goes to the root of the deck. On a deck with many printers, the touch screen
+asks to allow the app to use the deck and its printers, and the reply has `"scope": "deck"`: the
+key works for each printer of the deck. The app then reads `GET /slicer/printer.json` with the key.
+Each entry of `printers` has the ID, the name, the short label, the color, the kind (`fdm` or
+`resin`), the file format, the model and `url`. The app adds each printer with the address of the
+deck and its `url`: `192.168.1.50` for the first printer, and `192.168.1.50/printers/x2d` for
+another. All requests of a printer go under its address, so `/api/job` of the X2D is
+`/printers/x2d/api/job`.
+
+A deck with one printer has no `printers` in the file, and the app adds one printer, as before. A
+deck from before sends no `scope`, and its key works for one printer.
+
+While the app is open, it reads the list of each deck with a deck key every 5 minutes, and adds a
+new printer of the deck. A printer that the deck no longer lists stays until Remove. Connect
+again on the Menu of a printer asks the root of its deck for a new key.
+
 ## Network
 
 The deck serves plain HTTP on the local network (`NSAllowsLocalNetworking`). The deck announces
@@ -154,7 +172,13 @@ All other requests have the header `X-Api-Key`:
 - `GET /api/job`, `GET /api/printer`: the job and the temperatures.
 - `GET /api/plugin/printdeck`: the process (`fdm` or `resin`), the roll, the print, the main camera
   (`camera`), all cameras (`cameras`) and the status screen (`lcd`). A deck with no `process` is
-  an FDM deck.
+  an FDM deck. `filaments` are the loaded spools: the slot (`A1` for tray 1 of the first AMS,
+  `Ext` for the external spool, `""` for a roll), the tray, the nozzle (`main` or `aux`), the
+  material, the color, the name and the part that is left (`remain`, or null). `nozzles` and
+  `plate` are the nozzles and the build plate of a Bambu Lab printer. `job.release` is the seconds
+  until the part can come off the bed, and `signed_only` is true when the deck refuses G-code
+  commands from apps.
+- `GET /slicer/printer.json`, with a deck key: the printers of the deck.
 - `GET /webcam/snapshot?w=..`, `GET /webcam/stream?w=..&fps=..`: the main camera. Add
   `camera=<id>` for another camera, or `camera=picture` for the camera of the notifications.
 - `POST /api/job`: `{"command":"pause","action":"pause"}`, `{"command":"pause","action":"resume"}`
@@ -176,7 +200,8 @@ All other requests have the header `X-Api-Key`:
 - `Phone/`, `Watch/`: the apps.
 - `Complication/`, `Widget/`: the WidgetKit extensions.
 - `Notifications/`, `Push/PushCrypto.swift`: the decryption of the push messages.
-- `Tests/`: the tests of `PushCrypto` (Product > Test with the `Printdeck` scheme).
+- `Tests/`: the tests of `PushCrypto`, of the printers of a deck and of the replies of the deck
+  (Product > Test with the `Printdeck` scheme).
 - `icon/render.swift`: draws the app icon. Run `swift icon/render.swift <folder>`, and copy
   `AppIcon-phone.png` and `AppIcon-watch.png` into the `AppIcon.appiconset` of `Phone/` and
   `Watch/`.
@@ -185,7 +210,8 @@ All other requests have the header `X-Api-Key`:
 ## Screenshots in the simulator
 
 In a debug build, `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set one deck, and `PRINTDECK_DECKS` sets
-several, as `TAZ|127.0.0.1:7361|key1,Phenom|127.0.0.1:7362|key2`. `PRINTDECK_SCREEN` opens a
+several, as `TAZ|127.0.0.1:7361|key1,Phenom|127.0.0.1:7362|key2`. `PRINTDECK_DECK_KEY` connects to
+a deck with a deck key, as `127.0.0.1:7361|key`, and adds each printer of the deck. `PRINTDECK_SCREEN` opens a
 screen: `menu` or `cancel` on the watch, `deck`, `files`, `setup`, `camera` or `loading` on the
 iPhone. The screens of a deck open the first deck.
 With `xcrun simctl launch`, add the prefix `SIMCTL_CHILD_`. The deck of `printdeck app -sim`
