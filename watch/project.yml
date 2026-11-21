@@ -123,6 +123,7 @@ targets:
       - Phone/Timelapse.swift
       - Shared/Deck.swift
       - Shared/Service.swift
+      - Shared/StatusPanel.swift
       - Shared/Projects.swift
       - Shared/LCDModel.swift
       - Shared/LCDScreen.swift

@@ -271,6 +271,11 @@ struct DeckLCD: Codable, Equatable {
     var cooling: Bool?
     var cool_to: Double?
     var position: String?
+    /// The layer of a print ("17/120"), the time to the next layer ("1:32"), and the height of the
+    /// nozzle ("3.20"), or nil from an older deck.
+    var layer: String?
+    var next: String?
+    var z: String?
 }
 
 /// A camera of the deck (cameraJSON in deck/internal/octoapi/webcam.go).
