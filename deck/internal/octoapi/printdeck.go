@@ -166,6 +166,9 @@ type filamentJSON struct {
 	Remain   *float64 `json:"remain"`
 	// Active is true for the spool that feeds the nozzle now.
 	Active bool `json:"active,omitempty"`
+	// Idx is the filament code of Bambu Studio for a spool of a Bambu Lab printer (tray_info_idx),
+	// for example "GFA00", or "" when it is not known. A slicer writes it in the 3MF.
+	Idx string `json:"idx"`
 }
 
 // filamentsOf returns the loaded spools of the printer p: each tray of an AMS with a spool and
@@ -190,7 +193,7 @@ func filamentsOf(p any) []filamentJSON {
 				continue
 			}
 			f := filamentJSON{Slot: fmt.Sprintf("%c%d", 'A'+t.Unit, t.Index+1), Tray: t.Slot, Material: t.Material,
-				Color: t.Color, Name: t.Brand, Remain: remain(-1), Active: t.Active}
+				Color: t.Color, Name: t.Brand, Remain: remain(-1), Active: t.Active, Idx: t.InfoIdx}
 			if t.External {
 				f.Slot = "Ext"
 			}
