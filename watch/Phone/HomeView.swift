@@ -306,7 +306,8 @@ private struct CardPicture: View {
 
     /// Reads a still every 15 seconds while the card is on the screen, at the width of the card.
     /// The last still stays on the card while the next one loads. After a failure it waits 2, 4, 8
-    /// up to 60 seconds. A printer with no such camera (404) stops the reads.
+    /// up to 60 seconds. A camera that is off shows the color of the printer, and the card asks
+    /// again after a minute. A printer with no such camera (404) stops the reads.
     private func load() async {
         guard phase == .active, visible, model.hasCameraPicture, away == nil else { return }
         let client = DeckClient(settings: model.settings)
@@ -319,6 +320,11 @@ private struct CardPicture: View {
                 try? await Task.sleep(for: .seconds(15))
             } catch DeckError.http(404) {
                 return
+            } catch DeckError.cameraOff {
+                // The camera is off: the card shows its color now, and asks again after a minute.
+                photo = nil
+                failures = 0
+                try? await Task.sleep(for: .seconds(60))
             } catch {
                 if Task.isCancelled { return }
                 failures += 1

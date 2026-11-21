@@ -242,4 +242,17 @@ final class PrintersTests: XCTestCase {
         XCTAssertEqual((1...8).map(DeckClient.retryDelay), [2, 4, 8, 16, 32, 60, 60, 60])
         XCTAssertEqual(DeckClient.retryDelay(0), 2)
     }
+
+    /// The deck answers 503 for a still in two cases: a camera that is off, and a camera that has
+    /// no picture yet. The card tries the second again soon, and the first after a minute.
+    func testStillErrors() {
+        guard case .cameraOff? = DeckClient.error(code: 503, data: Data(#"{"error":"The camera is off"}"#.utf8)) else {
+            return XCTFail("a camera that is off")
+        }
+        guard case .http(503)? = DeckClient.error(code: 503, data: Data(#"{"error":"No picture from the camera"}"#.utf8)) else {
+            return XCTFail("a camera with no picture yet")
+        }
+        guard case .http(503)? = DeckClient.error(code: 503, data: Data()) else { return XCTFail("503 with no body") }
+        guard case .http(404)? = DeckClient.error(code: 404, data: Data()) else { return XCTFail("404") }
+    }
 }
