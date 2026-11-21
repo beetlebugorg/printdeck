@@ -8,6 +8,16 @@ network. Each printer of a deck with many printers is a printer of its own in th
   name of the deck, and each card has the short label of its printer on its color. A card marks a
   printer that needs you: a pause, a failed print, or a print that is done. A tap opens the screen
   of the printer. Add connects another deck.
+- **Card pictures**: a still of the camera of the printer, else the model of the print, else the
+  color of the printer with its label, its model, and its nozzle and bed. The still is
+  `/webcam/snapshot` under the address of the printer (the `camera` path of the list of the deck,
+  with `snapshot` for `stream`), with `camera=main`, so that the deck answers 503 for a camera with
+  no picture in place of a picture of its screen. A card reads a still every 15 seconds while it is
+  on the screen, at the width of the card, and keeps the last still while the next one loads. The
+  first still of a Bambu Lab printer starts its RTSP stream and can be slow or fail: the card
+  waits up to 25 seconds, then tries again after 2, 4, 8 up to 60 seconds. The model of the print
+  (`/api/plugin/printdeck/model.png`) is there only during a print. The screen of a printer shows
+  the same picture under its camera stream until the first frame.
 - **Printer screen**: the camera (tap for the full screen view), or the model of the print. The
   print with its progress, its layer, the time left, the end and the time so far, with Pause,
   Resume and Cancel. The nozzle and the bed with their targets: a tap sets a target, with the

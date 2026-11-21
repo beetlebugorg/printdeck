@@ -214,4 +214,32 @@ final class PrintersTests: XCTestCase {
         XCTAssertNil(DeckProblem.of(DeckError.http(404), sharedDeck: false))
         XCTAssertNil(DeckProblem.of(DeckError.http(500), sharedDeck: true))
     }
+
+    /// The camera of each printer from the list: the stream path, and the still next to it. A
+    /// printer with no camera has no "camera".
+    func testCameraOfTheList() throws {
+        let list = try JSONDecoder().decode(DeckPrinterList.self, from: Data(#"""
+        {"name":"Workshop","camera":"/webcam/stream","printers":[
+          {"id":"","name":"TAZ","label":"TAZ","color":"#2a9d8f","kind":"fdm","url":"","camera":"/webcam/stream"},
+          {"id":"x2d","name":"X2D","label":"X2D","color":"#8e5bd0","kind":"fdm","url":"/printers/x2d","camera":"/printers/x2d/webcam/stream"},
+          {"id":"m2","name":"Mini","label":"MIN","color":"#2f6fd0","kind":"fdm","url":"/printers/m2"}]}
+        """#.utf8))
+        let e = list.entries(address: "192.168.1.50", key: "k", name: "", existing: [])
+        XCTAssertEqual(e.map(\.cameraPath), ["/webcam/stream", "/printers/x2d/webcam/stream", nil])
+        XCTAssertEqual(e.map(\.stillPath), ["/webcam/snapshot", "/printers/x2d/webcam/snapshot", nil])
+        // The still of the X2D goes once under its path.
+        XCTAssertEqual(e[1].settings.url(e[1].stillPath! + "?w=720")?.absoluteString,
+                       "http://192.168.1.50/printers/x2d/webcam/snapshot?w=720")
+        // A deck with one printer has the camera at the top of the file.
+        let one = try JSONDecoder().decode(DeckPrinterList.self, from: Data(#"{"name":"printdeck","camera":"/webcam/stream"}"#.utf8))
+        XCTAssertEqual(one.entries(address: "printdeck.local", key: "k", name: "", existing: [])[0].stillPath, "/webcam/snapshot")
+        XCTAssertNil(try JSONDecoder().decode(DeckPrinterList.self, from: Data(#"{"name":"p"}"#.utf8))
+            .entries(address: "a", key: "k", name: "", existing: [])[0].cameraPath)
+    }
+
+    /// The waits between the reads of a still that fail: 2, 4, 8, 16, 32, then 60 seconds.
+    func testRetryDelay() {
+        XCTAssertEqual((1...8).map(DeckClient.retryDelay), [2, 4, 8, 16, 32, 60, 60, 60])
+        XCTAssertEqual(DeckClient.retryDelay(0), 2)
+    }
 }
