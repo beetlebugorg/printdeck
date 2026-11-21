@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"path"
+	"strings"
 
 	"printdeck/internal/bambu"
 )
@@ -13,24 +14,35 @@ import (
 // RFID tag of Bambu Lab, remain is -1. So at the start of a print the deck reads the G-code of
 // the plate from the 3MF, and counts the filament of each filament number up to each layer and
 // percent mark of the file (bambu.PlateUse). The layer and the percent of each report then give
-// the filament that the print used from each tray, with the purge lines and the flushes. It shows those grams on the rolls during the print (Spools.SetLive), and subtracts them at
-// the end (countUse).
+// the filament that the print used from each tray, with the purge lines and the flushes. The deck
+// shows those grams on the rolls during the print (Spools.SetLive), and subtracts them at the end
+// (countUse).
 
 // plateFile reads the 3MF of the print p: the copy in the store of a file that the deck sent, or
-// the file on the card of the printer. It calls fn with the file.
+// the file on the card of the printer. The X2D reports the G-code in the 3MF as its file
+// ("/data/Metadata/plate_1.gcode"), so the name of the task with ".gcode.3mf" is the name on the
+// card. It calls fn with the file.
 func (b *Bambu) plateFile(p bambuPrint, fn func(r io.ReaderAt, size int64) error) error {
 	b.mu.Lock()
 	sent := b.sent
 	b.mu.Unlock()
-	if sent.path != "" && b.Store != nil && path.Base(p.file) == sent.name {
-		ra, size, closeFile, err := b.openFile(sent.path)
+	stored := p.stored
+	if stored == "" && sent.path != "" && path.Base(p.file) == sent.name {
+		stored = sent.path
+	}
+	if stored != "" && b.Store != nil {
+		ra, size, closeFile, err := b.openFile(stored)
 		if err != nil {
 			return err
 		}
 		defer closeFile()
 		return fn(ra, size)
 	}
-	data, err := fetch3MF(b.Client, p.file)
+	file := p.file
+	if !strings.HasSuffix(strings.ToLower(file), ".3mf") && p.subtask != "" {
+		file = "/" + p.subtask + ".gcode.3mf"
+	}
+	data, err := fetch3MF(b.Client, file)
 	if err != nil {
 		return err
 	}
