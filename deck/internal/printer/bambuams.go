@@ -212,6 +212,11 @@ func (b *Bambu) reportedTray(slot int) (bambu.Tray, bool) {
 	if !ok {
 		return bambu.Tray{}, false
 	}
+	return trayOf(r, slot)
+}
+
+// trayOf returns the tray slot of the report r.
+func trayOf(r bambu.Report, slot int) (bambu.Tray, bool) {
 	if t, ok := r.ExternalTrays()[slot]; ok {
 		return t, true
 	}

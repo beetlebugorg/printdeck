@@ -81,6 +81,8 @@ type HeatLog struct {
 	data   struct {
 		Heat map[string][]HeatSample `json:"heat"`
 		Cool map[string][]CoolSample `json:"cool"`
+		// Changes are the filament changes of the printer (filamentchange.go), oldest first.
+		Changes []FilamentChange `json:"filament_changes,omitempty"`
 	}
 	last    map[string]heaterLast
 	runs    map[string]*heatRun
@@ -292,6 +294,9 @@ func (h *HeatLog) Cools(heater string) []CoolSample {
 type HeatReport struct {
 	Heaters []HeaterTimes `json:"heaters"`
 	Cool    []CoolTimes   `json:"cool"`
+	// FilamentChanges are the times of the filament changes. With no sample, it has samples 0
+	// and no other key.
+	FilamentChanges FilamentChangeTimes `json:"filament_changes"`
 }
 
 // HeaterTimes are the heat-ups of one heater: a fit for any start and target, and the times of
@@ -362,6 +367,7 @@ func (h *HeatLog) Report() HeatReport {
 	h.load()
 	if h.report == nil {
 		r := computeHeatReport(h.data.Heat, h.data.Cool)
+		r.FilamentChanges = computeChangeTimes(h.data.Changes)
 		h.report = &r
 	}
 	return *h.report

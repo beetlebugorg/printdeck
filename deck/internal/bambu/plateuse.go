@@ -19,6 +19,8 @@ type PlateUse struct {
 	Marks []UseMark
 	// Total is the length of each filament in mm for all the file, by filament number less 1.
 	Total []float64
+	// Flush is the planned flush of each filament change, or nil when the file gives none.
+	Flush FlushPlan
 }
 
 // UseMark is the filament that the file used before a mark.
@@ -61,6 +63,7 @@ func CountUse(r io.Reader) (PlateUse, error) {
 		lastE    float64
 		layer    int
 		percent  = -1 // no M73 P yet
+		flush    flushScan
 	)
 	grow := func(n int) {
 		for len(mm) <= n {
@@ -74,6 +77,10 @@ func CountUse(r io.Reader) (PlateUse, error) {
 	sc.Buffer(make([]byte, 64<<10), 1<<20)
 	for sc.Scan() {
 		line := sc.Text()
+		if strings.HasPrefix(line, ";") {
+			flush.line(line)
+			continue
+		}
 		if i := strings.IndexByte(line, ';'); i >= 0 {
 			line = line[:i]
 		}
@@ -131,6 +138,7 @@ func CountUse(r io.Reader) (PlateUse, error) {
 		return PlateUse{}, err
 	}
 	u.Total = mm
+	u.Flush = flush.plan()
 	return u, nil
 }
 

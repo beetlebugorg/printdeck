@@ -55,6 +55,7 @@ type Bambu struct {
 	nextProject string
 	camera      string // the RTSPS address of the camera
 	cur         bambuPrint
+	change      changeWatch    // the filament change now (bambuchange.go)
 	counting    bool           // countUse runs for the print that ended: the rolls keep their live grams
 	useWG       sync.WaitGroup // the loadUse of the prints, for the tests
 	savedPin    string         // the pin of printer.json
@@ -212,6 +213,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 			}
 			b.name, b.system = r.Name(), r.PrintType == "system"
 			b.cur = bambuPrint{}
+			b.change = changeWatch{}
 			b.viewLayer = -1
 			if b.nextProject != "" && b.Hist != nil {
 				b.Hist.SetNextProject(b.path, b.nextProject)
@@ -219,6 +221,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 			}
 		}
 		b.track(r)
+		b.watchChange(r, now)
 		st.Printing, st.Paused = true, r.Paused()
 		st.Preparing = r.Preparing()
 		st.Prep, st.PrepN, b.prepNow = bambuPrep(r, b.prepNow)
@@ -266,6 +269,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		return
 	}
 	st.ReleaseLeft, st.HasReleaseLeft = 0, false
+	b.change = changeWatch{} // a print that ends during a change gives no sample
 	if b.path != "" {
 		b.HeatLog.PrintEnded(now)
 		result := "complete"

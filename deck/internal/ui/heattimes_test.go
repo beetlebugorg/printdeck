@@ -121,6 +121,81 @@ func TestHeatTimesLines(t *testing.T) {
 	}
 }
 
+// testChangeTimes are filament changes on the same nozzle and from one nozzle to the other.
+func testChangeTimes() printer.FilamentChangeTimes {
+	flush := &printer.PlannedFlush{Samples: 100, Median: 262, Low: 209, High: 307}
+	return printer.FilamentChangeTimes{
+		ChangeTimes:    printer.ChangeTimes{Samples: 152, Median: 38, Low: 34, High: 44, PlannedFlush: flush},
+		SameNozzle:     &printer.ChangeTimes{Samples: 120, Median: 36, Low: 33, High: 40, PlannedFlush: flush},
+		NozzleToNozzle: &printer.ChangeTimes{Samples: 32, Median: 71, Low: 64, High: 80},
+	}
+}
+
+// The lines of the filament changes, with the split, and with one kind of change only.
+func TestChangeLines(t *testing.T) {
+	texts := func(f printer.FilamentChangeTimes) []string {
+		var all []string
+		for _, l := range changeLines(f) {
+			all = append(all, strings.ReplaceAll(l.text, "\u00a0", " "))
+		}
+		return all
+	}
+	all := texts(testChangeTimes())
+	for _, want := range []string{"FILAMENT CHANGES", "Filament change: 38 s typical, 152 changes", "Middle half 34 s to 44 s",
+		"Planned flush 262 mm³, from the print file", "Same nozzle: 36 s typical, 120 changes", "Nozzle to nozzle: 1 min 11 s typical, 32 changes"} {
+		if !slices.Contains(all, want) {
+			t.Errorf("no line %q in %q", want, all)
+		}
+	}
+	one := testChangeTimes()
+	one.NozzleToNozzle = nil
+	for _, l := range texts(one) {
+		if strings.HasPrefix(l, "Same nozzle") {
+			t.Errorf("a split with one kind: %q", l)
+		}
+	}
+	if got := texts(printer.FilamentChangeTimes{}); len(got) != 0 {
+		t.Errorf("no samples: %q", got)
+	}
+	single := texts(printer.FilamentChangeTimes{ChangeTimes: printer.ChangeTimes{Samples: 1, Median: 40, Low: 40, High: 40}})
+	if !slices.Equal(single, []string{"FILAMENT CHANGES", "Filament change: 40 s typical, 1 change"}) {
+		t.Errorf("one sample: %q", single)
+	}
+}
+
+// The section of the filament changes has no cut text on a tall screen, with the large text, and
+// on a wide screen. A log with changes only shows the section.
+func TestAboutPageChanges(t *testing.T) {
+	var cuts []string
+	gfx.OnCut = func(s string, width int) { cuts = append(cuts, s) }
+	defer func() { gfx.OnCut = nil }()
+	reports := map[string]printer.HeatReport{"changes": {FilamentChanges: testChangeTimes()}}
+	full := testHeatReport()
+	full.FilamentChanges = testChangeTimes()
+	reports["full"] = full
+	for name, rep := range reports {
+		for _, mode := range []string{"tall", "large", "wide"} {
+			a, pr, _ := newPrintApp(idle)
+			a.Printer = heatPrinter{pr, rep}
+			a.Wide = mode == "wide"
+			if mode == "large" {
+				a.TextSize = "large"
+			}
+			a.pages = []page{pageAbout}
+			cuts = nil
+			simFrame(t, a, "about-changes-top-"+name+"-"+mode)
+			*a.pageScroll() = 10000
+			f := strings.ReplaceAll(simFrame(t, a, "about-changes-"+name+"-"+mode), "\u00a0", " ")
+			if !strings.Contains(f, "Nozzle to nozzle:") {
+				t.Errorf("%s %s: no split at the end of the list", name, mode)
+			}
+			if len(cuts) > 0 {
+				t.Errorf("%s %s: cut texts %q", name, mode, cuts)
+			}
+		}
+	}
+}
+
 func TestSecondsText(t *testing.T) {
 	for s, want := range map[float64]string{45: "45 s", 130: "2 min 10 s", 120: "2 min", 3900: "1 h 5 min", 7200: "2 h"} {
 		if got := strings.ReplaceAll(secondsText(s), "\u00a0", " "); got != want {

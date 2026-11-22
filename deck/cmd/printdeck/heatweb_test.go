@@ -23,6 +23,12 @@ func TestHeatFile(t *testing.T) {
 			Targets: []printer.TargetTimes{{Target: 60, Samples: 4, Median: 130, Low: 120, High: 145, From: 22, Room: &room}},
 			Points:  [][2]float64{{60, 130}}}},
 		Cool: []printer.CoolTimes{{Heater: "bed", To: 40, Samples: 3, Median: 900, Low: 840, High: 960, From: 60}},
+		FilamentChanges: printer.FilamentChangeTimes{
+			ChangeTimes: printer.ChangeTimes{Samples: 3, Median: 38, Low: 34, High: 44},
+			SameNozzle: &printer.ChangeTimes{Samples: 2, Median: 36, Low: 35, High: 37,
+				PlannedFlush: &printer.PlannedFlush{Samples: 2, Median: 260, Low: 250, High: 270}},
+			NozzleToNozzle: &printer.ChangeTimes{Samples: 1, Median: 44, Low: 44, High: 44},
+		},
 	}
 	rs := remote.New()
 	rs.Password = func() string { return "pw" }
@@ -66,6 +72,12 @@ func TestHeatFile(t *testing.T) {
 				"from": 22.0, "room": 24.0}},
 		}},
 		"cool": []any{map[string]any{"heater": "bed", "to": 40.0, "samples": 3.0, "median_s": 900.0, "p25_s": 840.0, "p75_s": 960.0, "from": 60.0}},
+		"filament_changes": map[string]any{
+			"samples": 3.0, "median_s": 38.0, "p25_s": 34.0, "p75_s": 44.0,
+			"same_nozzle": map[string]any{"samples": 2.0, "median_s": 36.0, "p25_s": 35.0, "p75_s": 37.0,
+				"planned_flush": map[string]any{"samples": 2.0, "median_mm3": 260.0, "p25_mm3": 250.0, "p75_mm3": 270.0}},
+			"nozzle_to_nozzle": map[string]any{"samples": 1.0, "median_s": 44.0, "p25_s": 44.0, "p75_s": 44.0},
+		},
 	}
 	a, _ := json.Marshal(got)
 	b, _ := json.Marshal(want)
@@ -82,7 +94,7 @@ func TestHeatFileEmpty(t *testing.T) {
 	var none *printer.HeatLog
 	for _, h := range []*printer.HeatLog{{}, none} {
 		b, _ := json.Marshal(h.Report())
-		if string(b) != `{"heaters":[],"cool":[]}` {
+		if string(b) != `{"heaters":[],"cool":[],"filament_changes":{"samples":0}}` {
 			t.Errorf("empty report %s", b)
 		}
 	}

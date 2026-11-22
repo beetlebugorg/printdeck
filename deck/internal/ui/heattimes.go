@@ -41,7 +41,7 @@ func heaterLabel(heater string) string {
 
 // aboutLine is the line of the About key of the Machine page.
 func aboutLine(r printer.HeatReport) string {
-	if len(r.Heaters) == 0 && len(r.Cool) == 0 {
+	if len(r.Heaters) == 0 && len(r.Cool) == 0 && r.FilamentChanges.Samples == 0 {
 		return "No heat-ups yet"
 	}
 	return "Heat and cool times"
@@ -116,6 +116,32 @@ func heatTimesLines(r printer.HeatReport) []heatTimesLine {
 			out = append(out, heatTimesLine{spreadText(ct.Low, ct.High, ct.Samples, "cool-down", "cool-downs"), 2})
 		}
 	}
+	return append(out, changeLines(r.FilamentChanges)...)
+}
+
+// changeLines are the lines of the filament changes: all the changes, then the changes on the same
+// nozzle and from one nozzle to the other when the log has both. The flush is the value that the
+// file plans.
+func changeLines(f printer.FilamentChangeTimes) []heatTimesLine {
+	if f.Samples == 0 {
+		return nil
+	}
+	out := []heatTimesLine{{"FILAMENT CHANGES", 0}}
+	group := func(name string, t printer.ChangeTimes) {
+		out = append(out, heatTimesLine{fmt.Sprintf("%s: %s typical, %d %s", name, secondsText(t.Median), t.Samples,
+			plural(t.Samples, "change", "changes")), 1})
+		if t.Samples > 1 {
+			out = append(out, heatTimesLine{fmt.Sprintf("Middle half %s to %s", secondsText(t.Low), secondsText(t.High)), 2})
+		}
+		if p := t.PlannedFlush; p != nil {
+			out = append(out, heatTimesLine{"Planned flush " + together(fmt.Sprintf("%.0f mm³", p.Median)) + ", from the print file", 2})
+		}
+	}
+	group("Filament change", f.ChangeTimes)
+	if f.SameNozzle != nil && f.NozzleToNozzle != nil {
+		group("Same nozzle", *f.SameNozzle)
+		group("Nozzle to nozzle", *f.NozzleToNozzle)
+	}
 	return out
 }
 
@@ -129,7 +155,7 @@ func (a *App) drawAbout(c *gfx.Canvas) {
 		return
 	}
 	r := ht.HeatTimes()
-	if len(r.Heaters) == 0 && len(r.Cool) == 0 {
+	if len(r.Heaters) == 0 && len(r.Cool) == 0 && r.FilamentChanges.Samples == 0 {
 		noItems(c, body, "No heat-ups yet", "The deck records each heat-up", "and each cool-down after a print.")
 		return
 	}
