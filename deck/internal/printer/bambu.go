@@ -111,6 +111,7 @@ func (b *Bambu) Run(ctx context.Context, notify func()) {
 	for {
 		err := b.Client.Run(ctx, func(r bambu.Report) {
 			b.update(r, time.Now())
+			b.checkTraySpools()
 			b.refreshLive()
 			if notify != nil {
 				notify()

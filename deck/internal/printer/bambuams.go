@@ -206,9 +206,66 @@ func (b *Bambu) linksLocked() map[int]string {
 	return b.trays
 }
 
+// reportedTray returns the tray slot of the last report.
+func (b *Bambu) reportedTray(slot int) (bambu.Tray, bool) {
+	r, ok := b.Report()
+	if !ok {
+		return bambu.Tray{}, false
+	}
+	if t, ok := r.ExternalTrays()[slot]; ok {
+		return t, true
+	}
+	for _, u := range r.AMS.Units {
+		ui, _ := strconv.Atoi(u.ID)
+		for _, t := range u.Trays {
+			if ti, _ := strconv.Atoi(t.ID); ui*4+ti == slot {
+				return t, true
+			}
+		}
+	}
+	return bambu.Tray{}, false
+}
+
+// trayInfo is the material and the filament code of a spool, to compare two reports.
+func trayInfo(material, idx string) string { return material + "|" + idx }
+
+// checkTraySpools finds a spool that the user changed and set on the printer. The old roll keeps
+// its grams and goes out of the tray, the tray shows the values of the printer, and the screens
+// ask for its roll. A spool with an RFID tag finds its roll by the tag. During a print the deck
+// waits: the count of the print needs the rolls. The deck sends nothing to the printer.
+func (b *Bambu) checkTraySpools() {
+	if b.Spools == nil || b.State().Printing {
+		return
+	}
+	ask := false
+	for _, t := range b.AMS().Trays {
+		if t.Roll == "" || t.Tag != "" || !t.Loaded || t.Material == "" ||
+			!b.Spools.TrayChanged(t.Roll, t.Color, trayInfo(t.Material, t.InfoIdx)) {
+			continue
+		}
+		log.Printf("bambu: tray %d has another spool (%s %s): roll #%s went out", t.Slot, t.Material, t.Color, t.Roll)
+		b.LinkTray(t.Slot, "")
+		b.trayMu.Lock()
+		if !slices.Contains(b.pending, t.Slot) {
+			b.pending = append(b.pending, t.Slot)
+		}
+		b.trayMu.Unlock()
+		ask = true
+	}
+	if ask && b.OnTrayQuestion != nil {
+		b.OnTrayQuestion()
+	}
+}
+
 // LinkTray puts the roll of the deck with the ID in the tray slot. "" takes the roll out. A roll
 // is in one tray at most.
 func (b *Bambu) LinkTray(slot int, roll string) error {
+	// The roll keeps its color in the tray: the next change on the printer is another spool.
+	if roll != "" && b.Spools != nil {
+		if t, ok := b.reportedTray(slot); ok && t.ColorHex() != "" {
+			b.Spools.MarkTray(roll, t.ColorHex(), trayInfo(t.Type, t.InfoIdx))
+		}
+	}
 	b.trayMu.Lock()
 	defer b.trayMu.Unlock()
 	links := b.linksLocked()
