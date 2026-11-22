@@ -34,6 +34,12 @@ func CORS(h http.Handler, origins string) http.Handler {
 		}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// An <img> of another origin sends no Origin header, so the camera has this header on
+		// each answer: a cross-origin isolated page (COEP) loads the picture only with it. It
+		// gives no access: the camera still needs the API key or the login.
+		if strings.HasPrefix(printerPath(r.URL.Path), "/webcam/") {
+			w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
+		}
 		origin := r.Header.Get("Origin")
 		if origin == "" || !apiPath(r.URL.Path) {
 			h.ServeHTTP(w, r)
@@ -76,12 +82,18 @@ func CORS(h http.Handler, origins string) http.Handler {
 
 // apiPath tells if a path is a part of the OctoPrint-compatible API.
 func apiPath(p string) bool {
-	// The API of another printer of the deck is under /printers/<id>/ (a deck with many printers).
-	if rest, ok := strings.CutPrefix(p, "/printers/"); ok {
-		if _, sub, ok := strings.Cut(rest, "/"); ok {
-			p = "/" + sub
-		}
-	}
+	p = printerPath(p)
 	return strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/plugin/") || strings.HasPrefix(p, "/downloads/") ||
 		strings.HasPrefix(p, "/webcam/") || p == "/slicer/printer.json"
+}
+
+// printerPath returns the path with no /printers/<id> at its start: the API of another printer of
+// the deck is under it.
+func printerPath(p string) string {
+	if rest, ok := strings.CutPrefix(p, "/printers/"); ok {
+		if _, sub, ok := strings.Cut(rest, "/"); ok {
+			return "/" + sub
+		}
+	}
+	return p
 }

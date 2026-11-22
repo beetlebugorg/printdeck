@@ -126,3 +126,22 @@ func TestCORSPrinterListAndWebcam(t *testing.T) {
 		}
 	}
 }
+
+// The camera has the resource policy with no Origin header, as an <img> asks for it, on each
+// printer. The other paths do not.
+func TestCORSCameraResourcePolicy(t *testing.T) {
+	h := CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}), "https://app.example")
+	for path, want := range map[string]string{
+		"/webcam/stream":              "cross-origin",
+		"/webcam/snapshot":            "cross-origin",
+		"/printers/x2d/webcam/stream": "cross-origin",
+		"/api/version":                "",
+		"/system":                     "",
+	} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if got := w.Header().Get("Cross-Origin-Resource-Policy"); got != want {
+			t.Errorf("%s: %q, want %q", path, got, want)
+		}
+	}
+}
