@@ -110,6 +110,10 @@ type IPCam struct {
 	Resolution string `json:"resolution"`
 	Timelapse  string `json:"timelapse"`    // "enable" or "disable"
 	Record     string `json:"ipcam_record"` // "enable" or "disable": the recording of each print
+	// The cameras that the printer can stream, and the camera that it streams now. The type of
+	// these values is not known, so the deck keeps them as the printer sends them.
+	SupportLiveviewCams json.RawMessage `json:"support_liveview_cams"`
+	CurrentLiveview     json.RawMessage `json:"current_liveview"`
 }
 
 // XCam is the camera AI of the printer: the checks that watch a print.

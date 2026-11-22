@@ -82,6 +82,8 @@ type Bambu struct {
 	startForm int       // the index in bambu.StartURLs of the address of the last start that worked
 	viewLayer int       // the layer of the slider of the view of the print, or -1 to follow the print
 	prepNow   int       // the step now of the list of the start steps, for a step that is not in the list
+
+	liveViews string // the camera fields that the log showed last (logLiveViews)
 }
 
 // bambuRetry is the wait before a new connection after a lost link.
@@ -113,6 +115,7 @@ func (b *Bambu) Run(ctx context.Context, notify func()) {
 		err := b.Client.Run(ctx, func(r bambu.Report) {
 			b.update(r, time.Now())
 			b.checkTraySpools()
+			b.logLiveViews()
 			b.refreshLive()
 			if notify != nil {
 				notify()
