@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"sort"
 	"strings"
 
 	"printdeck/internal/gfx"
@@ -274,17 +275,101 @@ func (a *App) addTrayRoll(ams amsPrinter, t printer.AMSTray, grams float64) {
 	a.open(pageSpool)
 }
 
-// pickTrayRoll asks which roll of the deck goes in the tray t.
+// pickTrayRoll asks which roll of the deck goes in the tray t: the rolls in no tray first, and
+// then the rolls of other trays.
 func (a *App) pickTrayRoll(ams amsPrinter, t printer.AMSTray, name string) {
-	s := a.Printer.SpoolStore()
-	var choices []menuItem
-	for _, sp := range s.List() {
-		sp := sp
-		choices = append(choices, menuItem{sp.Number() + " " + sp.Label(), rollLine(sp), dim, func() {
-			a.trayChange(func() error { return ams.LinkTray(t.Slot, sp.ID) })
-		}})
+	show := func(b *confirmBox) { a.confirm = b }
+	a.rollPicker(ams, t, name, "Which roll is in "+name+"?", true, func(sp printer.Spool) {
+		a.trayChange(func() error { return ams.LinkTray(t.Slot, sp.ID) })
+	}, nil, show, nil)
+}
+
+// rollTitle is the name of a roll with its color: "#8 Red PLA".
+func rollTitle(sp printer.Spool) string {
+	label, col := sp.Label(), nearColorName(sp.Color)
+	if col == "" || strings.Contains(strings.ToLower(label), strings.ToLower(col)) {
+		return sp.Number() + " " + label
 	}
-	a.confirm = &confirmBox{question: "Roll in " + name, choices: choices}
+	return sp.Number() + " " + col + " " + label
+}
+
+// rollSub is the line under a roll of a picker. inTray names the tray of the roll, or "".
+func rollSub(sp printer.Spool, inTray string) string {
+	line := printer.Weight(sp.Left()) + " left"
+	if sp.Color == "" {
+		line = "No color set · " + line
+	}
+	if inTray != "" {
+		line = "In " + inTray + " · " + line
+	}
+	return line
+}
+
+// pickableRolls returns the rolls with filament for the tray t, with the name of the tray of each
+// roll that is in another tray. The rolls in no tray come first, then the material of the spool,
+// then the nearest color. withLoaded also lists the rolls of other trays.
+func (a *App) pickableRolls(ams amsPrinter, t printer.AMSTray, withLoaded bool) ([]printer.Spool, map[string]string) {
+	s := a.Printer.SpoolStore()
+	if s == nil {
+		return nil, nil
+	}
+	state := ams.AMS()
+	where := map[string]string{}
+	for _, tr := range state.Trays {
+		if tr.Roll != "" {
+			where[tr.Roll] = trayName(tr, len(state.Units))
+		}
+	}
+	var out []printer.Spool
+	for _, sp := range s.List() {
+		if sp.ID == t.Roll || sp.Left() <= 0 || (where[sp.ID] != "" && !withLoaded) {
+			continue
+		}
+		out = append(out, sp)
+	}
+	want, hasColor := printer.ParseHex(t.Color)
+	rank := func(sp printer.Spool) [3]int {
+		r := [3]int{}
+		if where[sp.ID] != "" {
+			r[0] = 1
+		}
+		if !strings.EqualFold(sp.Material, t.Material) {
+			r[1] = 1
+		}
+		if hasColor {
+			r[2] = colorDist(want, sp.Color)
+		}
+		return r
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		x, y := rank(out[i]), rank(out[j])
+		for k := range x {
+			if x[k] != y[k] {
+				return x[k] < y[k]
+			}
+		}
+		return false
+	})
+	return out, where
+}
+
+// rollPicker shows the rolls for the tray t in a box of choices, each with its color, and then
+// the other choices extra. pick gets the roll. show shows the box. cancel runs on Back, or is nil.
+func (a *App) rollPicker(ams amsPrinter, t printer.AMSTray, name, question string, withLoaded bool,
+	pick func(printer.Spool), extra []menuItem, show func(*confirmBox), cancel func()) {
+	rolls, where := a.pickableRolls(ams, t, withLoaded)
+	items := make([]menuItem, 0, len(rolls)+len(extra))
+	swatches := make([]string, 0, cap(items))
+	for _, sp := range rolls {
+		sp := sp
+		items = append(items, menuItem{rollTitle(sp), rollSub(sp, where[sp.ID]), dim, func() { pick(sp) }})
+		swatches = append(swatches, sp.Color)
+	}
+	for _, it := range extra {
+		items = append(items, it)
+		swatches = append(swatches, "-")
+	}
+	show(&confirmBox{question: question, onNo: cancel, choices: items, swatches: swatches})
 }
 
 // trayChange runs a change of a tray, and shows its error.
@@ -338,42 +423,25 @@ func (a *App) askTrays() {
 		}
 	}
 	what := nonEmpty(strings.TrimSpace(t.Brand+" "+t.Material), "filament")
-	choices := []menuItem{
+	extra := []menuItem{
 		{"New 1 kg roll", "A full roll of " + what + colorSuffix(t.Color), dim, answer(func() { add(1000) })},
 		{"New roll of another size", "Type the grams of filament on the spool", dim, answer(func() {
 			a.editNumber("Filament on the spool", 1000, 9999, " g", func(v int) { add(float64(v)) })
 		})},
+		{"Do not count it", "The deck counts no filament of " + name, dim, answer(nil)},
 	}
-	// The rolls of the deck that are in no tray, with the material of the spool first.
-	if s := a.Printer.SpoolStore(); s != nil {
-		inTray := map[string]bool{}
-		for _, tr := range ams.AMS().Trays {
-			inTray[tr.Roll] = true
-		}
-		var same, other []printer.Spool
-		for _, sp := range s.List() {
-			switch {
-			case inTray[sp.ID] || sp.Left() <= 0:
-			case strings.EqualFold(sp.Material, t.Material):
-				same = append(same, sp)
-			default:
-				other = append(other, sp)
-			}
-		}
-		for i, sp := range append(same, other...) {
-			if i == 3 {
-				break
-			}
-			sp := sp
-			choices = append(choices, menuItem{sp.Number() + " " + sp.Label(), rollLine(sp), dim, answer(func() {
-				if err := ams.LinkTray(slot, sp.ID); err != nil {
-					a.Toast("The change was not saved: " + err.Error())
-				}
-			})})
-		}
+	spool := strings.TrimSpace(strings.ToLower(nearColorName(t.Color)) + " " + t.Material)
+	question := "New spool in " + name + ". Which roll is it?"
+	if spool != "" {
+		question = name + " now has " + spool + ". Which roll is it?"
 	}
-	choices = append(choices, menuItem{"Do not count it", "The deck counts no filament of " + name, dim, answer(nil)})
-	a.hub.ask(&confirmBox{question: "New spool in " + name, choices: choices, onNo: answer(nil)})
+	a.rollPicker(ams, t, name, question, false, func(sp printer.Spool) {
+		answer(func() {
+			if err := ams.LinkTray(slot, sp.ID); err != nil {
+				a.Toast("The change was not saved: " + err.Error())
+			}
+		})()
+	}, extra, a.hub.ask, answer(nil))
 }
 
 // colorSuffix is ", gray" for a tray with a color, or "".
@@ -381,7 +449,7 @@ func colorSuffix(hex string) string {
 	if hex == "" {
 		return ""
 	}
-	return ", " + strings.ToLower(colorName(hex))
+	return ", " + strings.ToLower(nearColorName(hex))
 }
 
 // trayMatcher is a printer that feeds each filament of a file from a tray of its AMS
@@ -406,7 +474,7 @@ func (a *App) trayChoices(tm trayMatcher, path, name string, start func()) *conf
 		if m.Slot < 0 {
 			return infoBox("NO TRAY FOR "+strings.ToUpper(m.Filament.Type),
 				fmt.Sprintf("%s\n\nFilament %d is %s %s. No tray of the AMS has %s. Put a spool of it in the AMS, then start again.",
-					name, m.Filament.ID, strings.ToLower(colorName(m.Filament.Color)), m.Filament.Type, m.Filament.Type))
+					name, m.Filament.ID, strings.ToLower(nearColorName(m.Filament.Color)), m.Filament.Type, m.Filament.Type))
 		}
 		parts = append(parts, trayName(printer.AMSTray{Unit: m.Slot / 4, Index: m.Slot % 4}, units))
 	}

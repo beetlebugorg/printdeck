@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"image/color"
 	"strings"
 
 	"printdeck/internal/gfx"
@@ -24,6 +25,46 @@ func colorName(hex string) string {
 		}
 	}
 	return "Other"
+}
+
+// nearColorName is the name of the color of the palette nearest to hex, for a color that the
+// printer reports: "#f72323" is "Red". It is "" for no color.
+func nearColorName(hex string) string {
+	col, ok := printer.ParseHex(hex)
+	if !ok {
+		return ""
+	}
+	name, best := "", -1
+	for _, rc := range printer.RollColors {
+		if d := colorDist(col, rc.Hex); best < 0 || d < best {
+			name, best = rc.Name, d
+		}
+	}
+	return name
+}
+
+// colorDist is the squared distance of col to the color hex, or a large number for no color.
+func colorDist(col color.RGBA, hex string) int {
+	o, ok := printer.ParseHex(hex)
+	if !ok {
+		return 1 << 30
+	}
+	dr, dg, db := int(col.R)-int(o.R), int(col.G)-int(o.G), int(col.B)-int(o.B)
+	return dr*dr + dg*dg + db*db
+}
+
+// drawSwatch draws the color hex at the left of r, and returns the rest of r for the row. No
+// color is an empty square.
+func drawSwatch(c *gfx.Canvas, r image.Rectangle, hex string) image.Rectangle {
+	const size, gap = 44, 10
+	sw := kit.Center(image.Rect(r.Min.X, r.Min.Y, r.Min.X+size, r.Max.Y), size, size)
+	c.RoundRect(sw, 6, dim)
+	if col, ok := printer.ParseHex(hex); ok {
+		c.RoundRect(sw.Inset(2), 5, col)
+	} else {
+		c.RoundRect(sw.Inset(2), 5, bg)
+	}
+	return image.Rect(r.Min.X+size+gap, r.Min.Y, r.Max.X, r.Max.Y)
 }
 
 // colorPicker is the palette of the colors of a roll.

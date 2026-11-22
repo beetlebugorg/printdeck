@@ -258,3 +258,51 @@ func TestFailedReasonWhole(t *testing.T) {
 		shot(t, a, fmt.Sprintf("x2d-failed-wide%v", wide))
 	}
 }
+
+// The question for a new spool names the color of the spool. The rolls in no tray come first with
+// their colors, the nearest color first, and a roll in a tray is not a choice.
+func TestTrayQuestionRolls(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a := New()
+		p := newX2D()
+		store := &printer.Spools{}
+		roll := func(material, color string) printer.Spool {
+			sp := store.AddOut("", material, 1000, 0, 0, time.Now())
+			store.SetColor(sp.ID, color)
+			sp, _ = store.Get(sp.ID)
+			return sp
+		}
+		red, inTray := roll("PLA", "#f72323"), roll("PLA", "#f98c37")
+		orange := roll("PLA", "#f98c36")
+		roll("PETG", "#f98c36")
+		roll("PLA", "#161616")
+		p.Spools_ = store
+		p.ams.Trays[0].Roll = inTray.ID
+		ext := printer.AMSTray{Slot: 255, Unit: -1, Loaded: true, Material: "PLA", Color: "#f98c36", External: true}
+		a.Printer = p
+		a.Wide = wide
+		for n := 0; n < 6; n++ { // more rolls than a screen shows
+			roll("PLA", "#2a62d0")
+		}
+		var shown *confirmBox
+		a.rollPicker(p, ext, "External spool", "External spool now has orange PLA. Which roll is it?", false,
+			func(printer.Spool) {}, []menuItem{{"Do not count it", "", dim, func() {}}},
+			func(b *confirmBox) { shown = b; a.confirm = b }, nil)
+		frameText(a)
+		if !strings.Contains(frameText(a), "More choices") && !strings.Contains(strings.ToUpper(frameText(a)), "MORE CHOICES") {
+			t.Errorf("wide %v: no row to the other choices", wide)
+		}
+		if want := rollTitle(orange); shown.choices[0].title != want || shown.swatches[0] != "#f98c36" {
+			t.Errorf("wide %v: first choice %q %q, want %q", wide, shown.choices[0].title, shown.swatches[0], want)
+		}
+		for _, ch := range shown.choices {
+			if strings.HasPrefix(ch.title, inTray.Number()+" ") {
+				t.Errorf("wide %v: the roll of another tray is a choice", wide)
+			}
+		}
+		if !strings.Contains(rollTitle(red), "Red PLA") {
+			t.Errorf("the title of the red roll: %s", rollTitle(red))
+		}
+		shot(t, a, fmt.Sprintf("tray-question-wide%v", wide))
+	}
+}
