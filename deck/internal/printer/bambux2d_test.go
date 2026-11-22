@@ -3,6 +3,7 @@ package printer
 import (
 	"encoding/json"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -249,6 +250,7 @@ func TestBambuTraySpoolChange(t *testing.T) {
 	b.TrayPath = filepath.Join(dir, "trays.json")
 	t.Cleanup(b.trayWG.Wait)
 	r := x2dParse(t, x2dReport)
+	r.State = "IDLE"
 	for i := range r.Device.Extruder.Info {
 		r.Device.Extruder.Info[i].Feed = 0xffff
 	}
@@ -279,7 +281,10 @@ func TestBambuTraySpoolChange(t *testing.T) {
 	if got, _ := b.Spools.Get(sp.ID); got.Color != "#00ff00" || got.Left() != 1000 {
 		t.Errorf("the old roll changed: %+v", got)
 	}
-	if q, ok := b.TrayQuestion(); !ok || q.Slot != bambu.ExternalMain {
-		t.Errorf("no question for the tray: %+v %v", q, ok)
+	b.trayMu.Lock()
+	asked := slices.Contains(b.pending, bambu.ExternalMain)
+	b.trayMu.Unlock()
+	if !asked {
+		t.Error("no question for the tray")
 	}
 }

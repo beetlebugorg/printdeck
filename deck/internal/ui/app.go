@@ -197,6 +197,11 @@ type Printer interface {
 }
 
 type App struct {
+	// choiceBox is the box of choices on the screen, and choiceStart its first row after "More
+	// choices". Each screen has its own place in a shared question.
+	choiceBox   *confirmBox
+	choiceStart int
+
 	Printer Printer
 	// Fleet links the App to the other printers of its deck (fleet.go), or is nil for a deck with
 	// one printer.
@@ -425,7 +430,10 @@ type confirmBox struct {
 	// choices replaces yes with a row for each choice, over Back. A tap on a row closes the box
 	// and runs the tap of the row.
 	choices []menuItem
-	title   string // the title of the box; "" is "CONFIRM"
+	// swatches has the color "#rrggbb" of each choice that is a roll, at the left of its row, or
+	// "" for no color. A roll with no color has an empty square; a choice that is no roll has "-".
+	swatches []string
+	title    string // the title of the box; "" is "CONFIRM"
 	// allPrinters is a question for each printer of the deck: the key does not name the printer
 	// of the screen.
 	allPrinters bool
@@ -802,12 +810,18 @@ func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
 	if len(qLines) > 3 {
 		qLines = append(qLines[:2], gfx.Fit(face, strings.Join(qLines[2:], " "), inW))
 	}
-	// Each row is high enough for its text (rowLines).
-	heights := make([]int, len(cf.choices))
-	h := panelLabelH() + 16 + len(qLines)*lineH + 14 + backH + 20
-	for i, ch := range cf.choices {
-		heights[i] = max(rowH, rowTextH(inW, ch.sub))
+	// Each row is high enough for its text (rowLines). The rows that fit show, with a row to the
+	// next rows when some do not fit.
+	head := panelLabelH() + 16 + len(qLines)*lineH + 14 + backH + 20
+	shown, more := a.choicesShown(cf, inW, contentY1-20-head, rowH, gap)
+	heights := make([]int, len(shown))
+	h := head
+	for i, n := range shown {
+		heights[i] = max(rowH, rowTextH(inW, cf.choices[n].sub))
 		h += heights[i] + gap
+	}
+	if more > 0 {
+		h += rowH + gap
 	}
 	// The picture of the camera, 16:9, when the box has room for it.
 	var cam *camera.Frame
@@ -844,11 +858,22 @@ func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
 	for i, l := range qLines {
 		c.Text(image.Rect(qr.Min.X, qr.Min.Y+i*lineH, qr.Max.X, qr.Min.Y+(i+1)*lineH), l, face, text, gfx.Center)
 	}
-	for i, ch := range cf.choices {
-		ch := ch
-		a.menuRow(c, s.Next(heights[i]), ch.title, ch.sub, ch.col, func() {
+	for i, n := range shown {
+		ch := cf.choices[n]
+		rr := s.Next(heights[i])
+		if n < len(cf.swatches) && cf.swatches[n] != "-" {
+			rr = drawSwatch(c, rr, cf.swatches[n])
+		}
+		a.menuRow(c, rr, ch.title, ch.sub, ch.col, func() {
 			a.confirm = nil
 			ch.tap()
+			a.Redraw()
+		})
+	}
+	if more > 0 {
+		next := shown[len(shown)-1] + 1
+		a.menuRow(c, s.Next(rowH), "More choices", fmt.Sprintf("%d more", more), dim, func() {
+			a.choiceBox, a.choiceStart = cf, next%len(cf.choices)
 			a.Redraw()
 		})
 	}
@@ -859,6 +884,40 @@ func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
 		}
 		a.Redraw()
 	})
+}
+
+// choicesShown returns the indexes of the choices of cf that fit in the height room, from the
+// place that "More choices" reached, and the count of the choices after them. With more choices
+// than fit, the last place is for the row "More choices", which goes round to the first choice.
+func (a *App) choicesShown(cf *confirmBox, w, room, rowH, gap int) (shown []int, more int) {
+	if a.choiceBox != cf {
+		a.choiceBox, a.choiceStart = cf, 0
+	}
+	start := a.choiceStart
+	if start >= len(cf.choices) {
+		start = 0
+	}
+	rowOf := func(i int) int { return max(rowH, rowTextH(w, cf.choices[i].sub)) + gap }
+	all := 0
+	for i := start; i < len(cf.choices); i++ {
+		all += rowOf(i)
+	}
+	if all <= room && start == 0 {
+		for i := range cf.choices {
+			shown = append(shown, i)
+		}
+		return shown, 0
+	}
+	used := rowH + gap // the row "More choices"
+	for i := start; i < len(cf.choices); i++ {
+		if len(shown) > 0 && used+rowOf(i) > room {
+			break
+		}
+		used += rowOf(i)
+		shown = append(shown, i)
+	}
+	more = len(cf.choices) - 1 - shown[len(shown)-1] + start
+	return shown, more
 }
 
 // button draws a key and registers it. fill is the colour of the cap.
