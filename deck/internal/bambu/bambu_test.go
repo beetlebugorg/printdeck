@@ -152,3 +152,11 @@ func TestClientLogin(t *testing.T) {
 		t.Errorf("not a CA of Bambu Lab: %v", err)
 	}
 }
+
+func TestAMSUnitExtruder(t *testing.T) {
+	for info, want := range map[string]int{`"11001103"`: 1, `"11000003"`: 0, `"11000E03"`: -1, `""`: -1, ``: -1} {
+		if got := (AMSUnit{Info: json.RawMessage(info)}).Extruder(); got != want {
+			t.Errorf("info %s: extruder %d, want %d", info, got, want)
+		}
+	}
+}

@@ -43,6 +43,9 @@ type AMSTray struct {
 	// Feeds is the nozzle that the spool is in now: 0 the nozzle (the main nozzle of a printer
 	// with two), 1 the aux nozzle, or -1.
 	Feeds int
+	// Nozzle is the nozzle that the spool is attached to, loaded or not: 0 the main nozzle, 1 the
+	// aux nozzle, or -1 on a printer with one nozzle or when the report does not say.
+	Nozzle int
 	// Temp is the nozzle temperature of the filament for a load, from the printer, or 0.
 	Temp int
 	// InfoIdx is the filament code of Bambu Studio for the spool (tray_info_idx), or "".
@@ -97,6 +100,20 @@ func (b *Bambu) AMS() AMS {
 		}
 		return -1
 	}
+	// attached returns the nozzle of a spool on the extruder id. The nozzle that the spool is in
+	// now comes first.
+	attached := func(slot, id int) int {
+		if n, ok := feeds[slot]; ok {
+			return n
+		}
+		switch {
+		case len(ex) < 2 || id < 0:
+			return -1
+		case id == mainExtruder:
+			return 0
+		}
+		return 1
+	}
 	for _, u := range r.AMS.Units {
 		ui, _ := strconv.Atoi(u.ID)
 		out.Units = append(out.Units, AMSUnit{Index: ui, Temp: float64(u.Temp),
@@ -108,7 +125,7 @@ func (b *Bambu) AMS() AMS {
 			slot := ui*4 + ti
 			tr := AMSTray{Slot: slot, Unit: ui, Index: ti, Loaded: r.TrayLoaded(slot), Material: t.Type,
 				Brand: t.Brand, Color: t.ColorHex(), Remain: -1, Active: slot == active, Roll: links[slot],
-				Tag: t.Tag(), Weight: float64(t.Weight), Feeds: feed(slot), Temp: t.TempMax.Int(), InfoIdx: t.InfoIdx}
+				Tag: t.Tag(), Weight: float64(t.Weight), Feeds: feed(slot), Nozzle: attached(slot, u.Extruder()), Temp: t.TempMax.Int(), InfoIdx: t.InfoIdx}
 			if t.Known() {
 				tr.Remain = t.Remain.Int()
 			}
@@ -124,7 +141,7 @@ func (b *Bambu) AMS() AMS {
 		}
 		tr := AMSTray{Slot: id, Unit: -1, Index: 0, Loaded: t.Type != "", Material: t.Type, Brand: t.Brand,
 			Color: t.ColorHex(), Remain: -1, Active: id == active, Roll: links[id], Tag: t.Tag(),
-			Weight: float64(t.Weight), External: true, Feeds: feed(id), Temp: t.TempMax.Int(), InfoIdx: t.InfoIdx}
+			Weight: float64(t.Weight), External: true, Feeds: feed(id), Nozzle: attached(id, bambu.ExternalExtruder(id)), Temp: t.TempMax.Int(), InfoIdx: t.InfoIdx}
 		if t.Known() {
 			tr.Remain = t.Remain.Int()
 		}
