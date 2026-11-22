@@ -1,6 +1,7 @@
 package bambu
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -127,6 +128,8 @@ type AMSUnit struct {
 	HumidityPct Num    `json:"humidity_raw"` // the relative humidity in percent
 	Temp        Num    `json:"temp"`         // °C
 	Trays       []Tray `json:"tray"`
+	// Info has the bits of the unit, in hex. Bits 8 to 11 are its extruder (Extruder).
+	Info json.RawMessage `json:"info"`
 	// DryTime is the drying time left in minutes, 0 when the AMS does not dry. DrySetting is the
 	// drying that runs.
 	DryTime    Num `json:"dry_time"`
@@ -135,6 +138,35 @@ type AMSUnit struct {
 		Hours    Num    `json:"dry_duration"`
 		Filament string `json:"dry_filament"`
 	} `json:"dry_setting"`
+}
+
+// noExtruder is the code in the info of an AMS unit with no fixed extruder.
+const noExtruder = 0xE
+
+// Extruder returns the ID of the extruder that the AMS unit is attached to, or -1 when the report
+// gives none. Bambu Studio reads the same bits (DevFilaSystem.cpp).
+func (u AMSUnit) Extruder() int {
+	v, err := strconv.ParseUint(strings.Trim(string(u.Info), `"`), 16, 64)
+	if err != nil {
+		return -1
+	}
+	id := int(v >> 8 & 0xf)
+	if id == noExtruder {
+		return -1
+	}
+	return id
+}
+
+// ExternalExtruder returns the ID of the extruder of an external spool: 0 for ExternalMain, 1 for
+// ExternalDeputy, or -1 for another ID.
+func ExternalExtruder(id int) int {
+	switch id {
+	case ExternalMain:
+		return 0
+	case ExternalDeputy:
+		return 1
+	}
+	return -1
 }
 
 // Tray is one slot of an AMS.

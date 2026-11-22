@@ -197,7 +197,7 @@ func filamentsOf(p any) []filamentJSON {
 			if t.External {
 				f.Slot = "Ext"
 			}
-			switch t.Feeds {
+			switch t.Nozzle {
 			case 0:
 				f.Nozzle = "main"
 			case 1:

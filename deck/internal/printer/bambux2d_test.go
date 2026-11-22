@@ -217,3 +217,24 @@ func TestBambuPrepStaysThroughUnknownStep(t *testing.T) {
 		t.Errorf("step 54 has no name")
 	}
 }
+
+// Each spool has its nozzle, loaded or not: the AMS from the info of its unit (bits 8 to 11), and
+// the external spools from their IDs. The values are from the report of the X2D of the user.
+func TestBambuX2DSpoolNozzles(t *testing.T) {
+	b := NewBambu("192.168.1.50", "00TEST000000000", "12345678", "", "X2D", &History{Path: filepath.Join(t.TempDir(), "h.json")})
+	r := x2dParse(t, x2dReport)
+	r.AMS.Units[0].Info = json.RawMessage(`"11001103"`)
+	for i := range r.Device.Extruder.Info {
+		r.Device.Extruder.Info[i].Feed = 0xffff // no spool in a nozzle
+	}
+	b.update(r, time.Now())
+	for _, tr := range b.AMS().Trays {
+		want := 0 // the AMS is on extruder 1, the main nozzle
+		if tr.Slot == bambu.ExternalMain {
+			want = 1 // external spool 255 is on extruder 0, the aux nozzle
+		}
+		if tr.Nozzle != want || tr.Feeds != -1 {
+			t.Errorf("slot %d: nozzle %d, feeds %d, want nozzle %d", tr.Slot, tr.Nozzle, tr.Feeds, want)
+		}
+	}
+}
