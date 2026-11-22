@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,6 +31,11 @@ type Spool struct {
 	// material, for example "generic_pla". Color is its color, for example "#ff7a1a", or "".
 	CuraMaterial string `json:"cura_material,omitempty"`
 	Color        string `json:"color,omitempty"`
+	// TrayColor and TrayInfo are what the printer reported for the spool when the roll was last
+	// seen in its tray: the color, and the material with the filament code. A change of them on
+	// the printer is another spool (TrayChanged). A color set on the deck does not change them.
+	TrayColor string `json:"tray_color,omitempty"`
+	TrayInfo  string `json:"tray_info,omitempty"`
 	// Tag is the RFID tag of a spool of Bambu Lab, or "": the AMS finds the roll again by its tag.
 	Tag string `json:"tag,omitempty"`
 	// Live is the grams that a print now has used from the roll, and that the deck subtracts
@@ -285,6 +291,63 @@ func (s *Spools) SetColor(id, hex string) {
 		s.data.Spools[i].Color = hex
 		s.save()
 	}
+}
+
+// MarkTray records what the printer reports for the tray of the roll: the roll just went in.
+func (s *Spools) MarkTray(id, color, info string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	if i := s.find(id); i >= 0 && (s.data.Spools[i].TrayColor != color || s.data.Spools[i].TrayInfo != info) {
+		s.data.Spools[i].TrayColor, s.data.Spools[i].TrayInfo = color, info
+		s.save()
+	}
+}
+
+// TrayChanged reports that the printer has another spool in the tray of the roll: its color
+// (within trayColorNoise) or its material and filament code differ from the last report. A roll
+// with no last color compares with its own color. With no change, it records the report.
+func (s *Spools) TrayChanged(id, color, info string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	i := s.find(id)
+	if i < 0 || color == "" {
+		return false
+	}
+	sp := &s.data.Spools[i]
+	last := sp.TrayColor
+	if last == "" {
+		last = sp.Color
+	}
+	if (last != "" && !nearColor(last, color)) || (sp.TrayInfo != "" && sp.TrayInfo != info) {
+		return true
+	}
+	if sp.TrayColor != color || sp.TrayInfo != info {
+		sp.TrayColor, sp.TrayInfo = color, info
+		s.save()
+	}
+	return false
+}
+
+// trayColorNoise is the largest difference of a red, green or blue value of the same spool.
+const trayColorNoise = 8
+
+// nearColor reports that two colors "#rrggbb" are the same within trayColorNoise. A color that
+// does not parse is near any color.
+func nearColor(a, b string) bool {
+	x, err1 := strconv.ParseUint(strings.TrimPrefix(a, "#"), 16, 32)
+	y, err2 := strconv.ParseUint(strings.TrimPrefix(b, "#"), 16, 32)
+	if err1 != nil || err2 != nil {
+		return true
+	}
+	for shift := 0; shift <= 16; shift += 8 {
+		d := int(x>>shift&0xff) - int(y>>shift&0xff)
+		if d > trayColorNoise || d < -trayColorNoise {
+			return false
+		}
+	}
+	return true
 }
 
 // SetSlicerMaterials keeps the materials of the slicer. It reports a change.

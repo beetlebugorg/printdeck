@@ -238,3 +238,48 @@ func TestBambuX2DSpoolNozzles(t *testing.T) {
 		}
 	}
 }
+
+// A spool that the user changes and sets on the printer is another spool: the old roll keeps its
+// color and goes out of the tray, and the tray has the color of the printer. Small noise in the
+// color and a color picked on the deck change nothing.
+func TestBambuTraySpoolChange(t *testing.T) {
+	dir := t.TempDir()
+	b := NewBambu("192.168.1.50", "00TEST000000000", "12345678", "", "X2D", &History{Path: filepath.Join(dir, "h.json")})
+	b.Spools = &Spools{Path: filepath.Join(dir, "spools.json")}
+	b.TrayPath = filepath.Join(dir, "trays.json")
+	t.Cleanup(b.trayWG.Wait)
+	r := x2dParse(t, x2dReport)
+	for i := range r.Device.Extruder.Info {
+		r.Device.Extruder.Info[i].Feed = 0xffff
+	}
+	setColor := func(hex string) {
+		for i := range r.External {
+			if r.External[i].ID == "255" {
+				r.External[i].Color = hex
+			}
+		}
+		b.update(r, time.Now())
+		b.checkTraySpools()
+	}
+	setColor("F72323FF")
+	sp, err := b.AddTrayRoll(bambu.ExternalMain, 1000, "#f72323")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.Spools.SetColor(sp.ID, "#00ff00") // a color picked on the deck
+	setColor("F92525FF")                // noise
+	if tr, _ := b.tray(bambu.ExternalMain); tr.Roll != sp.ID {
+		t.Fatalf("noise took the roll out: %+v", tr)
+	}
+	setColor("F98C36FF") // another spool
+	tr, _ := b.tray(bambu.ExternalMain)
+	if tr.Roll != "" || tr.Color != "#f98c36" {
+		t.Fatalf("after the change: %+v", tr)
+	}
+	if got, _ := b.Spools.Get(sp.ID); got.Color != "#00ff00" || got.Left() != 1000 {
+		t.Errorf("the old roll changed: %+v", got)
+	}
+	if q, ok := b.TrayQuestion(); !ok || q.Slot != bambu.ExternalMain {
+		t.Errorf("no question for the tray: %+v %v", q, ok)
+	}
+}
