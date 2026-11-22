@@ -121,6 +121,9 @@ type printdeckJSON struct {
 	// it found on the heatbed (for example "P0101"), or "" (nozzlesOf).
 	Nozzles []nozzleJSON `json:"nozzles,omitempty"`
 	Plate   string       `json:"plate,omitempty"`
+	// LiveViews are the camera fields of a Bambu Lab report, as the printer sends them. A field
+	// is null when the printer does not send it.
+	LiveViews *printer.LiveViews `json:"liveviews,omitempty"`
 }
 
 // nozzleJSON is a nozzle of a Bambu Lab printer: its id in the reports, its role ("main" with the
@@ -300,6 +303,13 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	}
 	out.Filaments = filamentsOf(s.Printer)
 	out.Nozzles, out.Plate = nozzlesOf(s.Printer)
+	if l, ok := s.Printer.(interface {
+		LiveViews() (printer.LiveViews, bool)
+	}); ok {
+		if v, known := l.LiveViews(); known {
+			out.LiveViews = &v
+		}
+	}
 	if st := s.Printer.State(); st.Busy() {
 		j := &jobJSON{File: st.FilePath, Title: st.Name(), State: "printing", Layer: st.Layer, Layers: st.Layers,
 			Progress: st.Completion / 100, Left: -1, Release: -1, Pos: st.FilePos}
