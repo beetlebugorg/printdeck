@@ -215,3 +215,23 @@ func TestBambuDryAMS(t *testing.T) {
 		t.Error("a drying during a print")
 	}
 }
+
+// A factor beside the percent of the level goes to the next level on that side.
+func TestSpeedFactorSteps(t *testing.T) {
+	for _, tc := range []struct{ now, nowPct, p, want int }{
+		{2, 100, 110, 3},
+		{2, 100, 90, 1},
+		{3, 124, 134, 4},
+		{3, 124, 114, 2},
+		{1, 50, 40, 1},
+		{4, 166, 176, 4},
+		{2, 100, 100, 2},
+		{1, 50, 166, 4},
+		{4, 166, 50, 1},
+		{0, 0, 130, 3},
+	} {
+		if got := speedLevelFor(tc.now, tc.nowPct, tc.p); got != tc.want {
+			t.Errorf("level %d at %d%%, factor %d: level %d, want %d", tc.now, tc.nowPct, tc.p, got, tc.want)
+		}
+	}
+}

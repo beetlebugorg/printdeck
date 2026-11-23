@@ -204,15 +204,35 @@ var bambuSpeeds = []struct {
 }{{bambu.SpeedSilent, "Silent", 50}, {bambu.SpeedStandard, "Standard", 100}, {bambu.SpeedSport, "Sport", 124},
 	{bambu.SpeedLudicrous, "Ludicrous", 166}}
 
-// SpeedFactor sets the speed level nearest to the percent p.
+// SpeedFactor sets the speed level for the percent p (speedLevelFor).
 func (b *Bambu) SpeedFactor(p int) error {
+	r, _ := b.Report()
+	return b.SetSpeedLevel(speedLevelFor(r.SpeedLevel.Int(), r.SpeedPct.Int(), p))
+}
+
+// speedLevelFor returns the level nearest to the percent p. When that is the level now and p is
+// above or below the percent now, it returns the next level on that side, so a small step of an
+// app changes the level. now is 0 when the level is not known.
+func speedLevelFor(now, nowPct, p int) int {
 	best := bambuSpeeds[0]
 	for _, s := range bambuSpeeds {
 		if abs(s.pct-p) < abs(best.pct-p) {
 			best = s
 		}
 	}
-	return b.SetSpeedLevel(best.level)
+	if best.level != now || now < 1 || now > len(bambuSpeeds) {
+		return best.level
+	}
+	if nowPct <= 0 {
+		nowPct = bambuSpeeds[now-1].pct
+	}
+	switch {
+	case p > nowPct:
+		return min(now+1, len(bambuSpeeds))
+	case p < nowPct:
+		return max(now-1, 1)
+	}
+	return now
 }
 
 func abs(v int) int {

@@ -170,7 +170,8 @@ func factor(w http.ResponseWriter, f *int) (int, bool) {
 }
 
 // feedrate sets the speed of the print: a factor in percent, or a level of a Bambu Lab printer
-// by its name (controlState.SpeedLevels). A Bambu Lab printer takes the level nearest to a factor.
+// by its name (controlState.SpeedLevels). A Bambu Lab printer goes to the
+// level for the factor (Bambu.SpeedFactor).
 func (s *Server) feedrate(w http.ResponseWriter, f *int, level string) {
 	if level != "" {
 		l, ok := s.Printer.(speedLeveler)
