@@ -254,7 +254,7 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 			a.drawPreparing(c, st)
 		case st.Finishing:
 			a.drawFinishing(c, st)
-		case st.Layer == 1 && st.Layers > 1:
+		case st.Layer == 1 && st.Layers > 1 && a.hasBabyStep():
 			a.drawFirstLayer(c, st)
 		default:
 			a.drawJob(c, st)
