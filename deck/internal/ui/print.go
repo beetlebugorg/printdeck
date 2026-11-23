@@ -736,53 +736,8 @@ func (a *App) lcdLines(st printer.State) []string {
 // heater is on. A tap opens the keypad for the target.
 func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT float64, ok bool) {
 	a.region("Temperatures", area)
-	h := area.Dy()
 	card := func(r image.Rectangle, icon func(cx, cy, r int, col color.RGBA), name string, v, target float64) {
-		plate(c, r)
-		ic := dim
-		if ok && target > 0 {
-			ic = orange // heater on
-		}
-		// A narrow card has a smaller icon, closer to the edge, and a value that fits.
-		ix, tx, ir := 34, 62, 15
-		if r.Dx() < 180 {
-			ix, tx, ir = 22, 40, 11
-		}
-		icon(r.Min.X+ix, r.Min.Y+h/2, ir, ic)
-		label(c, image.Rect(r.Min.X+tx, r.Min.Y+8, r.Max.X-14, r.Min.Y+28), name, gfx.Left)
-		val := "—"
-		if ok {
-			val = fmt.Sprintf("%.0f°", v)
-		}
-		valR := image.Rect(r.Min.X+tx, r.Min.Y+26, r.Max.X-10, r.Max.Y-4)
-		// The large text: a target that does not fit at the right of the label goes at the right of
-		// the value.
-		x0 := r.Min.X + tx + gfx.Width(gfx.Face(true, 14), strings.ToUpper(name)) + 8
-		setR := image.Rectangle{}
-		if set := fmt.Sprintf("%.0f°", target); gfx.FinePrint() && ok && target > 0 && r.Dx() >= 180 &&
-			gfx.Width(gfx.Face(true, 13), set) > r.Max.X-10-x0 {
-			setR = valR
-			setR.Min.X = setR.Max.X - gfx.Width(gfx.Face(true, 13), set)
-			valR.Max.X = setR.Min.X - 8
-			c.Text(setR, set, gfx.Face(true, 13), accentText, gfx.Right)
-		}
-		size := 30
-		for size > 18 && gfx.Width(gfx.Face(true, size), val) > valR.Dx() {
-			size -= 2
-		}
-		c.Text(valR, val, gfx.Face(true, size), text, gfx.Left)
-		if ok && target > 0 && setR.Empty() {
-			set := fmt.Sprintf("SET %.0f°", target)
-			if r.Dx() < 180 { // a narrow card: under the value
-				c.Text(image.Rect(r.Min.X+tx, r.Max.Y-24, r.Max.X-10, r.Max.Y-6), set, gfx.Face(true, 13), accentText, gfx.Left)
-			} else {
-				// The target goes at the right of the label. Large text leaves room for the number only.
-				if gfx.Width(gfx.Face(true, 13), set) > r.Max.X-10-x0 {
-					set = fmt.Sprintf("%.0f°", target)
-				}
-				c.Text(image.Rect(x0, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), set, gfx.Face(true, 13), accentText, gfx.Right)
-			}
-		}
+		tempCard(c, r, icon, name, v, target, ok)
 	}
 	cards := kit.Cols(area, 16, kit.Fr(1), kit.Fr(1))
 	nozzle, bedR := cards[0], cards[1]
@@ -792,6 +747,58 @@ func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT 
 		pr := a.Printer
 		a.addHit(kit.Hit{R: nozzle, Tap: func() { a.editTemp("Nozzle temperature", int(toolT), 300, toolPresets, pr.SetToolTemp) }})
 		a.addHit(kit.Hit{R: bedR, Tap: func() { a.editTemp("Bed temperature", int(bedT), 120, bedPresets, pr.SetBedTemp) }})
+	}
+}
+
+// tempCard draws a card with the name, the temperature and the target of a heater. icon can be nil.
+func tempCard(c *gfx.Canvas, r image.Rectangle, icon func(cx, cy, r int, col color.RGBA), name string, v, target float64, ok bool) {
+	h := r.Dy()
+	plate(c, r)
+	ic := dim
+	if ok && target > 0 {
+		ic = orange // heater on
+	}
+	// A narrow card has a smaller icon, closer to the edge, and a value that fits.
+	ix, tx, ir := 34, 62, 15
+	if r.Dx() < 180 {
+		ix, tx, ir = 22, 40, 11
+	}
+	if icon != nil {
+		icon(r.Min.X+ix, r.Min.Y+h/2, ir, ic)
+	}
+	label(c, image.Rect(r.Min.X+tx, r.Min.Y+8, r.Max.X-14, r.Min.Y+28), name, gfx.Left)
+	val := "—"
+	if ok {
+		val = fmt.Sprintf("%.0f°", v)
+	}
+	valR := image.Rect(r.Min.X+tx, r.Min.Y+26, r.Max.X-10, r.Max.Y-4)
+	// The large text: a target that does not fit at the right of the label goes at the right of
+	// the value.
+	x0 := r.Min.X + tx + gfx.Width(gfx.Face(true, 14), strings.ToUpper(name)) + 8
+	setR := image.Rectangle{}
+	if set := fmt.Sprintf("%.0f°", target); gfx.FinePrint() && ok && target > 0 && r.Dx() >= 180 &&
+		gfx.Width(gfx.Face(true, 13), set) > r.Max.X-10-x0 {
+		setR = valR
+		setR.Min.X = setR.Max.X - gfx.Width(gfx.Face(true, 13), set)
+		valR.Max.X = setR.Min.X - 8
+		c.Text(setR, set, gfx.Face(true, 13), accentText, gfx.Right)
+	}
+	size := 30
+	for size > 18 && gfx.Width(gfx.Face(true, size), val) > valR.Dx() {
+		size -= 2
+	}
+	c.Text(valR, val, gfx.Face(true, size), text, gfx.Left)
+	if ok && target > 0 && setR.Empty() {
+		set := fmt.Sprintf("SET %.0f°", target)
+		if r.Dx() < 180 { // a narrow card: under the value
+			c.Text(image.Rect(r.Min.X+tx, r.Max.Y-24, r.Max.X-10, r.Max.Y-6), set, gfx.Face(true, 13), accentText, gfx.Left)
+		} else {
+			// The target goes at the right of the label. Large text leaves room for the number only.
+			if gfx.Width(gfx.Face(true, 13), set) > r.Max.X-10-x0 {
+				set = fmt.Sprintf("%.0f°", target)
+			}
+			c.Text(image.Rect(x0, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), set, gfx.Face(true, 13), accentText, gfx.Right)
+		}
 	}
 }
 
