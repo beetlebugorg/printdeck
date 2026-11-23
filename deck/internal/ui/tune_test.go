@@ -134,6 +134,44 @@ func TestTuneX2DAuxAndChamber(t *testing.T) {
 	}
 }
 
+// The first layer of a printer with speed levels shows the print page, with no Z offset keys.
+func TestFirstLayerX2DHasNoZOffset(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		for _, large := range []bool{false, true} {
+			a := New()
+			a.Wide = wide
+			if large {
+				a.TextSize = "large"
+			}
+			p := newTuneX2D(2, 100)
+			p.State_.Layer, p.State_.Layers = 1, 127
+			a.Printer = p
+			f := strings.ToUpper(frameText(a))
+			for _, gone := range []string{"Z OFFSET", `"SAVE"`, `"−"`} {
+				if strings.Contains(f, gone) {
+					t.Errorf("wide %v large %v: the page shows %s", wide, large, gone)
+				}
+			}
+			for _, want := range []string{"FIRST LAYER", "TUNE"} {
+				if !strings.Contains(f, want) {
+					t.Errorf("wide %v large %v: no %s", wide, large, want)
+				}
+			}
+			shot(t, a, fmt.Sprintf("first-layer-x2d-wide%v-large%v", wide, large))
+		}
+	}
+}
+
+// A Klipper printer keeps the Z offset keys on the first layer.
+func TestFirstLayerKlipperHasZOffset(t *testing.T) {
+	st := paused
+	st.Paused, st.Layer, st.Layers = false, 1, 20
+	a, _, _ := newPrintApp(st)
+	if f := strings.ToUpper(frameText(a)); !strings.Contains(f, "Z OFFSET") {
+		t.Error("no Z offset on the first layer")
+	}
+}
+
 // The Tune page of an X2D has no cut label on the tall and wide screens, with both text sizes.
 func TestTuneX2DShots(t *testing.T) {
 	var cuts []string

@@ -590,7 +590,7 @@ func (a *App) layerDetail(st printer.State) (string, string) {
 		short += " · next " + mmss(left.Seconds())
 	}
 	z := fmt.Sprintf(" · Z %.2f", st.Z)
-	if st.Layer == 1 && st.Layers > 1 {
+	if st.Layer == 1 && st.Layers > 1 && a.hasBabyStep() {
 		z = fmt.Sprintf(" · Z offset %+.3f", st.ZOffset)
 	}
 	return long + z, short + z

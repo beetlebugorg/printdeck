@@ -24,6 +24,13 @@ type speedLeveler interface {
 	SetSpeedLevel(level int) error
 }
 
+// hasBabyStep reports that the printer can change the Z offset during a print. A printer with
+// speed levels (printer.Bambu) has no command for it.
+func (a *App) hasBabyStep() bool {
+	_, stepped := a.Printer.(speedLeveler)
+	return !stepped
+}
+
 // fanKeyOn reports that the fan key of p percent shows the fan speed. A printer with speed levels
 // reports the fan in 15 steps, so the key lights within half a step.
 func fanKeyOn(stepped bool, fan float64, p int) bool {
